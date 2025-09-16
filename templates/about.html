@@ -1,0 +1,12 @@
+<h1>About Page</h1>
+<ul>
+{% for row in rows %}
+  <li>
+    {% for key, value in row.items() %}
+      <strong>{{ key }}:</strong> {{ value }}<br>
+    {% endfor %}
+  </li>
+{% else %}
+  <li>No data found.</li>
+{% endfor %}
+</ul>
