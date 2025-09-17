@@ -1,61 +1,75 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Truck Example</title>
-  <style>
-    .truck {
-      position: relative;
-      width: 650px;           /* adjust width */
-      margin: 2rem auto;      /* center on page */
-    }
-
-    .truck-body {
-      list-style: none;
-      padding: 1rem;
-      margin: 0;
-      background: #f9f9f9;
-      border: 2px solid #555;
-      border-radius: 20px 60px 10px 10px; /* cab rounded */
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      font-family: sans-serif;
-    }
-
-    .truck-body li {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      margin-bottom: 0.5rem;
-      padding: 0.25rem;
-    }
-
-    .truck-body .empty {
-      text-align: center;
-      color: #777;
-      font-style: italic;
-    }
-
-    /* wheels */
-    .wheel {
-      position: absolute;
-      bottom: -25px; /* how far below the box */
-      width: 50px;
-      height: 50px;
-      background: #333;
-      border-radius: 50%;
-      border: 4px solid #555;
-    }
-
-    .wheel-front { left: 40px; }
-    .wheel-back { right: 40px; }
-  </style>
-</head>
-<body>
-
 <h1 style="text-align:center; font-family:sans-serif; color:#333;">About Team 16</h1>
 
 <div class="truck">
   <ul class="truck-body">
-    <li>
-      <p><strong>Name:</strong> <span>Driver 1</span></p>
-      <p><str
+    {% for row in rows %}
+      <li>
+        {% for key, value in row.items() %}
+          <p>
+            <strong>{{ key }}:</strong> <span>{{ value }}</span>
+          </p>
+        {% endfor %}
+      </li>
+    {% else %}
+      <li class="empty">No data found.</li>
+    {% endfor %}
+  </ul>
+  <!-- wheels -->
+  <div class="wheel wheel-front"></div>
+  <div class="wheel wheel-back"></div>
+</div>
+
+<style>
+.truck {
+  display: inline-block;
+  position: relative;
+  width: 650px; /* adjust */
+  margin: 2rem auto;
+}
+
+.truck-body {
+  list-style: none;
+  padding: 1rem;
+  margin: 0;
+  background: #f9f9f9;
+  border: 2px solid #555;
+  border-radius: 20px 60px 10px 10px; /* front cab rounding */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  font-family: sans-serif;
+}
+
+/* items inside */
+.truck-body li {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem;
+}
+
+/* empty message */
+.truck-body .empty {
+  text-align: center;
+  color: #777;
+  font-style: italic;
+}
+
+/* wheels */
+.wheel {
+  position: absolute;
+  bottom: -25px;
+  width: 50px;
+  height: 50px;
+  background: #333;
+  border-radius: 50%;
+  border: 4px solid #555;
+}
+
+.wheel-front {
+  left: 30px;
+}
+
+.wheel-back {
+  right: 30px;
+}
+</style>
