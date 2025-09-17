@@ -35,5 +35,9 @@ def about():
     # Render template dynamically
     return render_template('about.html', rows=rows)
 
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
