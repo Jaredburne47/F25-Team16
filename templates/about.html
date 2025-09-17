@@ -1,34 +1,41 @@
 <h1 style="text-align:center; font-family:sans-serif; color:#333;">About Team 16</h1>
 
-<ul style="
-    list-style:none;
-    padding:0;
-    max-width:600px;
-    margin:2rem auto;
-    font-family:sans-serif;
-">
-  {% for row in rows %}
-    <li style="
-        background:#f9f9f9;
-        border:1px solid #ddd;
-        border-radius:8px;
-        padding:1rem;
-        margin-bottom:1rem;
-        box-shadow:0 1px 3px rgba(0,0,0,0.05);
-    ">
-      {% for key, value in row.items() %}
-        <p style="margin:0.25rem 0;">
-          <strong style="color:#555;">{{ key }}:</strong>
-          <span style="color:#222;">{{ value }}</span>
-        </p>
-      {% endfor %}
-    </li>
-  {% else %}
-    <li style="
-        text-align:center;
-        color:#777;
-        padding:1rem;
-        font-style:italic;
-    ">No data found.</li>
-  {% endfor %}
-</ul>
+<div class="truck">
+  <ul class="truck-body">
+    {% for row in rows %}
+      <li>
+        {% for key, value in row.items() %}
+          <p>
+            <strong>{{ key }}:</strong> <span>{{ value }}</span>
+          </p>
+        {% endfor %}
+      </li>
+    {% else %}
+      <li class="empty">No data found.</li>
+    {% endfor %}
+  </ul>
+  <!-- wheels -->
+  <div class="wheel wheel-front"></div>
+  <div class="wheel wheel-back"></div>
+</div>
+
+<style>
+.truck {
+  display: inline-block;
+  position: relative;
+  width: 650px; /* adjust */
+  margin: 2rem auto;
+}
+
+.truck-body {
+  list-style: none;
+  padding: 1rem;
+  margin: 0;
+  background: #f9f9f9;
+  border: 2px solid #555;
+  border-radius: 20px 60px 10px 10px; /* front cab rounding */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  font-family: sans-serif;
+}
+
+/* items inside */
