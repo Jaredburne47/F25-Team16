@@ -42,6 +42,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
+        #we need to hash this later
         role, user_row = authenticate(username, password)
 
         if role == 'driver':
