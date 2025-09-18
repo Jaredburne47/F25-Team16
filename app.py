@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, session, redirect, url_for, request
 import MySQLdb  # mysqlclient
 
 app = Flask(__name__)
@@ -14,7 +14,7 @@ db_config = {
 
 @app.route('/')
 def home():
-    return "<h1> Team16 Good Driver Incentive Program!</h1>"
+    return render_template("home.html")
 
 @app.route('/about')
 def about():
@@ -37,7 +37,25 @@ def about():
 
 @app.route('/login')
 def login():
-    return render_template('login.html')
+    # For now just a stub — could add real login later
+    return render_template("login.html")
+
+@app.route('/logout')
+def logout():
+    session.pop("user", None)
+    return render_template("home.html")
+
+@app.route('/profile')
+def profile():
+    return render_template("profile.html")
+
+@app.route('/dashboard')
+def dashboard():
+    return render_template("dashboard.html")
+
+@app.route('/settings')
+def settings():
+    return render_template("settings.html")
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
