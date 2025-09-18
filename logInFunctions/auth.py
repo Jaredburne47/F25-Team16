@@ -19,7 +19,7 @@ def authenticate(username: str, password: str):
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     # Drivers table – assumes columns username and password (or password_hash later)
-    cursor.execute("SELECT * FROM drivers WHERE username=%s AND password=%s", (username, password_hash))
+    cursor.execute("SELECT * FROM drivers WHERE username=%s AND password_hash=%s", (username, password))
     driver_rows = cursor.fetchall()
     for row in driver_rows:
         cursor.close()
@@ -27,7 +27,7 @@ def authenticate(username: str, password: str):
         return 'driver', row
 
     # Admin table – assumes columns username and password
-    cursor.execute("SELECT * FROM admins WHERE username=%s AND password=%s", (username, password_hash))
+    cursor.execute("SELECT * FROM admins WHERE username=%s AND password_hash=%s", (username, password))
     admin_rows = cursor.fetchall()
     for row in admin_rows:
         cursor.close()
@@ -35,7 +35,7 @@ def authenticate(username: str, password: str):
         return 'admin', row
 
     # Sponsors table – assumes columns username and password
-    cursor.execute("SELECT * FROM sponsor WHERE username=%s AND password=%s", (username, password_hash))
+    cursor.execute("SELECT * FROM sponsor WHERE username=%s AND password_hash=%s", (username, password))
     sponsor_rows = cursor.fetchall()
     for row in sponsor_rows:
         cursor.close()
