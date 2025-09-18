@@ -34,10 +34,16 @@ def about():
 
     # Render template dynamically
     return render_template('about.html', rows=rows)
-
-@app.route('/login')
+#For now just a place holder
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    # For now just a stub — could add real login later
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        return f"Received POST. Username={username}, Password={password}"
+
+    # GET request – just render login page
     return render_template("login.html")
 
 @app.route('/logout')
