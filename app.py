@@ -1,5 +1,6 @@
 from flask import Flask, render_template, session, redirect, url_for, request
 import MySQLdb  # mysqlclient
+from logInFunctions.auth import authenticate
 
 app = Flask(__name__)
 
@@ -41,7 +42,32 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        return f"Received POST. Username={username}, Password={password}"
+        role, user_row = authenticate(username, password)
+
+        if role == 'driver':
+            print(f"User {username} is a DRIVER")
+            session['user'] = username
+            session['role'] = role
+            return f"{username} is a driver."
+            #return redirect(url_for('driver_dashboard'))
+
+        elif role == 'admin':
+            print(f"User {username} is an ADMIN")
+            session['user'] = username
+            session['role'] = role
+            return f"{username} is a admin."
+            #return redirect(url_for('admin_dashboard'))
+
+        elif role == 'sponsor':
+            print(f"User {username} is a SPONSOR")
+            session['user'] = username
+            session['role'] = role
+            return f"{username} is a sponsor."
+            #return redirect(url_for('sponsor_dashboard'))
+
+        else:
+            print(f"User {username} does NOT EXIST")
+            #flash('Invalid credentials. Please try again.', 'error')
 
     # GET request – just render login page
     return render_template("login.html")
