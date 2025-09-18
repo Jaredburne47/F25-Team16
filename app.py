@@ -1,8 +1,10 @@
 from flask import Flask, render_template, session, redirect, url_for, request
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
+import os
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
 # --- Database configuration ---
 db_config = {
