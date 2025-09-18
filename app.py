@@ -4,6 +4,7 @@ from logInFunctions.auth import authenticate
 import os
 
 app = Flask(__name__)
+#maybe make this more secret somehow?
 app.secret_key = os.urandom(24)
 
 # --- Database configuration ---
@@ -44,7 +45,8 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        #we need to hash this later
+        #we need to hash the password later
+        #authenticate lives in logInFunctions/auth.py and checks db for matches and returns the role
         role, user_row = authenticate(username, password)
 
         if role == 'driver':
