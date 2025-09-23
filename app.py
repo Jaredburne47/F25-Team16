@@ -1,6 +1,7 @@
 from flask import Flask, render_template, session, redirect, url_for, request
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
+from createUser import create_user_in_table
 import os
 
 app = Flask(__name__)
@@ -131,14 +132,18 @@ def add_user():
         new_password = request.form['password']
         new_role = request.form['role']
 
-        # For now, just return a text block with the values
-        return f"""
-        <h2>New User Submitted</h2>
-        <p><strong>Username:</strong> {new_username}</p>
-        <p><strong>Email:</strong> {new_email}</p>
-        <p><strong>Password:</strong> {new_password}</p>
-        <p><strong>Role:</strong> {new_role}</p>
-        """
+        success, message = create_user_in_table(new_role, new_username, new_email, password_hash)
+
+        if success:
+            #TODO: email the user with the new information
+            return f"""
+            <h2>New User Created</h2>
+            <p><strong>Username:</strong> {new_username}</p>
+            <p><strong>Email:</strong> {new_email}</p>
+            <p><strong>Role:</strong> {new_role}</p>
+            """
+        else:
+            return f"<h2>Error:</h2><p>{message}</p>"
 
     # GET request – show the form
     return render_template("add_user.html")
