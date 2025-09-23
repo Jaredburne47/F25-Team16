@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Driver Profile{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Driver Profile</h1>
+    <hr>
+    <p>Welcome, <strong>{{ session.get('user') }}</strong>!</p>
+    <p>This is your personal profile page where you can view your points and driving history.</p>
+    <p>Points Earned: </p>
+    <p>Status: Gold Tier</p>
+</div>
+{% endblock %}

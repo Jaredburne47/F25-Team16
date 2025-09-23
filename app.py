@@ -53,22 +53,22 @@ def login():
             print(f"User {username} is a DRIVER")
             session['user'] = username
             session['role'] = role
-            return f"{username} is a driver."
-            #return redirect(url_for('driver_dashboard'))
+            #return f"{username} is a driver."
+            return redirect(url_for('driver_profile'))
 
         elif role == 'admin':
             print(f"User {username} is an ADMIN")
             session['user'] = username
             session['role'] = role
-            return f"{username} is a admin."
-            #return redirect(url_for('admin_dashboard'))
+            #return f"{username} is a admin."
+            return redirect(url_for('admin_profile'))
 
         elif role == 'sponsor':
             print(f"User {username} is a SPONSOR")
             session['user'] = username
             session['role'] = role
-            return f"{username} is a sponsor."
-            #return redirect(url_for('sponsor_dashboard'))
+            #return f"{username} is a sponsor."
+            return redirect(url_for('sponsor_profile'))
 
         else:
             print(f"User {username} does NOT EXIST")
@@ -80,11 +80,35 @@ def login():
 @app.route('/logout')
 def logout():
     session.pop("user", None)
+    session.pop("role", None) # Also clears the role
     return render_template("home.html")
+    #return redirect(url_for('home')) this would redirect for cleaner experiance
 
-@app.route('/profile')
-def profile():
-    return render_template("profile.html")
+# New dedicated Profile routes
+@app.route('/driver/profile')
+def driver_profile():
+    # Protect this page: only logged-in drivers can see it
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+    
+    # If they are a driver, show them the driver profile page
+    return render_template("driver_profile.html")
+
+@app.route('/sponsor/profile')
+def sponsor_profile():
+    # Protect this page: only sponsors can see it
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+        
+    return render_template("sponsor_profile.html")
+
+@app.route('/admin/profile')
+def admin_profile():
+    # Protect this page: only admins can see it
+    if 'user' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+        
+    return render_template("admin_profile.html")
 
 @app.route('/dashboard')
 def dashboard():

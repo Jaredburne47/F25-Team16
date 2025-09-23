@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Admin Profile{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Admin Control Panel</h1>
+    <hr>
+    <p>Welcome, <strong>{{ session.get('user') }}</strong>!</p>
+    <p>This is the admin dashboard for managing the entire application.</p>
+</div>
+{% endblock %}

@@ -43,9 +43,28 @@
               <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">About</a>
             </li>
 
-            <li class="nav-item">
+            <!-- <li class="nav-item">
               <a class="nav-link {% if request.path == '/profile' %}active{% endif %}" href="/profile">Profile</a>
-            </li>
+            </li> -->
+            <!-- START: DYNAMIC "MY PROFILE" LINK -->
+            {% if session.get('user') %}
+              <li class="nav-item">
+                {% set profile_url = '#' %} <!-- Default safe link -->
+                
+                <!-- Check the role to set the correct URL -->
+                 {% if session.role == 'driver' %}
+                  {% set profile_url = '/driver/profile' %}
+                 {% elif session.role == 'sponsor' %}
+                  {% set profile_url = '/sponsor/profile' %}
+                 {% elif session.role == 'admin' %}
+                  {% set profile_url = '/admin/profile' %}
+                 {% endif %}
+                 
+                <!-- Render the link -->
+                <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ profile_url }}">My Profile</a>
+              </li>
+            {% endif %}
+            <!-- END: DYNAMIC "MY PROFILE" LINK -->
 
             <li class="nav-item">
               <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>

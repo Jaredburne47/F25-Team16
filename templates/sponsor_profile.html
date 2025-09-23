@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Sponsor Profile{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Sponsor Profile</h1>
+    <hr>
+    <p>Welcome, <strong>{{ session.get('user') }}</strong>!</p>
+    <p>This is your company profile page where you can manage drivers and view analytics.</p>
+</div>
+{% endblock %}
