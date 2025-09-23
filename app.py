@@ -132,7 +132,7 @@ def add_user():
         new_password = request.form['password']
         new_role = request.form['role']
 
-        success, message = create_user_in_table(new_role, new_username, new_email, password_hash)
+        success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
 
         if success:
             #TODO: email the user with the new information
