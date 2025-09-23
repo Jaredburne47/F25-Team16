@@ -118,5 +118,28 @@ def dashboard():
 def settings():
     return render_template("settings.html")
 
+@app.route('/add_user', methods=['GET', 'POST'])
+def add_user():
+    # Only allow sponsors and admins
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        # Get data from the form
+        new_username = request.form['username']
+        new_password = request.form['password']
+        new_role = request.form['role']
+
+        # For now, just return a text block with the values
+        return f"""
+        <h2>New User Submitted</h2>
+        <p><strong>Username:</strong> {new_username}</p>
+        <p><strong>Password:</strong> {new_password}</p>
+        <p><strong>Role:</strong> {new_role}</p>
+        """
+
+    # GET request – show the form
+    return render_template("add_user.html")
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
