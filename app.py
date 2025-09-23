@@ -127,6 +127,7 @@ def add_user():
     if request.method == 'POST':
         # Get data from the form
         new_username = request.form['username']
+        new_email = request.form['email']
         new_password = request.form['password']
         new_role = request.form['role']
 
@@ -134,6 +135,7 @@ def add_user():
         return f"""
         <h2>New User Submitted</h2>
         <p><strong>Username:</strong> {new_username}</p>
+        <p><strong>Email:</strong> {new_email}</p>
         <p><strong>Password:</strong> {new_password}</p>
         <p><strong>Role:</strong> {new_role}</p>
         """
