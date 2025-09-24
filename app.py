@@ -139,7 +139,7 @@ def add_user():
         success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
 
         if success:
-            python welcomeEmail.py new_email new_username new_password
+            python3 welcomeEmail.py new_email new_username new_password
             return f"""
             <h2>New User Created</h2>
             <p><strong>Username:</strong> {new_username}</p>
