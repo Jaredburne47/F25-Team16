@@ -152,5 +152,23 @@ def add_user():
     # GET request – show the form
     return render_template("add_user.html")
 
+@app.route('/drivers')
+def drivers():
+    # Only sponsors/admins can access
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT username, email FROM drivers;")
+        drivers_list = cursor.fetchall()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    return render_template("drivers.html", drivers=drivers_list)
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
