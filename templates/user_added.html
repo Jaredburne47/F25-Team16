@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}User Created{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>New User Created</h2>
+    <p><strong>Username:</strong> {{ username }}</p>
+    <p><strong>Email:</strong> {{ email }}</p>
+    <p><strong>Role:</strong> {{ role }}</p>
+    <br>
+    <a href="{{ url_for('home') }}" class="btn btn-primary">Home</a>
+</div>
+{% endblock %}
