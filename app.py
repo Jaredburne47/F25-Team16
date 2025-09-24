@@ -170,5 +170,24 @@ def drivers():
 
     return render_template("drivers.html", drivers=drivers_list)
 
+@app.route('/remove_driver', methods=['POST'])
+def remove_driver():
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    username = request.form['username']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM drivers WHERE username = %s;", (username,))
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Error removing driver:</h2><p>{e}</p>"
+
+    return redirect(url_for('drivers'))
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
