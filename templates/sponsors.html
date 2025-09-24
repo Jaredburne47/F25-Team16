@@ -21,7 +21,7 @@
                 <td>{{ sponsor.email }}</td>
                 <td>
                     <!-- Remove sponsor -->
-                    <form action="{{ url_for('remove_driver') }}" method="post" style="display:inline;">
+                    <form action="{{ url_for('remove_sponsor') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ sponsor.username }}">
                         <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                     </form>
