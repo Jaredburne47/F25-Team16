@@ -48,7 +48,6 @@
               <li class="nav-item">
                 {% set profile_url = '#' %} <!-- Default safe link -->
                 
-                <!-- Check the role to set the correct URL -->
                 {% if session.role == 'driver' %}
                   {% set profile_url = '/driver/profile' %}
                 {% elif session.role == 'sponsor' %}
@@ -57,7 +56,6 @@
                   {% set profile_url = '/admin/profile' %}
                 {% endif %}
                  
-                <!-- Render the link -->
                 <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ profile_url }}">My Profile</a>
               </li>
             {% endif %}
@@ -75,6 +73,11 @@
             {% if session.get('role') in ['sponsor', 'admin'] %}
               <li class="nav-item">
                 <a class="nav-link {% if request.path == '/add_user' %}active{% endif %}" href="/add_user">Add User</a>
+              </li>
+
+              <!-- Drivers tab only for sponsor/admin -->
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/drivers' %}active{% endif %}" href="/drivers">Drivers</a>
               </li>
             {% endif %}
 
