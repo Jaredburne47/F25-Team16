@@ -140,12 +140,12 @@ def add_user():
 
         if success:
             welcomeEmail.send_welcome_email(new_email, new_username, new_password)
-            return f"""
-            <h2>New User Created</h2>
-            <p><strong>Username:</strong> {new_username}</p>
-            <p><strong>Email:</strong> {new_email}</p>
-            <p><strong>Role:</strong> {new_role}</p>
-            """
+            return render_template(
+                "user_added.html",
+                username=new_username,
+                email=new_email,
+                role=new_role
+            )
         else:
             return f"<h2>Error:</h2><p>{message}</p>"
 
