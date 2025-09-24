@@ -1,6 +1,7 @@
 from flask import Flask, render_template, session, redirect, url_for, request
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
+from emailScripts import welcomeEmail
 from createUser import _create_user_in_table
 import os
 
