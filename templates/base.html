@@ -1,104 +1,71 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="/">Team16 Incentives</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
-    <title>{% block title %}Driver Incentive Program{% endblock %}</title>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+        <li class="nav-item">
+          <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
+        </li>
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <li class="nav-item">
+          <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">About</a>
+        </li>
 
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      .nav-link.active {
-        font-weight: 600;
-        color: #0d6efd !important;
-        border-bottom: 2px solid #0d6efd;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
-      <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="/">Team16 Incentives</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">About</a>
-            </li>
-
-            <!-- START: DYNAMIC "MY PROFILE" LINK -->
-            {% if session.get('user') %}
-              <li class="nav-item">
-                {% set profile_url = '#' %} <!-- Default safe link -->
-                
-                {% if session.role == 'driver' %}
-                  {% set profile_url = '/driver/profile' %}
-                {% elif session.role == 'sponsor' %}
-                  {% set profile_url = '/sponsor/profile' %}
-                {% elif session.role == 'admin' %}
-                  {% set profile_url = '/admin/profile' %}
-                {% endif %}
-                 
-                <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ profile_url }}">My Profile</a>
-              </li>
+        <!-- START: DYNAMIC "MY PROFILE" LINK -->
+        {% if session.get('user') %}
+          <li class="nav-item">
+            {% set profile_url = '#' %} <!-- Default safe link -->
+            
+            {% if session.role == 'driver' %}
+              {% set profile_url = '/driver/profile' %}
+            {% elif session.role == 'sponsor' %}
+              {% set profile_url = '/sponsor/profile' %}
+            {% elif session.role == 'admin' %}
+              {% set profile_url = '/admin/profile' %}
             {% endif %}
-            <!-- END: DYNAMIC "MY PROFILE" LINK -->
+             
+            <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ profile_url }}">My Profile</a>
+          </li>
+        {% endif %}
+        <!-- END: DYNAMIC "MY PROFILE" LINK -->
 
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>
-            </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>
+        </li>
 
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
-            </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
+        </li>
 
-            <!-- Show Add User tab only for sponsor/admin -->
-            {% if session.get('role') in ['sponsor', 'admin'] %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/add_user' %}active{% endif %}" href="/add_user">Add User</a>
-              </li>
+        <!-- Show Add User, Drivers, and Sponsors tabs only for sponsor/admin -->
+        {% if session.get('role') in ['sponsor', 'admin'] %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/add_user' %}active{% endif %}" href="/add_user">Add User</a>
+          </li>
 
-              <!-- Drivers tab only for sponsor/admin -->
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/drivers' %}active{% endif %}" href="/drivers">Drivers</a>
-              </li>
-            {% endif %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/drivers' %}active{% endif %}" href="/drivers">Drivers</a>
+          </li>
 
-            <li class="nav-item">
-              {% if session.get('user') %}
-                <a class="nav-link" href="/logout">Logout</a>
-              {% else %}
-                <a class="nav-link {% if request.path == '/login' %}active{% endif %}" href="/login">Login</a>
-              {% endif %}
-            </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/sponsors' %}active{% endif %}" href="/sponsors">Sponsors</a>
+          </li>
+        {% endif %}
 
-          </ul>
-        </div>
-      </div>
-    </nav>
+        <li class="nav-item">
+          {% if session.get('user') %}
+            <a class="nav-link" href="/logout">Logout</a>
+          {% else %}
+            <a class="nav-link {% if request.path == '/login' %}active{% endif %}" href="/login">Login</a>
+          {% endif %}
+        </li>
 
-    <!-- Page Content -->
-    <div class="container">
-      {% block content %}{% endblock %}
+      </ul>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  </body>
-</html>
+  </div>
+</nav>
