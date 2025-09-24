@@ -170,6 +170,25 @@ def drivers():
 
     return render_template("drivers.html", drivers=drivers_list)
 
+@app.route('/sponsors')
+def sponsors():
+    # Only sponsors/admins can access
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT username, email FROM sponsor;")
+        sponsors_list = cursor.fetchall()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    return render_template("sponsors.html", sponsors=sponsors_list)
+
+
 @app.route('/remove_driver', methods=['POST'])
 def remove_driver():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
@@ -189,6 +208,26 @@ def remove_driver():
 
     return redirect(url_for('drivers'))
 
+@app.route('/remove_sponsor', methods=['POST'])
+def remove_sponsor():
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    username = request.form['username']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM sponsor WHERE username = %s;", (username,))
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Error removing sponsor:</h2><p>{e}</p>"
+
+    return redirect(url_for('sponsors'))
+
+
 @app.route('/login_as_driver', methods=['POST'])
 def login_as_driver():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
@@ -198,6 +237,16 @@ def login_as_driver():
     session['user'] = username
     session['role'] = 'driver'
     return redirect(url_for('driver_profile'))
+
+@app.route('/login_as_sponsor', methods=['POST'])
+def login_as_sponsor():
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    username = request.form['username']
+    session['user'] = username
+    session['role'] = 'sponsor'
+    return redirect(url_for('sponsor_profile'))
 
 
 if __name__ == "__main__":
