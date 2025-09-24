@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Drivers{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>All Drivers</h2>
+    {% if drivers %}
+    <table class="table table-bordered table-hover mt-3">
+        <thead class="table-light">
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for driver in drivers %}
+            <tr>
+                <td>{{ driver.username }}</td>
+                <td>{{ driver.email }}</td>
+                <td>
+                    <!-- Remove driver -->
+                    <form action="{{ url_for('remove_driver') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="username" value="{{ driver.username }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                    
+                    <!-- Login as driver -->
+                    <form action="{{ url_for('login_as_driver') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="username" value="{{ driver.username }}">
+                        <button type="submit" class="btn btn-secondary btn-sm">Login</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No drivers found.</p>
+    {% endif %}
+</div>
+{% endblock %}
