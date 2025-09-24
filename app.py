@@ -189,5 +189,16 @@ def remove_driver():
 
     return redirect(url_for('drivers'))
 
+@app.route('/login_as_driver', methods=['POST'])
+def login_as_driver():
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    username = request.form['username']
+    session['user'] = username
+    session['role'] = 'driver'
+    return redirect(url_for('driver_profile'))
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
