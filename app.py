@@ -83,7 +83,7 @@ def login():
 def logout():
     session.pop("user", None)
     session.pop("role", None) # Also clears the role
-    return render_template("home.html")
+    return redirect(url_for('login'))
     #return redirect(url_for('home')) this would redirect for cleaner experiance
 
 # --- PROFILE ROUTES ---
