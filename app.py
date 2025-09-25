@@ -86,39 +86,145 @@ def logout():
     return render_template("home.html")
     #return redirect(url_for('home')) this would redirect for cleaner experiance
 
-# New dedicated Profile routes
-@app.route('/driver/profile')
+# --- PROFILE ROUTES ---
+
+@app.route('/driver/profile', methods=['GET', 'POST'])
 def driver_profile():
-    # Protect this page: only logged-in drivers can see it
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
-    
-    # If they are a driver, show them the driver profile page
-    return render_template("driver_profile.html")
 
-@app.route('/sponsor/profile')
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    if request.method == 'POST':
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        address = request.form['address']
+        phone = request.form['phone']
+
+        cursor.execute("""
+            UPDATE drivers 
+            SET first_name=%s, last_name=%s, address=%s, phone=%s
+            WHERE username=%s
+        """, (first_name, last_name, address, phone, username))
+        db.commit()
+
+    cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
+    user_info = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    return render_template("driver_profile.html", user=user_info)
+
+
+@app.route('/sponsor/profile', methods=['GET', 'POST'])
 def sponsor_profile():
-    # Protect this page: only sponsors can see it
     if 'user' not in session or session.get('role') != 'sponsor':
         return redirect(url_for('login'))
-        
-    return render_template("sponsor_profile.html")
 
-@app.route('/admin/profile')
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    if request.method == 'POST':
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        address = request.form['address']
+        phone = request.form['phone']
+        organization = request.form['organization']
+
+        cursor.execute("""
+            UPDATE sponsor
+            SET first_name=%s, last_name=%s, address=%s, phone=%s, organization=%s
+            WHERE username=%s
+        """, (first_name, last_name, address, phone, organization, username))
+        db.commit()
+
+    cursor.execute("SELECT * FROM sponsor WHERE username=%s", (username,))
+    user_info = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    return render_template("sponsor_profile.html", user=user_info)
+
+
+@app.route('/admin/profile', methods=['GET', 'POST'])
 def admin_profile():
-    # Protect this page: only admins can see it
     if 'user' not in session or session.get('role') != 'admin':
         return redirect(url_for('login'))
-        
-    return render_template("admin_profile.html")
+
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    if request.method == 'POST':
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        phone = request.form['phone']
+
+        cursor.execute("""
+            UPDATE admins
+            SET first_name=%s, last_name=%s, phone=%s
+            WHERE username=%s
+        """, (first_name, last_name, phone, username))
+        db.commit()
+
+    cursor.execute("SELECT * FROM admins WHERE username=%s", (username,))
+    user_info = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    return render_template("admin_profile.html", user=user_info)
+
 
 @app.route('/dashboard')
 def dashboard():
     return render_template("dashboard.html")
 
-@app.route('/settings')
+@app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    return render_template("settings.html")
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    username = session['user']
+    
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        if request.method == 'POST':
+            # Get form data
+            first_name = request.form['first_name']
+            last_name = request.form['last_name']
+            email = request.form['email']
+            address = request.form['address']
+            phone_number = request.form['phone']
+
+            # Update the database
+            cursor.execute("""
+                UPDATE drivers
+                SET first_name=%s, last_name=%s, email=%s, address=%s, phone_number=%s
+                WHERE username=%s
+            """, (first_name, last_name, email, address, phone_number, username))
+            db.commit()
+        
+        # Fetch current user info for GET or after POST
+        cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
+        user = cursor.fetchone()
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    return render_template("settings.html", user=user)
 
 @app.route('/add_user', methods=['GET', 'POST'])
 def add_user():

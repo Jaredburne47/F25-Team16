@@ -2,12 +2,26 @@
 {% block title %}Driver Profile{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1>Driver Profile</h1>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1>Driver Profile</h1>
+        <!-- Settings button -->
+        <a href="{{ url_for('settings') }}" class="btn btn-primary">Edit Profile</a>
+    </div>
     <hr>
-    <p>Welcome, <strong>{{ session.get('user') }}</strong>!</p>
-    <p>This is your personal profile page where you can view your points and driving history.</p>
-    <p>Points Earned: </p>
-    <p>Status: Gold Tier</p>
+
+    <!-- Profile Information -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p><strong>Username:</strong> {{ user.username }}</p>
+            <p><strong>First Name:</strong> {{ user.first_name }}</p>
+            <p><strong>Last Name:</strong> {{ user.last_name }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Address:</strong> {{ user.address }}</p>
+            <p><strong>Phone Number:</strong> {{ user.phone_number }}</p>
+            <p><strong>Points Earned:</strong> {{ user.points }}</p>
+            <p><strong>Status (Tier):</strong> {{ user.tier }}</p>
+        </div>
+    </div>
 </div>
 {% endblock %}
