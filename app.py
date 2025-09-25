@@ -226,8 +226,24 @@ def settings():
                 SET first_name=%s, last_name=%s, address=%s, phone=%s
                 WHERE username=%s
             """, (first_name, last_name, address, phone, username))
-            db.commit()
+            
+            # Handle password update
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
 
+            if password and confirm_password:
+                if password == confirm_password:
+                    cursor.execute(f"""
+                        UPDATE {table}
+                        SET password=%s
+                        WHERE username=%s
+                    """, (password, username))
+                else:
+                    cursor.close()
+                    db.close()
+                    return "<h3>Passwords do not match. Please try again.</h3>"
+            
+            db.commit()
             cursor.close()
             db.close()
 
