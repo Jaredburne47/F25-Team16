@@ -190,33 +190,52 @@ def dashboard():
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    if 'user' not in session:
+    # User must be logged in
+    if 'user' not in session or 'role' not in session:
         return redirect(url_for('login'))
 
     username = session['user']
-    
+    role = session['role']
+
+    # Determine table and profile route based on role
+    if role == 'driver':
+        table = 'drivers'
+        profile_route = 'driver_profile'
+    elif role == 'sponsor':
+        table = 'sponsor'
+        profile_route = 'sponsor_profile'
+    elif role == 'admin':
+        table = 'admins'
+        profile_route = 'admin_profile'
+    else:
+        return "Invalid role", 400
+
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
         if request.method == 'POST':
-            # Get form data
+            # Update first name, last name, address, phone
             first_name = request.form['first_name']
             last_name = request.form['last_name']
-            email = request.form['email']
             address = request.form['address']
-            phone_number = request.form['phone']
+            phone = request.form['phone']
 
-            # Update the database
-            cursor.execute("""
-                UPDATE drivers
-                SET first_name=%s, last_name=%s, email=%s, address=%s, phone_number=%s
+            cursor.execute(f"""
+                UPDATE {table}
+                SET first_name=%s, last_name=%s, address=%s, phone=%s
                 WHERE username=%s
-            """, (first_name, last_name, email, address, phone_number, username))
+            """, (first_name, last_name, address, phone, username))
             db.commit()
-        
-        # Fetch current user info for GET or after POST
-        cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
+
+            cursor.close()
+            db.close()
+
+            # Redirect back to profile page
+            return redirect(url_for(profile_route))
+
+        # GET request: fetch current info
+        cursor.execute(f"SELECT * FROM {table} WHERE username=%s", (username,))
         user = cursor.fetchone()
 
         cursor.close()
@@ -225,6 +244,8 @@ def settings():
         return f"<h2>Database error:</h2><p>{e}</p>"
 
     return render_template("settings.html", user=user)
+
+
 
 @app.route('/add_user', methods=['GET', 'POST'])
 def add_user():
