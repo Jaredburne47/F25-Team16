@@ -235,7 +235,7 @@ def settings():
                 if password == confirm_password:
                     cursor.execute(f"""
                         UPDATE {table}
-                        SET password=%s
+                        SET password_hash=%s
                         WHERE username=%s
                     """, (password, username))
                 else:
