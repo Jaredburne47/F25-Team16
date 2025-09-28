@@ -31,27 +31,17 @@
                         <input type="hidden" name="username" value="{{ driver.username }}">
                         <button type="submit" class="btn btn-secondary btn-sm">Login</button>
                     </form>
-                    <!-- Add Points -->
-                    <form action="{{ url_for('add_points') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <button type="submit" class="btn btn-primary btn-sm">Add Points</button>
-                    </form>
 
-                    <!-- Remove Points -->
-                    <form action="{{ url_for('remove_points') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <button type="submit" class="btn btn-warning btn-sm">Remove Points</button>
-                    </form>
                         <!-- Points input -->
                     <form action="{{ url_for('add_points') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
-                        <input type="number" name="points" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
+                        <input type="number" name="points to add" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
                         <button type="submit" class="btn btn-primary btn-sm">Add Points</button>
                     </form>
 
                     <form action="{{ url_for('remove_points') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
-                        <input type="number" name="points" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
+                        <input type="number" name="points to remove" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
                         <button type="submit" class="btn btn-warning btn-sm">Remove Points</button>
                     </form>
                 </td>
