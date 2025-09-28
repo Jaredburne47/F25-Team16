@@ -31,6 +31,17 @@
                         <input type="hidden" name="username" value="{{ driver.username }}">
                         <button type="submit" class="btn btn-secondary btn-sm">Login</button>
                     </form>
+                    <!-- Add Points -->
+                    <form action="{{ url_for('add_points') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="username" value="{{ driver.username }}">
+                        <button type="submit" class="btn btn-primary btn-sm">Add Points</button>
+                    </form>
+
+                    <!-- Remove Points -->
+                    <form action="{{ url_for('remove_points') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="username" value="{{ driver.username }}">
+                        <button type="submit" class="btn btn-warning btn-sm">Remove Points</button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}
