@@ -393,6 +393,19 @@ def login_as_sponsor():
     session['role'] = 'sponsor'
     return redirect(url_for('sponsor_profile'))
 
+@app.route('/add_points', methods=['POST'])
+def add_points():
+    username = request.form['username']
+    # TODO: logic to add points
+    return f"Add points for {username}"
+
+@app.route('/remove_points', methods=['POST'])
+def remove_points():
+    username = request.form['username']
+    # TODO: logic to remove points
+    return f"Remove points for {username}"
+
+
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
