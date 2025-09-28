@@ -3,7 +3,6 @@ import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
 from createUser import _create_user_in_table
-import secrets
 import os
 
 app = Flask(__name__)
