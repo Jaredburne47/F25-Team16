@@ -406,14 +406,22 @@ def add_points():
         cursor.close()
         db.close()
     except Exception as e:
-        return f"<h2>Error removing sponsor:</h2><p>{e}</p>"
+        return f"<h2>Error adding points:</h2><p>{e}</p>"
     return render_template('points_added.html', username=username, points=points)
 
 @app.route('/remove_points', methods=['POST'])
 def remove_points():
     username = request.form['username']
     points = int(request.form['points_to_remove'])
-    cursor.execute("UPDATE drivers SET points = points - %s WHERE username = %s;",(points, username))
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute("UPDATE drivers SET points = points - %s WHERE username = %s;",(points, username))
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Error removing points:</h2><p>{e}</p>"
     print(f"Removed {points} points from driver {username}")
     return render_template('points_removed.html', username=username, points=points)
 
