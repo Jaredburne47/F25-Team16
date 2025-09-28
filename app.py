@@ -396,14 +396,17 @@ def login_as_sponsor():
 @app.route('/add_points', methods=['POST'])
 def add_points():
     username = request.form['username']
+    points = int(request.form['points_to_add'])
     # TODO: logic to add points
-    return f"Add points for {username}"
+    return render_template('points_added.html', username=username, points=points)
 
 @app.route('/remove_points', methods=['POST'])
 def remove_points():
     username = request.form['username']
+    points = int(request.form['points_to_remove'])
     # TODO: logic to remove points
-    return f"Remove points for {username}"
+    print(f"Removed {points} points from driver {username}")
+    return render_template('points_removed.html', username=username, points=points)
 
 
 @app.route('/reset_password', methods=['GET', 'POST'])
