@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Points Added{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Points Updated</h2>
+  <p><strong>{{ points }}</strong> points were <strong>added</strong> to driver <strong>{{ username }}</strong>.</p>
+  <a href="{{ url_for('drivers') }}" class="btn btn-primary">Back to Drivers</a>
+</div>
+{% endblock %}
