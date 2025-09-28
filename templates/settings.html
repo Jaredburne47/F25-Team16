@@ -6,43 +6,62 @@
     <h1>Edit Profile</h1>
     <hr>
     <form method="POST">
-        <!--Username-->
+        <!-- Username -->
         <div class="mb-3">
-            <label for="username" class ="form-label">Username</label>
+            <label for="username" class="form-label">Username</label>
             <input type="text" class="form-control" id="username" name="username" 
                    value="{{ user.username }}" readonly>
         </div>
-        <!--First Name-->
+
+        <!-- First Name -->
         <div class="mb-3">
             <label for="first_name" class="form-label">First Name</label>
             <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
         </div>
-        <!--Last Name-->
+
+        <!-- Last Name -->
         <div class="mb-3">
             <label for="last_name" class="form-label">Last Name</label>
             <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
         </div>
-        <!--Address-->
+
+        <!-- Address -->
         <div class="mb-3">
             <label for="address" class="form-label">Address</label>
             <input type="text" class="form-control" id="address" name="address" value="{{ user.address }}">
         </div>
-        <!--Phone Number-->
+
+        <!-- Phone Number -->
         <div class="mb-3">
             <label for="phone" class="form-label">Phone Number</label>
             <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone }}">
         </div>
-        <!--Password-->
-        <div class="mb-3">
-            <label for="password" class="form-label">New Password</label>
+
+        <!-- ⚠️ Password Section -->
+        <hr>
+        <h4 class="text-danger">⚠️ Password Settings</h4>
+        <p class="text-muted"><small>Your password is hidden by default. Use the 👁 button to toggle visibility.</small></p>
+
+        <!-- New Password -->
+        <div class="input-group mb-3">
             <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current password">
+            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">👁</button>
         </div>
 
-        <div class="mb-3">
-            <label for="confirm_password" class="form-label">Confirm New Password</label>
+        <!-- Confirm Password -->
+        <div class="input-group mb-3">
             <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-enter new password">
+            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">👁</button>
         </div>
+
         <button type="submit" class="btn btn-success">Save Changes</button>
     </form>
 </div>
+
+<script>
+function togglePassword(id) {
+    const field = document.getElementById(id);
+    field.type = (field.type === "password") ? "text" : "password";
+}
+</script>
 {% endblock %}
