@@ -83,8 +83,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop("user", None)
-    session.pop("role", None) # Also clears the role
+    session.clear() #clears all data from session(user,role)
     return redirect(url_for('login'))
     #return redirect(url_for('home')) this would redirect for cleaner experiance
 
