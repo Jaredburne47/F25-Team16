@@ -428,38 +428,39 @@ def remove_points():
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
+        username = request.form['username]
         email = request.form['email']
 
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Find user by email across all roles
+        # find user by BOTH username and email
         cursor.execute("""
-            SELECT username, 'driver' as role FROM drivers WHERE email=%s
+            SELECT username, 'driver' as role FROM drivers WHERE username=%s AND email=%s
             UNION
-            SELECT username, 'sponsor' as role FROM sponsor WHERE email=%s
+            SELECT username, 'sponsor' as role FROM sponsor WHERE username=%s AND email=%s
             UNION
-            SELECT username, 'admin' as role FROM admins WHERE email=%s
-        """, (email, email, email))
+            SELECT username, 'admin' as role FROM admins WHERE username=%s AND email=%s
+        """, (username, email, username, email, username, email))
+
         user = cursor.fetchone()
         cursor.close()
         db.close()
 
         if not user:
-            return "<h3>Email not found.</h3>"
+            return "<h3>No account found with that username/email combination.</h3>"
 
-        # Generate secure token
+        # generate reset token
         token = secrets.token_urlsafe(32)
 
-        # Store reset info in session (basic version)
+        # store reset info in session
         session['reset_user'] = user['username']
         session['reset_role'] = user['role']
         session['reset_token'] = token
 
-        # Generate reset link
         reset_link = url_for('set_new_password', token=token, _external=True)
 
-        # Send reset email
+        # send reset email
         send_reset_email(email, user['username'], reset_link)
 
         return "<h3>A password reset link has been sent to your email.</h3>"
