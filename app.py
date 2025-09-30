@@ -428,7 +428,7 @@ def remove_points():
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':
-        username = request.form['username]
+        username = request.form['username']
         email = request.form['email']
 
         db = MySQLdb.connect(**db_config)
