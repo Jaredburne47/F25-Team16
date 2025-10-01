@@ -189,6 +189,10 @@ def admin_profile():
 def dashboard():
     return render_template("dashboard.html")
 
+@app.route('/catalog_manager')
+def catalog_manager():
+    return render_template("catalog_manager.html")
+
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     # User must be logged in

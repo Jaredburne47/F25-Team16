@@ -75,6 +75,13 @@
               <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
             </li>
 
+            <!-- Catalog Manager tab only for sponsor -->
+            {% if session.get('role') == 'sponsor' %}
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/catalog_manager' %}active{% endif %}" href="/catalog_manager">Catalog Manager</a>
+              </li>
+            {% endif %}
+
             <!-- Driver-only tabs -->
             {% if session.get('role') == 'driver' %}
               <li class="nav-item">
