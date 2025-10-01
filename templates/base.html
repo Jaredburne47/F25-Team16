@@ -75,6 +75,22 @@
               <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
             </li>
 
+            <!-- Driver-only tabs -->
+            {% if session.get('role') == 'driver' %}
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/sponsors/browse' %}active{% endif %}" 
+                   href="{{ url_for('sponsor_browse') }}">
+                   Browse Sponsors
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/applications' %}active{% endif %}" 
+                   href="{{ url_for('driver_applications') }}">
+                   My Applications
+                </a>
+              </li>
+            {% endif %}
+            
             <!-- Show Add User tab only for sponsor/admin -->
             {% if session.get('role') in ['sponsor', 'admin'] %}
               <li class="nav-item">
