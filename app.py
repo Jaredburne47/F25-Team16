@@ -503,5 +503,41 @@ def set_new_password(token):
 
     return render_template("set_new_password.html")
 
+@app.route('/sponsors/browse')
+def sponsor_browse():
+    if 'user' not in session or session['role'] != 'driver':
+        return redirect(url_for('login'))
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT username, organization FROM sponsor")
+    sponsors = cursor.fetchall()
+    cursor.close()
+    db.close()
+
+    return render_template("sponsor_browse.html", sponsors=sponsors)
+
+@app.route('/applications')
+def driver_applications():
+    if 'user' not in session or session['role'] != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT * FROM driverApplications
+        WHERE driverUsername=%s
+        ORDER BY FIELD(status,'pending','accepted','rejected','withdrawn'), created_at DESC
+    """, (username,))
+    applications = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return render_template("driver_applications.html", applications=applications)
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
