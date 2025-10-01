@@ -13,12 +13,37 @@
     <!-- Profile Information -->
     <div class="card shadow-sm">
         <div class="card-body">
+            <!-- Profile Picture -->
+            {% if user.profile_picture %}
+                <div class="mb-3 text-center">
+                    <img src="{{ url_for('static', filename='uploads/' ~ user.profile_picture) }}" 
+                         alt="Profile Picture" 
+                         class="img-thumbnail rounded-circle" 
+                         width="150" height="150">
+                </div>
+            {% endif %}
+            
             <p><strong>Username:</strong> {{ user.username }}</p>
             <p><strong>First Name:</strong> {{ user.first_name }}</p>
             <p><strong>Last Name:</strong> {{ user.last_name }}</p>
             <p><strong>Email:</strong> {{ user.email }}</p>
             <p><strong>Address:</strong> {{ user.address }}</p>
             <p><strong>Phone Number:</strong> {{ user.phone }}</p>
+
+            <hr>
+
+            <!-- Social Media Links -->
+            <h5>Social Media</h5>
+                <p><strong>Twitter:</strong> <a href="{{ user.twitter }}" target="_blank">{{ user.twitter }}</a></p>
+                <p><strong>Facebook:</strong> <a href="{{ user.facebook }}" target="_blank">{{ user.facebook }}</a></p>
+                <p><strong>Instagram:</strong> <a href="{{ user.instagram }}" target="_blank">{{ user.instagram }}</a></p>
+            <hr>
+
+
+            <h5>Organization Details</h5>
+                <p><strong>Organization:</strong> {{ user.organization }}</p>
+                <p><strong>Company Link:</strong> <a href="{{ user.company_link }}" target="_blank">{{ user.company_link }}</p>
+            <hr>
         </div>
     </div>
 </div>
