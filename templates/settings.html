@@ -37,6 +37,52 @@
             <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone }}">
         </div>
 
+        {% if session.get('role') in ['sponsor', 'driver'] %}
+        <div class="mb-3">
+            <label for="twitter" class="form-label">Twitter</label>
+            <input type="text" class="form-control" id="twitter" name="twitter" value="{{ user.twitter }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="facebook" class="form-label">Facebook</label>
+            <input type="text" class="form-control" id="facebook" name="facebook" value="{{ user.facebook }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="instagram" class="form-label">Instagram</label>
+            <input type="text" class="form-control" id="instagram" name="instagram" value="{{ user.instagram }}">
+        </div>
+        {% endif %}
+
+        {% if session.get('role') == 'driver' %}
+        <div class="mb-3">
+            <label for="vehicle_make" class="form-label">Vehicle Make</label>
+            <input type="text" class="form-control" id="vehicle_make" name="vehicle_make" value="{{ user.vehicle_make }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="vehicle_model" class="form-label">Vehicle Model</label>
+            <input type="text" class="form-control" id="vehicle_model" name="vehicle_model" value="{{ user.vehicle_model }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="vehicle_year" class="form-label">Vehicle Year</label>
+            <input type="text" class="form-control" id="vehicle_year" name="vehicle_year" value="{{ user.vehicle_year }}">
+        </div>
+        {% endif %}
+
+        {% if session.get('role') == 'sponsor' %}
+        <div class="mb-3">
+            <label for="organization" class="form-label">Organization</label>
+            <input type="text" class="form-control" id="organization" name="organization" value="{{ user.organization }}">
+        </div>
+
+        <div class="mb-3">
+            <label for="company_link" class="form-label">Company Link</label>
+            <input type="text" class="form-control" id="company_link" name="company_link" value="{{ user.company_link }}">
+        </div>
+        {% endif %}
+
         <!-- ⚠️ Password Section -->
         <hr>
         <h4 class="text-danger">⚠️ Password Settings</h4>
