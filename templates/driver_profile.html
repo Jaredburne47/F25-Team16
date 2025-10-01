@@ -13,6 +13,16 @@
     <!-- Profile Information -->
     <div class="card shadow-sm">
         <div class="card-body">
+            <!-- Profile Picture -->
+            {% if user.profile_picture %}
+                <div class="mb-3 text-center">
+                    <img src="{{ url_for('static', filename='uploads/' ~ user.profile_picture) }}" 
+                         alt="Profile Picture" 
+                         class="img-thumbnail rounded-circle" 
+                         width="150" height="150">
+                </div>
+            {% endif %}
+
             <p><strong>Username:</strong> {{ user.username }}</p>
             <p><strong>First Name:</strong> {{ user.first_name }}</p>
             <p><strong>Last Name:</strong> {{ user.last_name }}</p>
@@ -21,6 +31,28 @@
             <p><strong>Phone Number:</strong> {{ user.phone }}</p>
             <p><strong>Points Earned:</strong> {{ user.points }}</p>
             <p><strong>Status (Tier):</strong> {{ user.tier }}</p>
+
+            <hr>
+
+            <!-- Social Media Links -->
+            <h5>Social Media</h5>
+            {% if user.twitter %}
+                <p><strong>Twitter:</strong> <a href="{{ user.twitter }}" target="_blank">{{ user.twitter }}</a></p>
+            {% endif %}
+            {% if user.facebook %}
+                <p><strong>Facebook:</strong> <a href="{{ user.facebook }}" target="_blank">{{ user.facebook }}</a></p>
+            {% endif %}
+            {% if user.instagram %}
+                <p><strong>Instagram:</strong> <a href="{{ user.instagram }}" target="_blank">{{ user.instagram }}</a></p>
+            {% endif %}
+
+            <hr>
+
+            <!-- Vehicle Information -->
+            <h5>Vehicle Details</h5>
+            <p><strong>Make:</strong> {{ user.vehicle_make }}</p>
+            <p><strong>Model:</strong> {{ user.vehicle_model }}</p>
+            <p><strong>Year:</strong> {{ user.vehicle_year }}</p>
         </div>
     </div>
 </div>
