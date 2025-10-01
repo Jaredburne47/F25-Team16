@@ -5,7 +5,18 @@
 <div class="container mt-4">
     <h1>Edit Profile</h1>
     <hr>
-    <form method="POST">
+
+    <form method="POST" enctype="multipart/form-data">
+        <!-- Profile Picture -->
+        <div class="mb-3 text-center">
+            <img id="profilePreview" 
+                 src="{{ url_for('static', filename='uploads/profile_pics/' ~ (user.profile_picture if user.profile_picture else 'Default.jpg')) }}" 
+                 alt="Profile Picture" 
+                 class="img-thumbnail rounded-circle mb-2" 
+                 width="150" height="150"><br>
+            <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" onchange="previewImage(event)">
+        </div>
+
         <!-- Username -->
         <div class="mb-3">
             <label for="username" class="form-label">Username</label>
@@ -108,6 +119,18 @@
 function togglePassword(id) {
     const field = document.getElementById(id);
     field.type = (field.type === "password") ? "text" : "password";
+}
+
+// Live image preview
+function previewImage(event) {
+    const input = event.target;
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profilePreview').src = e.target.result;
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 </script>
 {% endblock %}

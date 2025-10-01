@@ -6,6 +6,7 @@ from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 import secrets
 import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 #maybe make this more secret somehow?
@@ -19,6 +20,13 @@ db_config = {
     'db': 'Team16_DB',
     'charset': 'utf8'
 }
+
+# --- Upload configuration ---
+app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pics'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def home():
@@ -242,90 +250,77 @@ def add_product():
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    # User must be logged in
     if 'user' not in session or 'role' not in session:
         return redirect(url_for('login'))
 
     username = session['user']
     role = session['role']
 
-    # Determine table and profile route based on role
-    if role == 'driver':
-        table = 'drivers'
-        profile_route = 'driver_profile'
-    elif role == 'sponsor':
-        table = 'sponsor'
-        profile_route = 'sponsor_profile'
-    elif role == 'admin':
-        table = 'admins'
-        profile_route = 'admin_profile'
-    else:
-        return "Invalid role", 400
+    table = {'driver':'drivers', 'sponsor':'sponsor', 'admin':'admins'}.get(role)
+    profile_route = f"{role}_profile"
 
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
         if request.method == 'POST':
-            # --- Basic info ---
-            first_name = request.form.get('first_name')
-            last_name = request.form.get('last_name')
-            address = request.form.get('address')
-            phone = request.form.get('phone')
+            update_fields = []
+            update_query = f"UPDATE {table} SET "
 
-            update_fields = [first_name, last_name, phone]
-            update_query = f"UPDATE {table} SET first_name=%s, last_name=%s, phone=%s"
+            # --- Basic fields ---
+            fields = ['first_name', 'last_name', 'phone', 'address']
+            for f in fields:
+                if f in request.form:
+                    update_query += f"{f}=%s, "
+                    update_fields.append(request.form[f])
 
-            if address is not None:
-                update_query += ", address=%s"
-                update_fields.append(address)
-
-            # --- Driver-specific fields ---
+            # --- Driver-specific ---
             if role == 'driver':
-                vehicle_make = request.form.get('vehicle_make')
-                vehicle_model = request.form.get('vehicle_model')
-                vehicle_year = request.form.get('vehicle_year')
-                update_query += ", vehicle_make=%s, vehicle_model=%s, vehicle_year=%s"
-                update_fields.extend([vehicle_make, vehicle_model, vehicle_year])
+                for f in ['vehicle_make', 'vehicle_model', 'vehicle_year']:
+                    update_query += f"{f}=%s, "
+                    update_fields.append(request.form.get(f))
 
-            # --- Sponsor-specific fields ---
+            # --- Sponsor-specific ---
             if role == 'sponsor':
-                organization = request.form.get('organization')
-                company_link = request.form.get('company_link')
-                update_query += ", organization=%s, company_link=%s"
-                update_fields.extend([organization, company_link])
+                for f in ['organization', 'company_link']:
+                    update_query += f"{f}=%s, "
+                    update_fields.append(request.form.get(f))
 
-            # --- Social media fields (drivers and sponsors) ---
-            if role in ['driver', 'sponsor']:
-                twitter = request.form.get('twitter')
-                facebook = request.form.get('facebook')
-                instagram = request.form.get('instagram')
-                update_query += ", twitter=%s, facebook=%s, instagram=%s"
-                update_fields.extend([twitter, facebook, instagram])
+            # --- Social media ---
+            if role in ['driver','sponsor']:
+                for f in ['twitter','facebook','instagram']:
+                    update_query += f"{f}=%s, "
+                    update_fields.append(request.form.get(f))
 
-            # --- Finalize update ---
-            update_query += " WHERE username=%s"
+            # --- Remove trailing comma and add WHERE ---
+            update_query = update_query.rstrip(', ') + " WHERE username=%s"
             update_fields.append(username)
-
             cursor.execute(update_query, tuple(update_fields))
 
-            # --- Password update ---
+            # --- Password ---
             password = request.form.get('password')
             confirm_password = request.form.get('confirm_password')
             if password and confirm_password:
                 if password == confirm_password:
-                    cursor.execute(f"""
-                        UPDATE {table} SET password_hash=%s WHERE username=%s
-                    """, (password, username))
+                    cursor.execute(f"UPDATE {table} SET password_hash=%s WHERE username=%s",
+                                   (password, username))
                 else:
                     cursor.close()
                     db.close()
-                    return "<h3>Passwords do not match. Please try again.</h3>"
+                    return "<h3>Passwords do not match.</h3>"
+
+            # --- Profile picture ---
+            file = request.files.get('profile_picture')
+            if file and allowed_file(file.filename):
+                filename = secure_filename(f"{username}_{file.filename}")
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
+                cursor.execute(f"UPDATE {table} SET profile_picture=%s WHERE username=%s",
+                               (filename, username))
 
             db.commit()
             cursor.close()
             db.close()
-
             return redirect(url_for(profile_route))
 
         # GET request: fetch current info
@@ -338,7 +333,6 @@ def settings():
         return f"<h2>Database error:</h2><p>{e}</p>"
 
     return render_template("settings.html", user=user)
-
 
 
 
