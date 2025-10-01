@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Browse Sponsors{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Available Sponsors</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Sponsor</th>
+                <th>Organization</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sponsor in sponsors %}
+            <tr>
+                <td>{{ sponsor.username }}</td>
+                <td>{{ sponsor.organization }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('apply_to_sponsor', sponsor=sponsor.username) }}">
+                        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
