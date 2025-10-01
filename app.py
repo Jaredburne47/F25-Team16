@@ -191,7 +191,54 @@ def dashboard():
 
 @app.route('/catalog_manager')
 def catalog_manager():
-    return render_template("catalog_manager.html")
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor_name = session['user']  # your session stores sponsor username
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Fetch products for this sponsor
+        cursor.execute("SELECT * FROM products WHERE sponsor=%s", (sponsor_name,))
+        products = cursor.fetchall()
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    return render_template("catalog_manager.html", products=products)
+
+@app.route('/add_product', methods=['POST'])
+def add_product():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    name = request.form.get('name')
+    points_cost = request.form.get('points_cost')
+    quantity = request.form.get('quantity', 0)
+    sponsor_name = session['user']
+
+    if not name or not points_cost:
+        return "<h3>Name and points cost are required.</h3>"
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute(
+            "INSERT INTO products (name, sponsor, points_cost, quantity) VALUES (%s, %s, %s, %s)",
+            (name, sponsor_name, points_cost, quantity)
+        )
+        db.commit()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    return redirect(url_for('catalog_manager'))
+
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
