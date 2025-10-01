@@ -216,51 +216,78 @@ def settings():
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
         if request.method == 'POST':
-            # Update first name, last name, address, phone
-            first_name = request.form['first_name']
-            last_name = request.form['last_name']
-            address = request.form['address']
-            phone = request.form['phone']
+            # --- Basic info ---
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name')
+            address = request.form.get('address')
+            phone = request.form.get('phone')
 
-            cursor.execute(f"""
-                UPDATE {table}
-                SET first_name=%s, last_name=%s, address=%s, phone=%s
-                WHERE username=%s
-            """, (first_name, last_name, address, phone, username))
-            
-            # Handle password update
+            update_fields = [first_name, last_name, phone]
+            update_query = f"UPDATE {table} SET first_name=%s, last_name=%s, phone=%s"
+
+            if address is not None:
+                update_query += ", address=%s"
+                update_fields.append(address)
+
+            # --- Driver-specific fields ---
+            if role == 'driver':
+                vehicle_make = request.form.get('vehicle_make')
+                vehicle_model = request.form.get('vehicle_model')
+                vehicle_year = request.form.get('vehicle_year')
+                update_query += ", vehicle_make=%s, vehicle_model=%s, vehicle_year=%s"
+                update_fields.extend([vehicle_make, vehicle_model, vehicle_year])
+
+            # --- Sponsor-specific fields ---
+            if role == 'sponsor':
+                organization = request.form.get('organization')
+                company_link = request.form.get('company_link')
+                update_query += ", organization=%s, company_link=%s"
+                update_fields.extend([organization, company_link])
+
+            # --- Social media fields (drivers and sponsors) ---
+            if role in ['driver', 'sponsor']:
+                twitter = request.form.get('twitter')
+                facebook = request.form.get('facebook')
+                instagram = request.form.get('instagram')
+                update_query += ", twitter=%s, facebook=%s, instagram=%s"
+                update_fields.extend([twitter, facebook, instagram])
+
+            # --- Finalize update ---
+            update_query += " WHERE username=%s"
+            update_fields.append(username)
+
+            cursor.execute(update_query, tuple(update_fields))
+
+            # --- Password update ---
             password = request.form.get('password')
             confirm_password = request.form.get('confirm_password')
-
             if password and confirm_password:
                 if password == confirm_password:
                     cursor.execute(f"""
-                        UPDATE {table}
-                        SET password_hash=%s
-                        WHERE username=%s
+                        UPDATE {table} SET password_hash=%s WHERE username=%s
                     """, (password, username))
                 else:
                     cursor.close()
                     db.close()
                     return "<h3>Passwords do not match. Please try again.</h3>"
-            
+
             db.commit()
             cursor.close()
             db.close()
 
-            # Redirect back to profile page
             return redirect(url_for(profile_route))
 
         # GET request: fetch current info
         cursor.execute(f"SELECT * FROM {table} WHERE username=%s", (username,))
         user = cursor.fetchone()
-
         cursor.close()
         db.close()
+
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
     return render_template("settings.html", user=user)
+
 
 
 
