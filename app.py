@@ -517,6 +517,27 @@ def sponsor_browse():
 
     return render_template("sponsor_browse.html", sponsors=sponsors)
 
+@app.route('/apply/<sponsor>', methods=['POST'])
+def apply_to_sponsor(sponsor):
+    if 'user' not in session or session['role'] != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+
+    cursor.execute("""
+        INSERT INTO driverApplications (driverUsername, sponsor, status)
+        VALUES (%s, %s, 'pending')
+    """, (username, sponsor))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    return redirect(url_for('driver_applications'))
+
 @app.route('/applications')
 def driver_applications():
     if 'user' not in session or session['role'] != 'driver':
@@ -538,6 +559,28 @@ def driver_applications():
     db.close()
 
     return render_template("driver_applications.html", applications=applications)
+
+@app.route('/withdraw/<int:app_id>', methods=['POST'])
+def withdraw_application(app_id):
+    if 'user' not in session or session['role'] != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+
+    cursor.execute("""
+        UPDATE driverApplications
+        SET status='withdrawn'
+        WHERE id=%s AND driverUsername=%s AND status='pending'
+    """, (app_id, username))
+    db.commit()
+
+    cursor.close()
+    db.close()
+
+    return redirect(url_for('driver_applications'))
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
