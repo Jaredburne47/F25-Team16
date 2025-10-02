@@ -715,11 +715,17 @@ def accept_application(app_id):
     cursor = db.cursor()
 
     cursor.execute("""
-        UPDATE driverApplications
-        SET status='accepted'
-        WHERE id=%s AND sponsor=%s AND status='pending'
-    """, (app_id, sponsor))
-    db.commit()
+    SELECT COUNT(*) as count FROM driverApplications
+    WHERE driverUsername = (
+        SELECT driverUsername FROM driverApplications WHERE id=%s
+    ) AND status='accepted'
+""", (app_id,))
+existing = cursor.fetchone()
+
+if existing['count'] > 0:
+    cursor.close()
+    db.close()
+    return "<h3>This driver already has an accepted sponsor. Reject or withdraw before accepting another.</h3>"
 
     cursor.close()
     db.close()
