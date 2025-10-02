@@ -4,48 +4,46 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Driver Applications</h2>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Driver</th>
-                <th>Status</th>
-                <th>Applied On</th>
-                <th>Last Updated</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for app in applications %}
-            <tr>
-                <td>{{ app.driverUsername }}</td>
-                <td>
-                    {% if app.status == "pending" %}
-                        <span class="badge bg-warning">Pending</span>
-                    {% elif app.status == "accepted" %}
-                        <span class="badge bg-success">Accepted</span>
-                    {% elif app.status == "rejected" %}
-                        <span class="badge bg-danger">Rejected</span>
-                    {% else %}
-                        <span class="badge bg-secondary">Withdrawn</span>
-                    {% endif %}
-                </td>
-                <td>{{ app.created_at }}</td>
-                <td>{{ app.updated_at }}</td>
-                <td>
-                    {% if app.status == "pending" %}
-                        <form method="POST" action="{{ url_for('accept_application', app_id=app.id) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-success btn-sm">Accept</button>
-                        </form>
-                        <form method="POST" action="{{ url_for('reject_application', app_id=app.id) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-danger btn-sm">Reject</button>
-                        </form>
-                    {% else %}
-                        <span class="text-muted">No actions</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <form method="POST" action="{{ url_for('bulk_update_applications') }}">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll"></th>
+                    <th>Driver</th>
+                    <th>Status</th>
+                    <th>Applied On</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr>
+                    <td>
+                        {% if app.status == "pending" %}
+                            <input type="checkbox" name="selected_apps" value="{{ app.id }}">
+                        {% endif %}
+                    </td>
+                    <td>{{ app.driverUsername }}</td>
+                    <td>{{ app.status }}</td>
+                    <td>{{ app.created_at }}</td>
+                    <td>
+                        <a href="{{ url_for('sponsor_application_detail', app_id=app.id) }}" 
+                           class="btn btn-info btn-sm">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit" name="action" value="accept" class="btn btn-success">Accept Selected</button>
+        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject Selected</button>
+    </form>
 </div>
+
+<script>
+document.getElementById('selectAll').onclick = function() {
+    let checkboxes = document.querySelectorAll('input[name="selected_apps"]');
+    for (let cb of checkboxes) cb.checked = this.checked;
+};
+</script>
 {% endblock %}
