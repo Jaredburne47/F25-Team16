@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Application Detail{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Driver Application Detail</h2>
+    <p><strong>Driver Username:</strong> {{ app.driverUsername }}</p>
+    <p><strong>Name:</strong> {{ app.first_name }} {{ app.last_name }}</p>
+    <p><strong>Email:</strong> {{ app.email }}</p>
+    <p><strong>Phone:</strong> {{ app.phone }}</p>
+    <p><strong>Address:</strong> {{ app.address }}</p>
+    <p><strong>Status:</strong> {{ app.status }}</p>
+    <p><strong>Applied On:</strong> {{ app.created_at }}</p>
+    <p><strong>Last Updated:</strong> {{ app.updated_at }}</p>
+
+    {% if app.status == "pending" %}
+    <form method="POST" action="{{ url_for('accept_application', app_id=app.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-success">Accept</button>
+    </form>
+    <form method="POST" action="{{ url_for('reject_application', app_id=app.id) }}" style="display:inline;">
+        <button type="submit" class="btn btn-danger">Reject</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
