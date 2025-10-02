@@ -653,6 +653,99 @@ def withdraw_application(app_id):
     db.close()
 
     return redirect(url_for('driver_applications'))
+@app.route('/sponsor/applications')
+def sponsor_applications():
+    """View list of driver applications for the logged-in sponsor."""
+    if 'user' not in session or session['role'] != 'sponsor':
+        return redirect(url_for('login'))
 
+    sponsor = session['user']
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT a.id, a.driverUsername, a.status, a.created_at, a.updated_at
+        FROM driverApplications a
+        WHERE a.sponsor=%s
+        ORDER BY a.created_at DESC
+    """, (sponsor,))
+    applications = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return render_template("sponsor_applications.html", applications=applications)
+
+
+@app.route('/sponsor/applications/<int:app_id>')
+def sponsor_application_detail(app_id):
+    """View details of a specific driver application."""
+    if 'user' not in session or session['role'] != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    cursor.execute("""
+        SELECT a.*, d.first_name, d.last_name, d.email, d.phone, d.address
+        FROM driverApplications a
+        JOIN drivers d ON a.driverUsername = d.username
+        WHERE a.id=%s AND a.sponsor=%s
+    """, (app_id, sponsor))
+    application = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    if not application:
+        return "<h3>Application not found or you don’t have access.</h3>"
+
+    return render_template("sponsor_application_detail.html", app=application)
+
+
+@app.route('/sponsor/applications/<int:app_id>/accept', methods=['POST'])
+def accept_application(app_id):
+    """Accept a driver application."""
+    if 'user' not in session or session['role'] != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+
+    cursor.execute("""
+        UPDATE driverApplications
+        SET status='accepted'
+        WHERE id=%s AND sponsor=%s AND status='pending'
+    """, (app_id, sponsor))
+    db.commit()
+
+    cursor.close()
+    db.close()
+    return redirect(url_for('sponsor_applications'))
+
+
+@app.route('/sponsor/applications/<int:app_id>/reject', methods=['POST'])
+def reject_application(app_id):
+    """Reject a driver application."""
+    if 'user' not in session or session['role'] != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+
+    cursor.execute("""
+        UPDATE driverApplications
+        SET status='rejected'
+        WHERE id=%s AND sponsor=%s AND status='pending'
+    """, (app_id, sponsor))
+    db.commit()
+
+    cursor.close()
+    db.close()
+    return redirect(url_for('sponsor_applications'))
+    
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
