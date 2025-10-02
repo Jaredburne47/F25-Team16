@@ -746,6 +746,36 @@ def reject_application(app_id):
     cursor.close()
     db.close()
     return redirect(url_for('sponsor_applications'))
+
+@app.route('/sponsor/applications/bulk', methods=['POST'])
+def bulk_update_applications():
+    """Mass accept or reject driver applications."""
+    if 'user' not in session or session['role'] != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    action = request.form['action']
+    selected_apps = request.form.getlist('selected_apps')
+
+    if not selected_apps:
+        return redirect(url_for('sponsor_applications'))
+
+    new_status = 'accepted' if action == 'accept' else 'rejected'
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+
+    cursor.executemany("""
+        UPDATE driverApplications
+        SET status=%s
+        WHERE id=%s AND sponsor=%s AND status='pending'
+    """, [(new_status, app_id, sponsor) for app_id in selected_apps])
+
+    db.commit()
+    cursor.close()
+    db.close()
+
+    return redirect(url_for('sponsor_applications'))
     
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
