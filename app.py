@@ -4,6 +4,7 @@ from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
+from emailScripts.decisionEmail import send_decision_email
 import secrets
 import os
 from werkzeug.utils import secure_filename
@@ -706,54 +707,103 @@ def sponsor_application_detail(app_id):
 
 @app.route('/sponsor/applications/<int:app_id>/accept', methods=['POST'])
 def accept_application(app_id):
-    """Accept a driver application."""
-    if 'user' not in session or session['role'] != 'sponsor':
+    if 'user' not in session or session.get('role') != 'sponsor':
         return redirect(url_for('login'))
 
     sponsor = session['user']
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
 
-    cursor.execute("""
-    SELECT COUNT(*) as count FROM driverApplications
-    WHERE driverUsername = (
-        SELECT driverUsername FROM driverApplications WHERE id=%s
-    ) AND status='accepted'
-""", (app_id,))
-existing = cursor.fetchone()
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-if existing['count'] > 0:
-    cursor.close()
-    db.close()
-    return "<h3>This driver already has an accepted sponsor. Reject or withdraw before accepting another.</h3>"
+        # Get driverUsername for this application
+        cursor.execute("SELECT driverUsername FROM driverApplications WHERE id=%s", (app_id,))
+        app_row = cursor.fetchone()
+        if not app_row:
+            return "<h3>Application not found.</h3>"
 
-    cursor.close()
-    db.close()
-    return redirect(url_for('sponsor_applications'))
+        driver_username = app_row['driverUsername']
+
+        # Check if driver already has an accepted sponsor
+        cursor.execute("""
+            SELECT COUNT(*) AS count
+            FROM driverApplications
+            WHERE driverUsername=%s AND status='accepted'
+        """, (driver_username,))
+        existing = cursor.fetchone()
+        if existing['count'] > 0:
+            cursor.close()
+            db.close()
+            return "<h3>This driver already has an accepted sponsor. Withdraw/reject before accepting another.</h3>"
+
+        # Accept the application
+        cursor.execute("""
+            UPDATE driverApplications
+            SET status='accepted'
+            WHERE id=%s AND sponsor=%s AND status='pending'
+        """, (app_id, sponsor))
+        db.commit()
+
+        # Fetch driver info for email
+        cursor.execute("""
+            SELECT d.email, d.first_name, a.sponsor
+            FROM driverApplications a
+            JOIN drivers d ON a.driverUsername = d.username
+            WHERE a.id=%s
+        """, (app_id,))
+        driver = cursor.fetchone()
+
+        if driver:
+            send_decision_email(driver['email'], driver['first_name'], driver['sponsor'], "accepted")
+
+        cursor.close()
+        db.close()
+        return redirect(url_for('sponsor_applications'))
+
+    except Exception as e:
+        return f"<h2>Error accepting application:</h2><p>{e}</p>"
 
 
 @app.route('/sponsor/applications/<int:app_id>/reject', methods=['POST'])
 def reject_application(app_id):
-    """Reject a driver application."""
-    if 'user' not in session or session['role'] != 'sponsor':
+    if 'user' not in session or session.get('role') != 'sponsor':
         return redirect(url_for('login'))
 
     sponsor = session['user']
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
 
-    cursor.execute("""
-        UPDATE driverApplications
-        SET status='rejected'
-        WHERE id=%s AND sponsor=%s AND status='pending'
-    """, (app_id, sponsor))
-    db.commit()
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    cursor.close()
-    db.close()
-    return redirect(url_for('sponsor_applications'))
+        # Reject the application
+        cursor.execute("""
+            UPDATE driverApplications
+            SET status='rejected'
+            WHERE id=%s AND sponsor=%s AND status='pending'
+        """, (app_id, sponsor))
+        db.commit()
+
+        # Fetch driver info for email
+        cursor.execute("""
+            SELECT d.email, d.first_name, a.sponsor
+            FROM driverApplications a
+            JOIN drivers d ON a.driverUsername = d.username
+            WHERE a.id=%s
+        """, (app_id,))
+        driver = cursor.fetchone()
+
+        if driver:
+            send_decision_email(driver['email'], driver['first_name'], driver['sponsor'], "rejected")
+
+        cursor.close()
+        db.close()
+        return redirect(url_for('sponsor_applications'))
+
+    except Exception as e:
+        return f"<h2>Error rejecting application:</h2><p>{e}</p>"
 
 @app.route('/sponsor/applications/bulk', methods=['POST'])
+
 def bulk_update_applications():
     """Mass accept or reject driver applications."""
     if 'user' not in session or session['role'] != 'sponsor':
