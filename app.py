@@ -845,6 +845,14 @@ def accept_application(app_id):
         """, (app_id, sponsor))
         db.commit()
 
+        #Log accepting
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("application", f"{sponsor} accepted {driver_username}'s application", sponsor)
+        )
+
+        db.commit()
+
         # Fetch driver info for email
         cursor.execute("""
             SELECT d.email, d.first_name, a.sponsor
@@ -891,11 +899,20 @@ def reject_application(app_id):
             JOIN drivers d ON a.driverUsername = d.username
             WHERE a.id=%s
         """, (app_id,))
+        db.commit()
+        
         driver = cursor.fetchone()
 
         if driver:
             send_decision_email(driver['email'], driver['first_name'], driver['sponsor'], "rejected")
 
+        #Log rejecting
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("application", f"{sponsor} rejected {driver}'s application", sponsor)
+        )
+
+        db.commit()
         cursor.close()
         db.close()
         return redirect(url_for('sponsor_applications'))
