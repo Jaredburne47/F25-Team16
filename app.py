@@ -939,28 +939,34 @@ def bulk_update_applications():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor()
 
+    # --- First, get driver usernames for selected apps ---
+    format_strings = ','.join(['%s'] * len(selected_apps))
+    cursor.execute(f"""
+        SELECT id, driver_username 
+        FROM driverApplications 
+        WHERE id IN ({format_strings}) AND sponsor=%s
+        """, selected_apps + [sponsor])
+
+    apps_info = cursor.fetchall()
+
+    # --- Update statuses ---
     cursor.executemany("""
         UPDATE driverApplications
         SET status=%s
         WHERE id=%s AND sponsor=%s AND status='pending'
-    """, [(new_status, app_id, sponsor) for app_id in selected_apps])
+    """, [(new_status, app['id'], sponsor) for app in apps_info])
 
     db.commit()
 
-    if new_status == 'accepted':
+
+    # --- Log each application individually ---
+    for app in apps_info:
+        description = f"{sponsor} {new_status} {app['driver_username']}'s application"
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", f"{sponsor} accepted {driver} or {driver['username']}'s application", sponsor)
+            ("application", description, sponsor)
         )
-
-        db.commit()
-    elif new_status == 'rejected':
-        cursor.execute(
-            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", f"{sponsor} rejected {driver} or {driver['username']}'s application", sponsor)
-        )
-
-        db.commit()
+    db.commit()
     
     cursor.close()
     db.close()
