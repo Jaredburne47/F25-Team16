@@ -937,7 +937,7 @@ def bulk_update_applications():
     new_status = 'accepted' if action == 'accept' else 'rejected'
 
     db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     # --- First, get driver usernames for selected apps ---
     format_strings = ','.join(['%s'] * len(selected_apps))
