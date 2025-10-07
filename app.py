@@ -947,12 +947,20 @@ def bulk_update_applications():
 
     db.commit()
 
-    cursor.execute(
-        "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-        ("application", f"{sponsor} accepted testmassaccept's application", sponsor)
-    )
+    if new_status == 'accepted':
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("application", f"{sponsor} accepted {driver} or {driver['username']}'s application", sponsor)
+        )
 
-    db.commit()
+        db.commit()
+    elif new_status == 'rejected':
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("application", f"{sponsor} rejected {driver} or {driver['username']}'s application", sponsor)
+        )
+
+        db.commit()
     
     cursor.close()
     db.close()
