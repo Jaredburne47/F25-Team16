@@ -848,7 +848,7 @@ def accept_application(app_id):
         #Log accepting
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", f"{sponsor} accepted {driver_username}'s application", sponsor)
+            ("application", f"{sponsor} accepted testaccept's application", sponsor)
         )
 
         db.commit()
@@ -909,7 +909,7 @@ def reject_application(app_id):
         #Log rejecting
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", f"{sponsor} rejected {driver}'s application", sponsor)
+            ("application", f"{sponsor} rejected {driver['first_name']}'s application", sponsor)
         )
 
         db.commit()
@@ -946,6 +946,14 @@ def bulk_update_applications():
     """, [(new_status, app_id, sponsor) for app_id in selected_apps])
 
     db.commit()
+
+    cursor.execute(
+        "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+        ("application", f"{sponsor} accepted testmassaccept's application", sponsor)
+    )
+
+    db.commit()
+    
     cursor.close()
     db.close()
 
