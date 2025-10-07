@@ -36,7 +36,7 @@ def authenticate(username: str, password: str):
     admin_row = cursor.fetchone()
     if admin_row:
         cursor.execute(
-            "INSERT INTO auditLogs (action, description, username) VALUES (%s, %s, %s)",
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
             ("log in attempt", f"{username} logged in successfully", username)
         )
         db.commit()
@@ -49,7 +49,7 @@ def authenticate(username: str, password: str):
     sponsor_row = cursor.fetchone()
     if sponsor_row:
         cursor.execute(
-            "INSERT INTO auditLogs (action, description, username) VALUES (%s, %s, %s)",
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
             ("log in attempt", f"{username} logged in successfully", username)
         )
         db.commit()
@@ -59,7 +59,7 @@ def authenticate(username: str, password: str):
 
     # --- Failed attempt ---
     cursor.execute(
-        "INSERT INTO auditLogs (action, description, username) VALUES (%s, %s, %s)",
+        "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
         ("log in attempt", f"{username} attempted to log in — failed", username)
     )
     db.commit()
