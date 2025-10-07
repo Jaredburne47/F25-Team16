@@ -60,7 +60,7 @@ def login():
         password = request.form['password']
 
         #we need to hash the password later
-        #authenticate lives in logInFunctions/auth.py and checks db for matches and returns the role
+        #authenticate lives in logInFunctions/auth.py and checks db for matches and returns the role. It also logs the attempt to the db
         role, user_row = authenticate(username, password)
 
         if role == 'driver':
