@@ -350,6 +350,13 @@ def settings():
                 if password == confirm_password:
                     cursor.execute(f"UPDATE {table} SET password_hash=%s WHERE username=%s",
                                    (password, username))
+                    
+                    cursor.execute(
+                        "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+                        ("password reset", f"{username} reset their password successfully while logged in.", username)
+                    )
+
+                    db.commit()
                 else:
                     cursor.close()
                     db.close()
@@ -648,7 +655,7 @@ def set_new_password(token):
 
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("password reset", f"User {username} reset their password successfully through the link.", username)
+            ("password reset", f"{username} reset their password successfully through the link.", username)
         )
 
         db.commit()
