@@ -942,7 +942,7 @@ def bulk_update_applications():
     # --- First, get driver usernames for selected apps ---
     format_strings = ','.join(['%s'] * len(selected_apps))
     cursor.execute(f"""
-        SELECT id, driver_username 
+        SELECT id, driverUsername 
         FROM driverApplications 
         WHERE id IN ({format_strings}) AND sponsor=%s
         """, selected_apps + [sponsor])
@@ -961,7 +961,7 @@ def bulk_update_applications():
 
     # --- Log each application individually ---
     for app in apps_info:
-        description = f"{sponsor} {new_status} {app['driver_username']}'s application"
+        description = f"{sponsor} {new_status} {app['driverUsername']}'s application"
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
             ("application", description, sponsor)
