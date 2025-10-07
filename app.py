@@ -846,9 +846,10 @@ def accept_application(app_id):
         db.commit()
 
         #Log accepting
+        description = f"{sponsor} accepted {driver['driverUsername']}'s application"
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", f"{sponsor} accepted testaccept's application", sponsor)
+            ("application", description, sponsor)
         )
 
         db.commit()
@@ -907,9 +908,10 @@ def reject_application(app_id):
             send_decision_email(driver['email'], driver['first_name'], driver['sponsor'], "rejected")
 
         #Log rejecting
+        description = f"{sponsor} rejected {driver['driverUsername']}'s application"
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", f"{sponsor} rejected {driver['first_name']}'s application", sponsor)
+            ("application", description, sponsor)
         )
 
         db.commit()
