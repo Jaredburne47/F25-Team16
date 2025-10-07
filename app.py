@@ -700,6 +700,13 @@ def apply_to_sponsor(sponsor):
         VALUES (%s, %s, 'pending')
     """, (username, sponsor))
     db.commit()
+
+    cursor.execute(
+        "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+        ("application", f"{username} applied to {sponsor}", username)
+    )
+
+    db.commit()
     cursor.close()
     db.close()
 
