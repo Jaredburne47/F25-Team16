@@ -646,7 +646,7 @@ def set_new_password(token):
         """, (new_password, username))
         db.commit()
 
-         cursor.execute(
+        cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
             ("password reset", f"User {username} reset their password successfully through the link.", username)
         )
