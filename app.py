@@ -645,6 +645,13 @@ def set_new_password(token):
             WHERE username=%s
         """, (new_password, username))
         db.commit()
+
+         cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("password reset", f"User {username} reset their password successfully through the link.", username)
+        )
+
+        db.commit()
         cursor.close()
         db.close()
 
@@ -686,7 +693,6 @@ def apply_to_sponsor(sponsor):
         VALUES (%s, %s, 'pending')
     """, (username, sponsor))
     db.commit()
-
     cursor.close()
     db.close()
 
