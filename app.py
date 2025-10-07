@@ -742,7 +742,7 @@ def withdraw_application(app_id):
     username = session['user']
 
     db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor = db.cursor()
 
     cursor.execute("""
         UPDATE driverApplications
