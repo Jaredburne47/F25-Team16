@@ -515,6 +515,7 @@ def add_points():
     username = request.form['username']
     points = int(request.form['points_to_add'])
     reason = request.form.get('reason', '(no reason provided)')
+    performed_by = session.get('username', 'Unknown user')
 
     try:
         db = MySQLdb.connect(**db_config)
@@ -530,7 +531,7 @@ def add_points():
         # --- Log the action ---
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("add points", f"{points} points added to {username}. Reason: {reason}", username)
+            ("add points", f"{performed_by} added {points} points to {username}. Reason: {reason}", username)
         )
         db.commit()
 
