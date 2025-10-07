@@ -34,16 +34,19 @@
                         <button type="submit" class="btn btn-secondary btn-sm">Login</button>
                     </form>
 
-                        <!-- Points input -->
+                    <!-- Add points -->
                     <form action="{{ url_for('add_points') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
                         <input type="number" name="points_to_add" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
+                        <input type="text" name="reason" placeholder="Reason" style="width: 140px;" class="form-control d-inline-block mb-1">
                         <button type="submit" class="btn btn-primary btn-sm">Add Points</button>
                     </form>
 
+                    <!-- Remove points -->
                     <form action="{{ url_for('remove_points') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
                         <input type="number" name="points_to_remove" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
+                        <input type="text" name="reason" placeholder="Reason" style="width: 140px;" class="form-control d-inline-block mb-1">
                         <button type="submit" class="btn btn-warning btn-sm">Remove Points</button>
                     </form>
                 </td>
