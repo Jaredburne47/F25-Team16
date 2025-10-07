@@ -29,5 +29,38 @@
             <p><strong>Phone Number:</strong> {{ user.phone }}</p>
         </div>
     </div>
+
+    <!-- SPRINT 4 CHANGE: Stats Overview updated with your variables -->
+    <h2 class="mt-5">Dashboard Overview</h2>
+    <hr>
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card text-white bg-primary shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Total Drivers</h5>
+                    <!-- CHANGE: Use 'total_drivers' variable -->
+                    <p class="card-text fs-2">{{ total_drivers or '0' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card text-white bg-success shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Total Sponsors</h5>
+                    <!-- CHANGE: Use 'total_sponsors' variable -->
+                    <p class="card-text fs-2">{{ total_sponsors or '0' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card text-dark bg-light shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Total Points Given</h5>
+                    <!-- CHANGE: Use 'total_points_given' variable -->
+                    <p class="card-text fs-2">{{ total_points_given or '0' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

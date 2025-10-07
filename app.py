@@ -9,6 +9,7 @@ import secrets
 import os
 from werkzeug.utils import secure_filename
 
+
 app = Flask(__name__)
 #maybe make this more secret somehow?
 app.secret_key = os.urandom(24)
@@ -140,6 +141,36 @@ def sponsor_profile():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
+    # ===================================================================
+    # SPRINT 4 CHANGE: FETCH SPONSOR DASHBOARD DATA
+    # These queries get the summary metrics and driver list for the sponsor.
+    # ===================================================================
+    cursor.execute("""
+        SELECT COUNT(*) as driver_count 
+        FROM driverApplications 
+        WHERE sponsor=%s AND status='accepted'
+    """, (username,))
+    driver_count = cursor.fetchone()['driver_count']
+
+    cursor.execute("""
+        SELECT SUM(d.points) as total_points 
+        FROM drivers d 
+        JOIN driverApplications da ON d.username = da.driverUsername 
+        WHERE da.sponsor=%s AND da.status='accepted'
+    """, (username,))
+    total_points = cursor.fetchone()['total_points'] or 0
+
+    cursor.execute("""
+        SELECT d.username, d.first_name, d.last_name, d.points 
+        FROM drivers d 
+        JOIN driverApplications da ON d.username = da.driverUsername 
+        WHERE da.sponsor=%s AND da.status='accepted' 
+        ORDER BY d.points DESC
+    """, (username,))
+    driver_list = cursor.fetchall()
+    # ===================================================================
+
+
     if request.method == 'POST':
         first_name = request.form['first_name']
         last_name = request.form['last_name']
@@ -160,7 +191,8 @@ def sponsor_profile():
     cursor.close()
     db.close()
 
-    return render_template("sponsor_profile.html", user=user_info)
+    return render_template("sponsor_profile.html", user=user_info, driver_count=driver_count, total_points=total_points, driver_list=driver_list)
+    
 
 
 @app.route('/admin/profile', methods=['GET', 'POST'])
@@ -172,6 +204,19 @@ def admin_profile():
 
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # ===================================================================
+    # SPRINT 4 CHANGE: FETCH ADMIN DASHBOARD DATA
+    # These queries get the summary metrics for the entire system.
+    # ===================================================================
+    cursor.execute("SELECT COUNT(*) as total_drivers FROM drivers;")
+    total_drivers = cursor.fetchone()['total_drivers']
+    cursor.execute("SELECT SUM(points) as total_points FROM drivers;")
+    total_points_given = cursor.fetchone()['total_points'] or 0
+    cursor.execute("SELECT COUNT(*) as total_sponsors FROM sponsor;")
+    total_sponsors = cursor.fetchone()['total_sponsors']
+    # ===================================================================
+
 
     if request.method == 'POST':
         first_name = request.form['first_name']
@@ -191,7 +236,7 @@ def admin_profile():
     cursor.close()
     db.close()
 
-    return render_template("admin_profile.html", user=user_info)
+    return render_template("admin_profile.html", user=user_info, total_drivers=total_drivers, total_points_given=total_points_given, total_sponsors=total_sponsors)
 
 
 @app.route('/dashboard')
