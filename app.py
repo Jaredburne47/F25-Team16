@@ -531,7 +531,7 @@ def add_points():
         # --- Log the action ---
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("add points", f"{performed_by} added {points} points to {username}. Reason: {reason}", username)
+            ("add points", f"{performed_by} added {points} points to {username}. Reason: {reason}", performed_by)
         )
         db.commit()
 
@@ -565,7 +565,7 @@ def remove_points():
         # --- Log the action ---
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("remove points", f"{performed_by} removed {points} points from {username}. Reason: {reason}", username)
+            ("remove points", f"{performed_by} removed {points} points from {username}. Reason: {reason}", performed_by)
         )
         db.commit()
 
