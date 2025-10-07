@@ -514,33 +514,67 @@ def login_as_sponsor():
 def add_points():
     username = request.form['username']
     points = int(request.form['points_to_add'])
-    #add the points
+    reason = request.form.get('reason', '(no reason provided)')
+
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor()
-        cursor.execute("UPDATE drivers SET points = points + %s WHERE username = %s;",(points, username))
+
+        # --- Add points to driver ---
+        cursor.execute(
+            "UPDATE drivers SET points = points + %s WHERE username = %s;",
+            (points, username)
+        )
         db.commit()
+
+        # --- Log the action ---
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("add points", f"{points} points added to {username}. Reason: {reason}", username)
+        )
+        db.commit()
+
         cursor.close()
         db.close()
+
     except Exception as e:
         return f"<h2>Error adding points:</h2><p>{e}</p>"
+
     return render_template('points_added.html', username=username, points=points)
+
 
 @app.route('/remove_points', methods=['POST'])
 def remove_points():
     username = request.form['username']
     points = int(request.form['points_to_remove'])
+    reason = request.form.get('reason', '(no reason provided)')
+
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor()
-        cursor.execute("UPDATE drivers SET points = points - %s WHERE username = %s;",(points, username))
+
+        # --- Remove points from driver ---
+        cursor.execute(
+            "UPDATE drivers SET points = points - %s WHERE username = %s;",
+            (points, username)
+        )
         db.commit()
+
+        # --- Log the action ---
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("remove points", f"{points} points removed from {username}. Reason: {reason}", username)
+        )
+        db.commit()
+
         cursor.close()
         db.close()
+
     except Exception as e:
         return f"<h2>Error removing points:</h2><p>{e}</p>"
-    print(f"Removed {points} points from driver {username}")
+
     return render_template('points_removed.html', username=username, points=points)
+
 
 
 @app.route('/reset_password', methods=['GET', 'POST'])
