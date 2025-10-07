@@ -515,7 +515,7 @@ def add_points():
     username = request.form['username']
     points = int(request.form['points_to_add'])
     reason = request.form.get('reason', '(no reason provided)')
-    performed_by = session.get('username', 'Unknown user')
+    performed_by = session['user']
 
     try:
         db = MySQLdb.connect(**db_config)
@@ -549,6 +549,7 @@ def remove_points():
     username = request.form['username']
     points = int(request.form['points_to_remove'])
     reason = request.form.get('reason', '(no reason provided)')
+    performed_by = session['user']
 
     try:
         db = MySQLdb.connect(**db_config)
@@ -564,7 +565,7 @@ def remove_points():
         # --- Log the action ---
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("remove points", f"{points} points removed from {username}. Reason: {reason}", username)
+            ("remove points", f"{performed_by} removed {points} points from {username}. Reason: {reason}", username)
         )
         db.commit()
 
