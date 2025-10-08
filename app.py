@@ -995,8 +995,11 @@ def download_audit_logs():
     params = []
 
     if action_filter != 'all':
-        query += " AND action=%s"
-        params.append(action_filter)
+        if action_filter == 'point history':
+            query += " AND (action='add points' OR action='remove points')"
+        else:
+            query += " AND action=%s"
+            params.append(action_filter)
     if user_id:
         query += " AND user_id=%s"
         params.append(user_id)
@@ -1044,8 +1047,11 @@ def audit_logs():
     params = []
 
     if action_filter != 'all':
-        query += " AND action=%s"
-        params.append(action_filter)
+        if action_filter == 'point history':
+            query += " AND (action='add points' OR action='remove points')"
+        else:
+            query += " AND action=%s"
+            params.append(action_filter)
 
     if user_id:
         query += " AND user_id=%s"
