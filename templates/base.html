@@ -115,6 +115,13 @@
                 </a>
               </li>
             {% endif %}
+
+            <!-- Admin Logging -->
+            {% if session.get('role') == 'admin' %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">Audit Logs</a>
+              </li>
+            {% endif %}
              
 
             <!-- Driver-only tabs -->
