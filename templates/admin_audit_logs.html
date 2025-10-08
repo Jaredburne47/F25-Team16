@@ -57,7 +57,7 @@
     </thead>
     <tbody>
       {% for log in logs %}
-      <tr>
+      <tr {% if 'failed' in log.description|lower %} style="background-color: #ffcccc;" {% endif %}>
         <td>{{ log.timestamp }}</td>
         <td>{{ log.action }}</td>
         <td>{{ log.description }}</td>
