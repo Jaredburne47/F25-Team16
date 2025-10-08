@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Audit Logs{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Audit Logs</h2>
+
+  <form method="POST" action="{{ url_for('audit_logs') }}" class="mb-3">
+    <div class="row mb-2">
+      <div class="col-md-3">
+        <label>Log Type</label>
+        <select name="action" class="form-select">
+          <option value="all">All Logs</option>
+          <option value="log in attempt">Log In Attempt</option>
+          <option value="application">Application</option>
+          <option value="password reset">Password Reset</option>
+          <option value="point history">Point History</option>
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label>User ID</label>
+        <input type="text" name="user_id" class="form-control" placeholder="Enter user id">
+      </div>
+
+      <div class="col-md-3">
+        <label>Start Date</label>
+        <input type="date" name="start_date" class="form-control">
+      </div>
+
+      <div class="col-md-3">
+        <label>End Date</label>
+        <input type="date" name="end_date" class="form-control">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">View Logs in Browser</button>
+  </form>
+
+  <form method="POST" action="{{ url_for('download_audit_logs') }}">
+    <input type="hidden" name="action" value="{{ request.form.action }}">
+    <input type="hidden" name="user_id" value="{{ request.form.user_id }}">
+    <input type="hidden" name="start_date" value="{{ request.form.start_date }}">
+    <input type="hidden" name="end_date" value="{{ request.form.end_date }}">
+    <button type="submit" class="btn btn-success mb-3">Download as CSV</button>
+  </form>
+
+  {% if logs %}
+  <table class="table table-bordered table-hover">
+    <thead class="table-light">
+      <tr>
+        <th>Timestamp</th>
+        <th>Action</th>
+        <th>Description</th>
+        <th>User ID</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.timestamp }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.description }}</td>
+        <td>{{ log.user_id }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No logs found for the selected filters.</p>
+  {% endif %}
+</div>
+{% endblock %}
