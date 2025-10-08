@@ -7,6 +7,9 @@ from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
 import secrets
 import os
+import csv
+from io import StringIO
+from flask import Response
 from werkzeug.utils import secure_filename
 
 
@@ -974,6 +977,97 @@ def bulk_update_applications():
     db.close()
 
     return redirect(url_for('sponsor_applications'))
+
+@app.route('/admin/audit_logs/download', methods=['POST'])
+def download_audit_logs():
+    if 'user' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    action_filter = request.form.get('action', 'all')
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    user_id = request.form.get('user_id')
+
+    query = "SELECT * FROM auditLogs WHERE 1=1"
+    params = []
+
+    if action_filter != 'all':
+        query += " AND action=%s"
+        params.append(action_filter)
+    if user_id:
+        query += " AND user_id=%s"
+        params.append(user_id)
+    if start_date:
+        query += " AND timestamp >= %s"
+        params.append(start_date)
+    if end_date:
+        query += " AND timestamp <= %s"
+        params.append(end_date)
+
+    query += " ORDER BY timestamp DESC"
+    cursor.execute(query, params)
+    logs = cursor.fetchall()
+
+    output = StringIO()
+    writer = csv.DictWriter(output, fieldnames=['timestamp', 'action', 'description', 'user_id'])
+    writer.writeheader()
+    for row in logs:
+        writer.writerow(row)
+
+    cursor.close()
+    db.close()
+
+    response = Response(output.getvalue(), mimetype='text/csv')
+    response.headers['Content-Disposition'] = 'attachment; filename=audit_logs.csv'
+    return response
+
+
+
+@app.route('/admin/audit_logs', methods=['GET', 'POST'])
+def audit_logs():
+    if 'user' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Default filters
+    action_filter = request.form.get('action', 'all')
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    user_id = request.form.get('user_id')
+
+    query = "SELECT * FROM auditLogs WHERE 1=1"
+    params = []
+
+    if action_filter != 'all':
+        query += " AND action=%s"
+        params.append(action_filter)
+
+    if user_id:
+        query += " AND user_id=%s"
+        params.append(user_id)
+
+    if start_date:
+        query += " AND timestamp >= %s"
+        params.append(start_date)
+
+    if end_date:
+        query += " AND timestamp <= %s"
+        params.append(end_date)
+
+    query += " ORDER BY timestamp DESC"
+
+    cursor.execute(query, params)
+    logs = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return render_template('admin_audit_logs.html', logs=logs)
     
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
