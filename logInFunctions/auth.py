@@ -60,7 +60,7 @@ def authenticate(username: str, password: str):
     # --- Failed attempt ---
     cursor.execute(
         "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-        ("log in attempt", f"{username} attempted to log in — failed", username)
+        ("log in attempt", f"{username} attempted to log in: failed", username)
     )
     db.commit()
     cursor.close()
