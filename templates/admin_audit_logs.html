@@ -56,15 +56,14 @@
       </tr>
     </thead>
     <tbody>
-    {% for log in logs %}
-      {% set desc = log['Description'] if 'Description' in log else log.get('description', '') %}
-      <tr {% if desc and 'failed' in desc|lower %} style="background-color: #ffcccc;" {% endif %}>
-        <td>{{ log['timestamp'] if 'timestamp' in log else log.get('Timestamp', '') }}</td>
-        <td>{{ log['action'] if 'action' in log else log.get('Action', '') }}</td>
-        <td>{{ desc }}</td>
-        <td>{{ log['user_id'] if 'user_id' in log else log.get('User_id', '') }}</td>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.timestamp }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.description }}</td>
+        <td>{{ log.user_id }}</td>
       </tr>
-    {% endfor %}
+      {% endfor %}
     </tbody>
   </table>
   {% else %}
