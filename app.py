@@ -1024,8 +1024,10 @@ def download_audit_logs():
     for row in logs:
         lower_row = {k.lower(): v for k, v in row.items()}
         writer.writerow(lower_row)
-        cursor.close()
-        db.close()
+
+    
+    cursor.close()
+    db.close()
 
     if logs:
         print(logs[0].keys())
