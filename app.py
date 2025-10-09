@@ -1023,7 +1023,13 @@ def download_audit_logs():
         cursor.close()
         db.close()
 
-    print(logs[0].keys())
+    print("QUERY:", query)
+    print("PARAMS:", params)
+
+    if logs:
+        print(logs[0].keys())
+    else:
+        print("No logs found for current filters.")
 
     response = Response(output.getvalue(), mimetype='text/csv')
     response.headers['Content-Disposition'] = 'attachment; filename=audit_logs.csv'
