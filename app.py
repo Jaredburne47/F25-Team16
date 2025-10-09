@@ -1034,7 +1034,8 @@ def download_audit_logs():
     else:
         print("No logs found for current filters.")
 
-    response = Response(output.getvalue(), mimetype='text/csv')
+    
+    response = Response(output.getvalue().encode('utf-8'), mimetype='text/csv')
     response.headers['Content-Disposition'] = 'attachment; filename=audit_logs.csv'
     return response
 
