@@ -983,8 +983,6 @@ def download_audit_logs():
     if 'user' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
 
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     action_filter = request.form.get('action', 'all')
     start_date = request.form.get('start_date')
@@ -1011,6 +1009,12 @@ def download_audit_logs():
         params.append(end_date)
 
     query += " ORDER BY timestamp DESC"
+
+    print("QUERY:", query)
+    print("PARAMS:", params)
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute(query, params)
     logs = cursor.fetchall()
 
@@ -1022,9 +1026,6 @@ def download_audit_logs():
         writer.writerow(lower_row)
         cursor.close()
         db.close()
-
-    print("QUERY:", query)
-    print("PARAMS:", params)
 
     if logs:
         print(logs[0].keys())
