@@ -1018,10 +1018,12 @@ def download_audit_logs():
     writer = csv.DictWriter(output, fieldnames=['timestamp', 'action', 'description', 'user_id'])
     writer.writeheader()
     for row in logs:
-        writer.writerow(row)
+        lower_row = {k.lower(): v for k, v in row.items()}
+        writer.writerow(lower_row)
+        cursor.close()
+        db.close()
 
-    cursor.close()
-    db.close()
+    print(logs[0].keys())
 
     response = Response(output.getvalue(), mimetype='text/csv')
     response.headers['Content-Disposition'] = 'attachment; filename=audit_logs.csv'
