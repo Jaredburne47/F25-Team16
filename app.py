@@ -984,7 +984,7 @@ def download_audit_logs():
         return redirect(url_for('login'))
 
 
-    action_filter = request.form.get('action', 'all')
+    action_filter = request.form.get('action') or 'all'
     start_date = request.form.get('start_date')
     end_date = request.form.get('end_date')
     user_id = request.form.get('user_id')
