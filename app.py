@@ -725,7 +725,14 @@ def sponsor_browse():
 
 @app.route('/apply/<sponsor>', methods=['POST'])
 def apply_to_sponsor(sponsor):
-    # Only drivers can apply
+    """
+    Allows a driver to apply to a sponsor.
+    Enforces the following rules:
+      1. A driver can have only one active (pending/accepted) application per sponsor.
+      2. A driver cannot apply to another sponsor if already accepted by one.
+      3. Drivers can reapply only after rejection or withdrawal.
+    """
+    # Ensure user is logged in and is a driver
     if 'user' not in session or session['role'] != 'driver':
         return redirect(url_for('login'))
 
@@ -735,28 +742,41 @@ def apply_to_sponsor(sponsor):
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Check for existing active application to this sponsor
+        # Check if driver already has an accepted sponsor (any sponsor)
+        cursor.execute("""
+            SELECT sponsor FROM driverApplications
+            WHERE driverUsername = %s AND status = 'accepted'
+            LIMIT 1
+        """, (username,))
+        accepted_anywhere = cursor.fetchone()
+        if accepted_anywhere:
+            cursor.close()
+            db.close()
+            return (
+                f"<h3>You are already accepted by {accepted_anywhere['sponsor']}. "
+                f"Withdraw first if you want to apply elsewhere.</h3>"
+            )
+
+        # Check for existing active application (pending/accepted) to this sponsor
         cursor.execute("""
             SELECT id, status FROM driverApplications
-            WHERE driverUsername=%s AND sponsor=%s 
-            AND status IN ('pending', 'accepted')
+            WHERE driverUsername = %s AND sponsor = %s
+              AND status IN ('pending', 'accepted')
         """, (username, sponsor))
         existing = cursor.fetchone()
-
-        #If one exists, block reapplication
         if existing:
             cursor.close()
             db.close()
             return "<h3>You already have an active application with this sponsor.</h3>"
 
-        # Otherwise, create a new Pending application
+        # Create new pending application
         cursor.execute("""
             INSERT INTO driverApplications (driverUsername, sponsor, status, created_at, updated_at)
             VALUES (%s, %s, 'pending', NOW(), NOW())
         """, (username, sponsor))
         db.commit()
 
-        # Log the event
+        # Log audit entry for transparency
         cursor.execute("""
             INSERT INTO auditLogs (action, description, user_id)
             VALUES (%s, %s, %s)
@@ -769,6 +789,7 @@ def apply_to_sponsor(sponsor):
 
         cursor.close()
         db.close()
+
         return redirect(url_for('driver_applications'))
 
     except Exception as e:
