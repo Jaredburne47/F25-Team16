@@ -725,30 +725,54 @@ def sponsor_browse():
 
 @app.route('/apply/<sponsor>', methods=['POST'])
 def apply_to_sponsor(sponsor):
+    # Only drivers can apply
     if 'user' not in session or session['role'] != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
 
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    cursor.execute("""
-        INSERT INTO driverApplications (driverUsername, sponsor, status)
-        VALUES (%s, %s, 'pending')
-    """, (username, sponsor))
-    db.commit()
+        # Check for existing active application to this sponsor
+        cursor.execute("""
+            SELECT id, status FROM driverApplications
+            WHERE driverUsername=%s AND sponsor=%s 
+            AND status IN ('pending', 'accepted')
+        """, (username, sponsor))
+        existing = cursor.fetchone()
 
-    cursor.execute(
-        "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-        ("application", f"{username} applied to {sponsor}", username)
-    )
+        #If one exists, block reapplication
+        if existing:
+            cursor.close()
+            db.close()
+            return "<h3>You already have an active application with this sponsor.</h3>"
 
-    db.commit()
-    cursor.close()
-    db.close()
+        # Otherwise, create a new Pending application
+        cursor.execute("""
+            INSERT INTO driverApplications (driverUsername, sponsor, status, created_at, updated_at)
+            VALUES (%s, %s, 'pending', NOW(), NOW())
+        """, (username, sponsor))
+        db.commit()
 
-    return redirect(url_for('driver_applications'))
+        # Log the event
+        cursor.execute("""
+            INSERT INTO auditLogs (action, description, user_id)
+            VALUES (%s, %s, %s)
+        """, (
+            "application_created",
+            f"{username} applied to sponsor {sponsor}.",
+            username
+        ))
+        db.commit()
+
+        cursor.close()
+        db.close()
+        return redirect(url_for('driver_applications'))
+
+    except Exception as e:
+        return f"<h2>Error applying to sponsor:</h2><p>{e}</p>"
 
 @app.route('/applications')
 def driver_applications():
