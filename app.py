@@ -101,7 +101,10 @@ def login():
 
         #Render login.html with message
         if locked_until:
-            msg = f"Your account is locked until {locked_until:%Y-%m-%d %H:%M:%S}. Please try again later."
+            msg = (
+                    "Your account is locked until "
+                    f"{locked_until.strftime('%b %d, %Y %I:%M:%S %p')}. Please try again later."
+            )
         else:
             msg = "Invalid username or password."
 
