@@ -11,7 +11,7 @@ import csv
 from io import StringIO
 from flask import Response
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 app = Flask(__name__)
@@ -613,44 +613,63 @@ def reset_password():
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # find user by BOTH username and email
+        # Look up user across roles
         cursor.execute("""
-            SELECT username, 'driver' as role FROM drivers WHERE username=%s AND email=%s
+            SELECT username, 'driver' AS role FROM drivers WHERE username=%s AND email=%s
             UNION
-            SELECT username, 'sponsor' as role FROM sponsor WHERE username=%s AND email=%s
+            SELECT username, 'sponsor' AS role FROM sponsor WHERE username=%s AND email=%s
             UNION
-            SELECT username, 'admin' as role FROM admins WHERE username=%s AND email=%s
+            SELECT username, 'admin' AS role FROM admins WHERE username=%s AND email=%s
         """, (username, email, username, email, username, email))
-
         user = cursor.fetchone()
-        cursor.close()
-        db.close()
 
         if not user:
-            return "<h3>No account found with that username/email combination.</h3>"
+            cursor.close(); db.close()
+            return "<h3>No account found for that username and email.</h3>"
 
-        # generate reset token
+        # Generate a secure random token
         token = secrets.token_urlsafe(32)
+        expiration = datetime.now() + timedelta(hours=1)
 
-        # store reset info in session
-        session['reset_user'] = user['username']
-        session['reset_role'] = user['role']
-        session['reset_token'] = token
+        # Save token and expiration in passwordResets
+        cursor.execute("""
+            INSERT INTO passwordResets (username, role, token, expiration)
+            VALUES (%s, %s, %s, %s)
+        """, (user['username'], user['role'], token, expiration))
+        db.commit()
 
+        # Send password reset email
         reset_link = url_for('set_new_password', token=token, _external=True)
+        send_reset_email(email, username, reset_link)
 
-        # send reset email
-        send_reset_email(email, user['username'], reset_link)
+        # Log audit event
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("password_reset_request",
+             f"Password reset link created for {username} (expires {expiration}).",
+             username)
+        )
+        db.commit()
 
-        return "<h3>A password reset link has been sent to your email.</h3>"
+        cursor.close(); db.close()
+        return "<h3>A password reset link has been sent to your email. It expires in 1 hour.</h3>"
 
     return render_template("reset_password.html")
 
 @app.route('/set_new_password/<token>', methods=['GET', 'POST'])
 def set_new_password(token):
-    if 'reset_token' not in session or session['reset_token'] != token:
-        return "<h3>Invalid or expired reset link.</h3>"
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
+    # Verify token is valid, unused, and not expired
+    cursor.execute("SELECT * FROM passwordResets WHERE token=%s AND used=FALSE", (token,))
+    reset = cursor.fetchone()
+
+    if not reset or reset['expiration'] < datetime.now():
+        cursor.close(); db.close()
+        return "<h3>This password reset link is invalid or has expired.</h3>"
+
+    # If token valid, handle form
     if request.method == 'POST':
         new_password = request.form['password']
         confirm_password = request.form['confirm_password']
@@ -658,35 +677,33 @@ def set_new_password(token):
         if new_password != confirm_password:
             return "<h3>Passwords do not match.</h3>"
 
-        username = session['reset_user']
-        role = session['reset_role']
-        table = 'drivers' if role == 'driver' else ('sponsor' if role == 'sponsor' else 'admins')
+        # Determine which table to update
+        table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}[reset['role']]
 
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor()
+        # Update password 
         cursor.execute(f"""
             UPDATE {table}
-            SET password_hash=%s
-            WHERE username=%s
-        """, (new_password, username))
-        db.commit()
+            SET password_hash = %s
+            WHERE username = %s
+        """, (new_password, reset['username']))
 
+        # Mark token as used so it cannot be reused
+        cursor.execute("UPDATE passwordResets SET used=TRUE WHERE id=%s", (reset['id'],))
+
+        # Log audit event
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("password reset", f"{username} reset their password successfully through the link.", username)
+            ("password_reset",
+             f"{reset['username']} successfully reset their password via token.",
+             reset['username'])
         )
-
         db.commit()
-        cursor.close()
-        db.close()
 
-        # Clear reset session data
-        session.pop('reset_token', None)
-        session.pop('reset_user', None)
-        session.pop('reset_role', None)
+        cursor.close(); db.close()
+        return "<h3>Password successfully reset. You can now <a href='/login'>log in</a>.</h3>"
 
-        return redirect(url_for('login'))
-
+    cursor.close(); db.close()
+    
     return render_template("set_new_password.html")
 
 @app.route('/sponsors/browse')
