@@ -11,6 +11,7 @@ import csv
 from io import StringIO
 from flask import Response
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -59,41 +60,55 @@ def about():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-        #we need to hash the password later
-        #authenticate lives in logInFunctions/auth.py and checks db for matches and returns the role. It also logs the attempt to the db
+        # Authenticate 
         role, user_row = authenticate(username, password)
 
-        if role == 'driver':
-            print(f"User {username} is a DRIVER")
+        # If login is successful starts session & redirects
+        if role:
             session['user'] = username
             session['role'] = role
-            #return f"{username} is a driver."
-            return redirect(url_for('driver_profile'))
 
-        elif role == 'admin':
-            print(f"User {username} is an ADMIN")
-            session['user'] = username
-            session['role'] = role
-            #return f"{username} is a admin."
-            return redirect(url_for('admin_profile'))
+            if role == 'driver':
+                return redirect(url_for('driver_profile'))
+            elif role == 'admin':
+                return redirect(url_for('admin_profile'))
+            elif role == 'sponsor':
+                return redirect(url_for('sponsor_profile'))
 
-        elif role == 'sponsor':
-            print(f"User {username} is a SPONSOR")
-            session['user'] = username
-            session['role'] = role
-            #return f"{username} is a sponsor."
-            return redirect(url_for('sponsor_profile'))
+       
+        # If login failed, check for lockout reason
+        locked_until = None
+        try:
+            db = MySQLdb.connect(**db_config)
+            cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
+            # Check if user exists and has an active lockout in any table
+            for table in ['drivers', 'sponsor', 'admins']:
+                cursor.execute(f"SELECT locked_until FROM {table} WHERE username=%s", (username,))
+                row = cursor.fetchone()
+                if row and row.get('locked_until') and row['locked_until'] > datetime.now():
+                    locked_until = row['locked_until']
+                    break
+
+            cursor.close()
+            db.close()
+        except Exception:
+            # fallback if DB lookup fails
+            locked_until = None
+
+        #Render login.html with message
+        if locked_until:
+            msg = f"Your account is locked until {locked_until:%Y-%m-%d %H:%M:%S}. Please try again later."
         else:
-            print(f"User {username} does NOT EXIST")
-            #flash('Invalid credentials. Please try again.', 'error')
+            msg = "Invalid username or password."
 
-    # GET request – just render login page
+        return render_template("login.html", error=msg, last_username=username)
+
+    # GET request → render blank login form
     return render_template("login.html")
-
 @app.route('/logout')
 def logout():
     session.clear() #clears all data from session(user,role)
