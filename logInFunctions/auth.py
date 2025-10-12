@@ -75,12 +75,13 @@ def authenticate(username: str, password: str):
         lock_until = None
 
         if new_attempts >= FAILED_LIMIT:
-            lock_until = now + LOCKOUT_DURATION
-            cursor.execute(f"""
-                UPDATE {table}
-                SET failed_attempts=%s, locked_until=%s
-                WHERE username=%s
-            """, (new_attempts, lock_until, username))
+            if not user.get('locked_until') or user['locked_until'] <= now:
+                lock_until = now + LOCKOUT_DURATION
+                cursor.execute(f"""
+                    UPDATE {table}
+                    SET failed_attempts=%s, locked_until=%s
+                    WHERE username=%s
+                """, (new_attempts, lock_until, username))
             cursor.execute(
                 "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
                 ("lockout", f"{username} account locked until {lock_until}", username)
