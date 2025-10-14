@@ -342,11 +342,18 @@ def item_catalog():
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
+    username = session['user']
+
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # For now, show all products (later we can filter by sponsor)
+        # Get driver info to retrieve their points balance
+        cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
+        driver_info = cursor.fetchone()
+        points_balance = driver_info['points'] if driver_info else 0
+
+        # For now, show all products (can later filter by sponsor)
         cursor.execute("SELECT * FROM products")
         products = cursor.fetchall()
 
@@ -355,10 +362,8 @@ def item_catalog():
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    # Example: driver points balance stored in session
-    points_balance = session.get('points_balance', 0)
-
     return render_template("item_catalog.html", products=products, points_balance=points_balance)
+
 
 
 @app.route('/settings', methods=['GET', 'POST'])
