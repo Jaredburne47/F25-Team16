@@ -336,6 +336,30 @@ def delete_product(product_id):
 
     return redirect(url_for('catalog_manager'))
 
+@app.route('/item_catalog')
+def item_catalog():
+    # Ensure only drivers can access
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # For now, show all products (later we can filter by sponsor)
+        cursor.execute("SELECT * FROM products")
+        products = cursor.fetchall()
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    # Example: driver points balance stored in session
+    points_balance = session.get('points_balance', 0)
+
+    return render_template("item_catalog.html", products=products, points_balance=points_balance)
+
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():

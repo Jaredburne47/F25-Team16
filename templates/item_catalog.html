@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Item Catalog{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Item Catalog</h1>
+    <div class="text-end">
+        <h5>Your Points Balance: <span class="badge bg-success">{{ points_balance }}</span></h5>
+    </div>
+</div>
+
+<!-- Products Table -->
+<table class="table table-hover">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Item Name</th>
+            <th>Points Cost</th>
+            <th>Quantity Available</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <th>{{ product.product_id }}</th>
+            <td>{{ product.name }}</td>
+            <td>{{ product.points_cost }}</td>
+            <td>{{ product.quantity }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4" class="text-center">No items available</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -127,6 +127,12 @@
             <!-- Driver-only tabs -->
             {% if session.get('role') == 'driver' %}
               <li class="nav-item">
+                <a class="nav-link {% if request.path == '/item_catalog' %}active{% endif %}" 
+                   href="{{ url_for('item_catalog') }}">
+                   Item Catalog
+                </a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link {% if request.path == '/sponsors/browse' %}active{% endif %}" 
                    href="{{ url_for('sponsor_browse') }}">
                    Browse Sponsors
