@@ -314,6 +314,28 @@ def add_product():
 
     return redirect(url_for('catalog_manager'))
 
+@app.route('/delete_product/<int:product_id>', methods=['POST'])
+def delete_product(product_id):
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor_name = session['user']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+
+        # Only allow deletion if product belongs to this sponsor
+        cursor.execute("DELETE FROM products WHERE product_id=%s AND sponsor=%s", (product_id, sponsor_name))
+        db.commit()
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    return redirect(url_for('catalog_manager'))
+
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():

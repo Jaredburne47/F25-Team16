@@ -28,8 +28,14 @@
             <td>{{ product.points_cost }}</td>
             <td>{{ product.quantity }}</td>
             <td>
+                <!-- Edit button (placeholder) -->
                 <a href="#" class="btn btn-sm btn-warning">Edit</a>
-                <a href="#" class="btn btn-sm btn-danger">Delete</a>
+
+                <!-- Delete button (auto submit, no confirmation) -->
+                <form action="{{ url_for('delete_product', product_id=product.product_id) }}" 
+                      method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
             </td>
         </tr>
         {% else %}
