@@ -261,8 +261,30 @@ def admin_profile():
 
 
 @app.route('/dashboard')
-def dashboard():
-    return render_template("dashboard.html")
+def points_dashboard():
+    # Ensure only drivers can access
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Retrieve driver info to get their points balance
+        cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
+        driver_info = cursor.fetchone()
+        points_balance = driver_info['points'] if driver_info else 0
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    # Render template and pass points_balance
+    return render_template("dashboard.html", points_balance=points_balance)
+
 
 @app.route('/catalog_manager')
 def catalog_manager():
