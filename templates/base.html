@@ -94,10 +94,11 @@
               </li>
             {% endif %}
             <!-- END: DYNAMIC "MY PROFILE" LINK -->
-
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>
-            </li>
+            {% if session.get('role') == 'driver' %}
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>
+              </li>
+            {% endif %}
 
             <li class="nav-item">
               <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>

@@ -261,7 +261,7 @@ def admin_profile():
 
 
 @app.route('/dashboard')
-def points_dashboard():
+def dashboard():
     # Ensure only drivers can access
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
@@ -358,33 +358,69 @@ def delete_product(product_id):
 
     return redirect(url_for('catalog_manager'))
 
-@app.route('/item_catalog')
+@app.route('/item_catalog', methods=['GET'])
 def item_catalog():
-    # Ensure only drivers can access
+    # --- Access control ---
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Get driver info to retrieve their points balance
-        cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
-        driver_info = cursor.fetchone()
-        points_balance = driver_info['points'] if driver_info else 0
+    # --- Get driver’s point balance ---
+    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+    driver = cursor.fetchone()
+    points_balance = driver['points'] if driver else 0
 
-        # For now, show all products (can later filter by sponsor)
-        cursor.execute("SELECT * FROM products")
-        products = cursor.fetchall()
+    # --- Get search, sort, and filter parameters ---
+    search = request.args.get('search', '').strip()
+    sort = request.args.get('sort', 'points_cost_asc')
+    sponsor = request.args.get('sponsor', 'all')
 
-        cursor.close()
-        db.close()
-    except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
+    # --- Build SQL query dynamically ---
+    query = "SELECT * FROM products WHERE 1=1"
+    params = []
 
-    return render_template("item_catalog.html", products=products, points_balance=points_balance)
+    if search:
+        query += " AND (name LIKE %s OR sponsor LIKE %s)"
+        like_term = f"%{search}%"
+        params.extend([like_term, like_term])
+
+    if sponsor != 'all':
+        query += " AND sponsor = %s"
+        params.append(sponsor)
+
+    if sort == 'points_cost_desc':
+        query += " ORDER BY points_cost DESC"
+    elif sort == 'name_asc':
+        query += " ORDER BY name ASC"
+    elif sort == 'name_desc':
+        query += " ORDER BY name DESC"
+    else:
+        query += " ORDER BY points_cost ASC"
+
+    cursor.execute(query, tuple(params))
+    items = cursor.fetchall()
+
+    # --- Get unique sponsors for dropdown filter ---
+    cursor.execute("SELECT DISTINCT sponsor FROM products WHERE sponsor IS NOT NULL")
+    sponsors = [row['sponsor'] for row in cursor.fetchall()]
+
+    cursor.close()
+    db.close()
+
+    return render_template(
+        "item_catalog.html",
+        items=items,
+        points_balance=points_balance,
+        search=search,
+        sort=sort,
+        sponsor=sponsor,
+        sponsors=sponsors
+    )
+
 
 
 
