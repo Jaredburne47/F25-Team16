@@ -508,8 +508,17 @@ def settings():
                 logo_file = request.files.get('company_logo')
                 if logo_file and allowed_file(logo_file.filename):
                     logo_filename = secure_filename(f"{username}_logo_{logo_file.filename}")
-                    logo_path = os.path.join(app.config['LOGO_UPLOAD_FOLDER'], logo_filename)
+                    
+                    # Get the path from your app config
+                    logo_folder_path = app.config['LOGO_UPLOAD_FOLDER']
+                    
+                    # FIX: This line ensures the directory exists before saving.
+                    os.makedirs(logo_folder_path, exist_ok=True)
+                    
+                    # Now, construct the full file path for the image and save it
+                    logo_path = os.path.join(logo_folder_path, logo_filename)
                     logo_file.save(logo_path)
+                    
                     # Update the sponsor table with the new logo filename
                     cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s",
                                    (logo_filename, username))
