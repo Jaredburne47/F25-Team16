@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 
 
+
 app = Flask(__name__)
 #maybe make this more secret somehow?
 app.secret_key = os.urandom(24)
@@ -29,6 +30,7 @@ db_config = {
 
 # --- Upload configuration ---
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pics'
+app.config['LOGO_UPLOAD_FOLDER'] = 'static/uploads/company_logos'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
@@ -503,29 +505,14 @@ def settings():
 
             # --- SPRINT 7 DEBUGGING: Handle company logo upload ---
             if role == 'sponsor':
-                print("DEBUG: Role is sponsor. Checking for company_logo file...")
                 logo_file = request.files.get('company_logo')
-                
                 if logo_file and allowed_file(logo_file.filename):
-                    print(f"DEBUG: Company logo file found: {logo_file.filename}")
                     logo_filename = secure_filename(f"{username}_logo_{logo_file.filename}")
-                    
-                    # More robust path creation
-                    base_dir = os.path.abspath(os.path.dirname(__file__))
-                    logo_path = os.path.join(base_dir, 'static', 'uploads', 'company_logos', logo_filename)
-                    print(f"DEBUG: Attempting to save logo to: {logo_path}")
-
-                    try:
-                        logo_file.save(logo_path)
-                        print("DEBUG: Logo file saved successfully.")
-                        cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s", (logo_filename, username))
-                        print("DEBUG: Database query executed to update company_logo.")
-                    except Exception as e:
-                        print(f"ERROR: Could not save logo file or update DB. Error: {e}")
-                elif logo_file:
-                    print(f"DEBUG: Logo file found, but it is not an allowed file type: {logo_file.filename}")
-                else:
-                    print("DEBUG: No company logo file was included in the form submission.")
+                    logo_path = os.path.join(app.config['LOGO_UPLOAD_FOLDER'], logo_filename)
+                    logo_file.save(logo_path)
+                    # Update the sponsor table with the new logo filename
+                    cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s",
+                                   (logo_filename, username))
 
             
             db.commit()
