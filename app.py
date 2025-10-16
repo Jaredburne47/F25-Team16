@@ -1341,7 +1341,7 @@ def audit_logs():
         if action_filter == 'point history':
             query += " AND (action='add points' OR action='remove points')"
         elif action_filter == 'Log in attempt':
-            query += " AND (action='login_success' OR action='login_failed' OR action='lockout')"
+            query += " AND (action='login_success' OR action='login_failed' OR action='lockout' OR 1=1)"
         else:
             query += " AND action=%s"
             params.append(action_filter)
