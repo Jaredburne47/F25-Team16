@@ -12,6 +12,7 @@ from io import StringIO
 from flask import Response
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
+from flask import jsonify
 
 
 
@@ -74,10 +75,12 @@ def login():
             session['role'] = role
 
             if role == 'driver':
+                session['show_feedback_modal'] = True
                 return redirect(url_for('driver_profile'))
             elif role == 'admin':
                 return redirect(url_for('admin_profile'))
             elif role == 'sponsor':
+                session['show_feedback_modal'] = True
                 return redirect(url_for('sponsor_profile'))
 
        
@@ -1260,7 +1263,43 @@ def download_audit_logs():
     response.headers['Content-Disposition'] = 'attachment; filename=audit_logs.csv'
     return response
 
+# SPRINT 7, STEP 2: Add this new route to handle anonymous feedback submission
+@app.route('/submit_feedback', methods=['POST'])
+def submit_feedback():
+    if 'user' not in session or session.get('role') not in ['driver', 'sponsor']:
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 403
 
+    feedback_text = request.form.get('feedback_text')
+    if not feedback_text:
+        return jsonify({'status': 'error', 'message': 'Feedback cannot be empty'}), 400
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute(
+            "INSERT INTO feedback (user_role, feedback_text) VALUES (%s, %s)",
+            (session['role'], feedback_text)
+        )
+        db.commit()
+        cursor.close()
+        db.close()
+        
+        # Prevent the modal from showing again in this session
+        session['show_feedback_modal'] = False
+        
+        return jsonify({'status': 'success', 'message': 'Thank you for your feedback!'})
+
+    except Exception as e:
+        print(f"Feedback submission error: {e}") # For your server logs
+        return jsonify({'status': 'error', 'message': 'A server error occurred'}), 500
+
+
+# SPRINT 7: Route to handle dismissing the feedback modal
+@app.route('/dismiss_feedback', methods=['POST'])
+def dismiss_feedback():
+    if 'user' in session:
+        session['show_feedback_modal'] = False
+    return jsonify({'status': 'success'})
 
 @app.route('/admin/audit_logs', methods=['GET', 'POST'])
 def audit_logs():
