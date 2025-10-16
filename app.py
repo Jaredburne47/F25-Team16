@@ -486,7 +486,7 @@ def settings():
                         ("password reset", f"{username} reset their password successfully while logged in.", username)
                     )
 
-                    db.commit()
+                    # db.commit() // this was causing the logo error
                 else:
                     cursor.close()
                     db.close()
