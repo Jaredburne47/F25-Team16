@@ -720,9 +720,11 @@ def add_points():
 
         cursor.close()
         db.close()
+        flash(f'{points} points were successfully added to "{username}".', 'success')
 
     except Exception as e:
         return f"<h2>Error adding points:</h2><p>{e}</p>"
+        flash(f'Error adding points: {e}', 'danger')
 
     return render_template('points_added.html', username=username, points=points)
 
@@ -754,9 +756,11 @@ def remove_points():
 
         cursor.close()
         db.close()
+        flash(f'{points} points were successfully removed from "{username}".', 'success')
 
     except Exception as e:
         return f"<h2>Error removing points:</h2><p>{e}</p>"
+        flash(f'Error removing points: {e}', 'danger')
 
     return render_template('points_removed.html', username=username, points=points)
 
@@ -944,11 +948,13 @@ def apply_to_sponsor(sponsor):
 
         cursor.close()
         db.close()
+        flash(f'Your application to "{sponsor}" has been submitted successfully!', 'success')
 
         return redirect(url_for('driver_applications'))
 
     except Exception as e:
         return f"<h2>Error applying to sponsor:</h2><p>{e}</p>"
+        flash(f'An error occurred while applying: {e}', 'danger')
 
 @app.route('/applications')
 def driver_applications():
@@ -1172,6 +1178,7 @@ def bulk_update_applications():
     selected_apps = request.form.getlist('selected_apps')
 
     if not selected_apps:
+        flash('No applications were selected.', 'warning')
         return redirect(url_for('sponsor_applications'))
 
     new_status = 'accepted' if action == 'accept' else 'rejected'
@@ -1210,6 +1217,7 @@ def bulk_update_applications():
     
     cursor.close()
     db.close()
+    flash(f'Successfully updated {len(apps_info)} application(s) to "{new_status}".', 'success')
 
     return redirect(url_for('sponsor_applications'))
 
