@@ -92,7 +92,7 @@
             <label for="company_link" class="form-label">Company Link</label>
             <input type="text" class="form-control" id="company_link" name="company_link" value="{{ user.company_link }}">
         </div>
-        
+
         <!-- SPRINT 7 CHANGE: Company Logo Upload -->
         <div class="mb-3">
             <label for="company_logo" class="form-label">Company Logo</label><br>
@@ -102,6 +102,14 @@
                  class="img-thumbnail mb-2" 
                  style="max-width: 200px; max-height: 150px;"><br>
             <input type="file" class="form-control" id="company_logo" name="company_logo" accept="image/*" onchange="previewLogo(event)">
+        </div>
+
+        <!-- Add the Remove Logo checkbox -->
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="remove_logo" id="removeLogoCheck">
+            <label class="form-check-label" for="removeLogoCheck">
+                Remove current logo
+            </label>
         </div>
         {% endif %}
 
