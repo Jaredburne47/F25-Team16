@@ -501,6 +501,23 @@ def settings():
                 cursor.execute(f"UPDATE {table} SET profile_picture=%s WHERE username=%s",
                                (filename, username))
 
+            # SPRINT 7 CHANGE: Handle company logo upload
+            if role == 'sponsor':
+                logo_file = request.files.get('company_logo')
+                if logo_file and allowed_file(logo_file.filename):
+                    # Create a secure and unique filename for the logo
+                    logo_filename = secure_filename(f"{username}_logo_{logo_file.filename}")
+                    
+                    # Construct the correct path to the 'company_logos' folder
+                    logo_path = os.path.join(app.config['UPLOAD_FOLDER'], '..', 'company_logos', logo_filename)
+                    
+                    # Save the new logo file
+                    logo_file.save(logo_path)
+                    
+                    # Update the sponsor table with the new logo filename
+                    cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s",
+                                   (logo_filename, username))
+
             db.commit()
             cursor.close()
             db.close()
