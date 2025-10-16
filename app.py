@@ -501,23 +501,33 @@ def settings():
                 cursor.execute(f"UPDATE {table} SET profile_picture=%s WHERE username=%s",
                                (filename, username))
 
-            # SPRINT 7 CHANGE: Handle company logo upload
+            # --- SPRINT 7 DEBUGGING: Handle company logo upload ---
             if role == 'sponsor':
+                print("DEBUG: Role is sponsor. Checking for company_logo file...")
                 logo_file = request.files.get('company_logo')
+                
                 if logo_file and allowed_file(logo_file.filename):
-                    # Create a secure and unique filename for the logo
+                    print(f"DEBUG: Company logo file found: {logo_file.filename}")
                     logo_filename = secure_filename(f"{username}_logo_{logo_file.filename}")
                     
-                    # Construct the correct path to the 'company_logos' folder
-                    logo_path = os.path.join(app.config['UPLOAD_FOLDER'], '..', 'company_logos', logo_filename)
-                    
-                    # Save the new logo file
-                    logo_file.save(logo_path)
-                    
-                    # Update the sponsor table with the new logo filename
-                    cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s",
-                                   (logo_filename, username))
+                    # More robust path creation
+                    base_dir = os.path.abspath(os.path.dirname(__file__))
+                    logo_path = os.path.join(base_dir, 'static', 'uploads', 'company_logos', logo_filename)
+                    print(f"DEBUG: Attempting to save logo to: {logo_path}")
 
+                    try:
+                        logo_file.save(logo_path)
+                        print("DEBUG: Logo file saved successfully.")
+                        cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s", (logo_filename, username))
+                        print("DEBUG: Database query executed to update company_logo.")
+                    except Exception as e:
+                        print(f"ERROR: Could not save logo file or update DB. Error: {e}")
+                elif logo_file:
+                    print(f"DEBUG: Logo file found, but it is not an allowed file type: {logo_file.filename}")
+                else:
+                    print("DEBUG: No company logo file was included in the form submission.")
+
+            
             db.commit()
             cursor.close()
             db.close()
