@@ -37,7 +37,17 @@
                 <p><strong>Instagram:</strong> <a href="{{ user.instagram }}" target="_blank">{{ user.instagram }}</a></p>
             <hr>
 
+            <!-- SPRINT 7 CHANGE: Display the company logo if it exists -->
+            {% if user.company_logo %}
+            <div class="mb-3">
+                <img src="{{ url_for('static', filename='uploads/company_logos/' ~ user.company_logo) }}" 
+                     alt="{{ user.organization }} Logo" 
+                     class="img-fluid rounded" 
+                     style="max-height: 80px;">
+            </div>
+            {% endif %}
 
+            
             <h5>Organization Details</h5>
                 <p><strong>Organization:</strong> {{ user.organization }}</p>
                 <p><strong>Company Link:</strong> <a href="{{ user.company_link }}" target="_blank">{{ user.company_link }}</p>
