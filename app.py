@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect, url_for, request
+from flask import Flask, render_template, session, redirect, url_for, request, flash
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
@@ -483,6 +483,8 @@ def settings():
             confirm_password = request.form.get('confirm_password')
             if password and confirm_password:
                 if password == confirm_password:
+                    # FLASH AN ERROR: Send an error message if passwords don't match.
+                    flash('Passwords do not match. Please try again.', 'danger')
                     cursor.execute(f"UPDATE {table} SET password_hash=%s WHERE username=%s",
                                    (password, username))
                     
@@ -492,6 +494,7 @@ def settings():
                     )
 
                     # db.commit() // this was causing the logo error
+                    
                 else:
                     cursor.close()
                     db.close()
@@ -537,6 +540,7 @@ def settings():
 
             
             db.commit()
+            flash('Your profile has been updated successfully!', 'success')
             cursor.close()
             db.close()
             return redirect(url_for(profile_route))
