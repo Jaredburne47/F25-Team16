@@ -201,5 +201,77 @@
         }
       };
     </script>
+
+    <!-- START: SPRINT 7 FEEDBACK MODAL -->
+    {% if session.get('show_feedback_modal') %}
+    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalLabel">We Value Your Feedback!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Would you like to share any anonymous feedback about your experience? Your thoughts help us improve.</p>
+                    <form id="feedbackForm">
+                        <div class="mb-3">
+                            <textarea class="form-control" id="feedback_text" name="feedback_text" rows="4" placeholder="Enter your feedback here..." required></textarea>
+                        </div>
+                        <div id="feedback-alert-placeholder"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="submitFeedbackBtn">Submit Feedback</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+            const feedbackForm = document.getElementById('feedbackForm');
+            const submitBtn = document.getElementById('submitFeedbackBtn');
+            const alertPlaceholder = document.getElementById('feedback-alert-placeholder');
+            
+            // Show the modal automatically
+            feedbackModal.show();
+
+            // Handle form submission with Fetch API
+            submitBtn.addEventListener('click', function () {
+                const formData = new FormData(feedbackForm);
+                fetch('{{ url_for("submit_feedback") }}', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    let alertClass = data.status === 'success' ? 'alert-success' : 'alert-danger';
+                    alertPlaceholder.innerHTML = `<div class="alert ${alertClass}" role="alert">${data.message}</div>`;
+                    
+                    if(data.status === 'success') {
+                        setTimeout(() => {
+                            feedbackModal.hide();
+                        }, 1500); // Hide modal after 1.5 seconds on success
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alertPlaceholder.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
+                });
+            });
+
+            // Handle modal dismissal (when user clicks 'x' or 'Close')
+            document.getElementById('feedbackModal').addEventListener('hidden.bs.modal', function () {
+                // Tell the server not to show the modal again this session
+                fetch('{{ url_for("dismiss_feedback") }}', { method: 'POST' });
+            });
+        });
+    </script>
+    {% endif %}
+    <!-- SPRINT 7 FEEDBACK MODAL -->
+
+  
   </body>
 </html
