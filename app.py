@@ -503,25 +503,34 @@ def settings():
                 cursor.execute(f"UPDATE {table} SET profile_picture=%s WHERE username=%s",
                                (filename, username))
 
-            # --- SPRINT 7 DEBUGGING: Handle company logo upload ---
             if role == 'sponsor':
                 logo_file = request.files.get('company_logo')
+                remove_logo_checked = 'remove_logo' in request.form
+
+                # CASE 1: User is CHANGING the logo by uploading a new one
                 if logo_file and allowed_file(logo_file.filename):
                     logo_filename = secure_filename(f"{username}_logo_{logo_file.filename}")
-                    
-                    # Get the path from your app config
                     logo_folder_path = app.config['LOGO_UPLOAD_FOLDER']
-                    
-                    # FIX: This line ensures the directory exists before saving.
                     os.makedirs(logo_folder_path, exist_ok=True)
-                    
-                    # Now, construct the full file path for the image and save it
                     logo_path = os.path.join(logo_folder_path, logo_filename)
                     logo_file.save(logo_path)
-                    
-                    # Update the sponsor table with the new logo filename
-                    cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s",
-                                   (logo_filename, username))
+                    cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s", (logo_filename, username))
+                
+                # CASE 2: User is REMOVING the logo (and not uploading a new one)
+                elif remove_logo_checked:
+                    # First, get the current logo's filename to delete the file
+                    cursor.execute("SELECT company_logo FROM sponsor WHERE username=%s", (username,))
+                    result = cursor.fetchone()
+                    if result and result['company_logo']:
+                        logo_to_delete = result['company_logo']
+                        path_to_delete = os.path.join(app.config['LOGO_UPLOAD_FOLDER'], logo_to_delete)
+                        
+                        # Delete the physical file from the server if it exists
+                        if os.path.exists(path_to_delete):
+                            os.remove(path_to_delete)
+
+                    # Finally, set the database field to NULL
+                    cursor.execute("UPDATE sponsor SET company_logo = NULL WHERE username=%s", (username,))
 
             
             db.commit()
