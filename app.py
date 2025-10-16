@@ -630,6 +630,7 @@ def sponsors():
 @app.route('/remove_driver', methods=['POST'])
 def remove_driver():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        flash('You do not have permission to perform this action.', 'danger')
         return redirect(url_for('login'))
 
     username = request.form['username']
@@ -641,14 +642,17 @@ def remove_driver():
         db.commit()
         cursor.close()
         db.close()
+        flash(f'Driver "{username}" has been removed successfully.', 'success')
     except Exception as e:
         return f"<h2>Error removing driver:</h2><p>{e}</p>"
+        flash(f'Error removing driver: {e}', 'danger')
 
     return redirect(url_for('drivers'))
 
 @app.route('/remove_sponsor', methods=['POST'])
 def remove_sponsor():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        flash('You do not have permission to perform this action.', 'danger')
         return redirect(url_for('login'))
 
     username = request.form['username']
@@ -660,8 +664,10 @@ def remove_sponsor():
         db.commit()
         cursor.close()
         db.close()
+        flash(f'Sponsor "{username}" has been removed successfully.', 'success')
     except Exception as e:
         return f"<h2>Error removing sponsor:</h2><p>{e}</p>"
+        flash(f'Error removing sponsor: {e}', 'danger')
 
     return redirect(url_for('sponsors'))
 
@@ -669,6 +675,7 @@ def remove_sponsor():
 @app.route('/login_as_driver', methods=['POST'])
 def login_as_driver():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        flash('You do not have permission to perform this action.', 'danger')
         return redirect(url_for('login'))
 
     username = request.form['username']
