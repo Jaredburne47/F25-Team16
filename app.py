@@ -13,7 +13,9 @@ from flask import Response
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 from flask import jsonify
-
+import os, time, json, base64
+from urllib import request as urlreq
+from urllib import parse as urlparse
 
 
 app = Flask(__name__)
@@ -36,6 +38,163 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+EBAY_ENV = os.getenv("EBAY_ENV", "sandbox").lower()
+EBAY_BASE_URL = "https://api.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "https://api.ebay.com"
+EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID")
+EBAY_CLIENT_SECRET = os.getenv("EBAY_CLIENT_SECRET")
+EBAY_MARKETPLACE_ID = os.getenv("EBAY_MARKETPLACE_ID", "EBAY_US")
+
+class EbayClient:
+    _token = None
+    _token_exp = 0
+
+    def _have_valid_token(self):
+        return self._token and time.time() < (self._token_exp - 60)
+
+    def _refresh_token(self):
+        if not EBAY_CLIENT_ID or not EBAY_CLIENT_SECRET:
+            raise RuntimeError("Missing EBAY_CLIENT_ID/EBAY_CLIENT_SECRET")
+        url = f"{EBAY_BASE_URL}/identity/v1/oauth2/token"
+        data = urlparse.urlencode({
+            "grant_type": "client_credentials",
+            "scope": "https://api.ebay.com/oauth/api_scope"
+        }).encode("utf-8")
+
+        basic = base64.b64encode(f"{EBAY_CLIENT_ID}:{EBAY_CLIENT_SECRET}".encode()).decode()
+        req = urlreq.Request(url, data=data, method="POST")
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+        req.add_header("Authorization", f"Basic {basic}")
+
+        with urlreq.urlopen(req, timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+
+        self._token = payload["access_token"]
+        self._token_exp = time.time() + int(payload.get("expires_in", 7200))
+
+    def _headers(self):
+        if not self._have_valid_token():
+            self._refresh_token()
+        return {
+            "Authorization": f"Bearer {self._token}",
+            "X-EBAY-C-MARKETPLACE-ID": EBAY_MARKETPLACE_ID
+        }
+
+    def _get_json(self, url):
+        req = urlreq.Request(url, method="GET")
+        for k, v in self._headers().items():
+            req.add_header(k, v)
+        with urlreq.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    def search(self, q, limit=20, category_ids=None, filters=None, offset=0):
+        params = {"q": q, "limit": str(limit), "offset": str(offset)}
+        if category_ids:
+            params["category_ids"] = category_ids
+        if filters:
+            params["filter"] = filters  # e.g. price:[50..300],conditions:{NEW},buyingOptions:{FIXED_PRICE}
+        url = f"{EBAY_BASE_URL}/buy/browse/v1/item_summary/search?{urlparse.urlencode(params)}"
+        return self._get_json(url)
+
+    def item_detail(self, item_id):
+        url = f"{EBAY_BASE_URL}/buy/browse/v1/item/{item_id}"
+        return self._get_json(url)
+
+ebay = EbayClient()
+
+@app.get("/api/sponsor/ebay/search")
+def sponsor_ebay_search():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    q = request.args.get("q")
+    if not q:
+        return jsonify({"error": "Missing ?q"}), 400
+
+    limit = int(request.args.get("limit", 20))
+    offset = int(request.args.get("offset", 0))
+    category_ids = request.args.get("category_ids")
+    filters = request.args.get("filter")
+
+    try:
+        data = ebay.search(q=q, limit=limit, category_ids=category_ids, filters=filters, offset=offset)
+    except Exception as e:
+        return jsonify({"error": f"eBay search failed: {e}"}), 502
+
+    items = []
+    for s in data.get("itemSummaries", []):
+        items.append({
+            "itemId": s.get("itemId"),
+            "title": s.get("title"),
+            "price": s.get("price"),
+            "image": (s.get("image") or {}).get("imageUrl"),
+            "buyingOptions": s.get("buyingOptions"),
+            "condition": s.get("condition"),
+            "seller": (s.get("seller") or {}).get("username"),
+        })
+    return jsonify({"total": data.get("total", 0), "items": items})
+
+@app.post("/api/sponsor/catalog/add")
+def sponsor_add_to_catalog():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    body = request.get_json(silent=True) or {}
+    item_id = body.get("item_id")
+    points_cost = body.get("points_cost")
+    quantity = body.get("quantity_limit")  # stored in products.quantity
+    sponsor_name = session['user']
+
+    if not item_id or points_cost is None:
+        return jsonify({"error": "item_id and points_cost are required"}), 400
+
+    # Fetch detail to cache title/image/price
+    try:
+        d = ebay.item_detail(item_id)
+    except Exception as e:
+        return jsonify({"error": f"eBay item lookup failed: {e}"}), 502
+
+    title = (d.get("title") or "Untitled")[:255]
+    image_url = (d.get("image") or {}).get("imageUrl")
+    price = d.get("price") or {}
+    price_value = price.get("value")
+    price_currency = price.get("currency")
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute(
+            """
+            INSERT INTO products
+                (name, sponsor, points_cost, quantity, source_type, ebay_item_id, image_url, price_value, price_currency)
+            VALUES
+                (%s,   %s,      %s,          %s,       'ebay',      %s,           %s,        %s,           %s)
+            """,
+            (title, sponsor_name, int(points_cost), int(quantity) if quantity is not None else 0,
+             d.get("itemId"), image_url, price_value, price_currency)
+        )
+        db.commit()
+        cursor.execute("SELECT LAST_INSERT_ID() AS id;")
+        new_id = cursor.fetchone()[0]
+        cursor.close(); db.close()
+    except Exception as e:
+        return jsonify({"error": f"Database error inserting product: {e}"}), 500
+
+    return jsonify({
+        "ok": True,
+        "product": {
+            "product_id": new_id,
+            "name": title,
+            "sponsor": sponsor_name,
+            "points_cost": int(points_cost),
+            "quantity": int(quantity) if quantity is not None else 0,
+            "source_type": "ebay",
+            "image_url": image_url,
+            "price": {"value": price_value, "currency": price_currency},
+            "ebay_item_id": d.get("itemId")
+        }
+    })
+
 
 @app.route('/')
 def home():

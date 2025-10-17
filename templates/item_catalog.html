@@ -3,60 +3,66 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Item Catalog</h1>
-    <div>
-        <h5>Your Points Balance:
-            <span class="badge bg-success">{{ points_balance }}</span>
-        </h5>
-    </div>
+  <h1>Item Catalog</h1>
+  <div>
+    <h5>Your Points Balance:
+      <span class="badge bg-success">{{ points_balance }}</span>
+    </h5>
+  </div>
 </div>
 
 <!-- Search / Filter Form -->
 <form method="get" class="row g-3 mb-4">
-    <div class="col-md-4">
-        <input type="text" name="search" class="form-control" placeholder="Search products or sponsors..." value="{{ search }}">
-    </div>
+  <div class="col-md-4">
+    <input type="text" name="search" class="form-control" placeholder="Search products or sponsors..." value="{{ search }}">
+  </div>
 
-    <div class="col-md-3">
-        <select name="sponsor" class="form-select">
-            <option value="all">All Sponsors</option>
-            {% for s in sponsors %}
-            <option value="{{ s }}" {% if sponsor == s %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-        </select>
-    </div>
+  <div class="col-md-3">
+    <select name="sponsor" class="form-select">
+      <option value="all">All Sponsors</option>
+      {% for s in sponsors %}
+      <option value="{{ s }}" {% if sponsor == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
 
-    <div class="col-md-3">
-        <select name="sort" class="form-select">
-            <option value="points_cost_asc" {% if sort == 'points_cost_asc' %}selected{% endif %}>Sort by: Cost (Low → High)</option>
-            <option value="points_cost_desc" {% if sort == 'points_cost_desc' %}selected{% endif %}>Cost (High → Low)</option>
-            <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name (A → Z)</option>
-            <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name (Z → A)</option>
-        </select>
-    </div>
+  <div class="col-md-3">
+    <select name="sort" class="form-select">
+      <option value="points_cost_asc" {% if sort == 'points_cost_asc' %}selected{% endif %}>Sort by: Cost (Low → High)</option>
+      <option value="points_cost_desc" {% if sort == 'points_cost_desc' %}selected{% endif %}>Cost (High → Low)</option>
+      <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name (A → Z)</option>
+      <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name (Z → A)</option>
+    </select>
+  </div>
 
-    <div class="col-md-2">
-        <button class="btn btn-primary w-100" type="submit">Apply</button>
-    </div>
+  <div class="col-md-2">
+    <button class="btn btn-primary w-100" type="submit">Apply</button>
+  </div>
 </form>
 
 <!-- Products List -->
 <div class="row">
-    {% for item in items %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">{{ item.name }}</h5>
-                <p class="card-text text-muted">{{ item.sponsor }}</p>
-                <p><strong>{{ item.points_cost }} pts</strong></p>
-                <p class="text-muted">Quantity: {{ item.quantity }}</p>
-            </div>
-        </div>
+  {% for item in items %}
+  <div class="col-md-4 mb-4">
+    <div class="card h-100 shadow-sm">
+      {% if item.image_url %}
+        <img src="{{ item.image_url }}" class="card-img-top" style="object-fit:contain;height:200px;">
+      {% endif %}
+      <div class="card-body">
+        <h5 class="card-title">{{ item.name }}</h5>
+        <p class="text-muted small mb-1">Sponsor: {{ item.sponsor }}</p>
+        <p><strong>{{ item.points_cost }} pts</strong></p>
+        {% if item.price_value %}
+          <p class="text-muted">Ref: ${{ item.price_value }} {{ item.price_currency }}</p>
+        {% endif %}
+        <p class="text-muted small">Quantity: {{ item.quantity }}</p>
+      </div>
     </div>
-    {% endfor %}
+  </div>
+  {% endfor %}
 
-    {% if items|length == 0 %}
-    <p class="text-center text-muted mt-4">No products found.</p>
-    {% endif %}
+  {% if items|length == 0 %}
+  <p class="text-center text-muted mt-4">No products found.</p>
+  {% endif %}
 </div>
 {% endblock %}
