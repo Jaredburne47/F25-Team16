@@ -5,6 +5,11 @@
 <div class="login-container">
   <h2>Login</h2>
   
+  {% if request.args.get('msg') %}
+    <div class="alert alert-{{ request.args.get('level','info') }} mt-3">
+      {{ request.args.get('msg') }}
+    </div>
+  {% endif %}
   
   <!-- Shows error messages -->
   {% if error %}
