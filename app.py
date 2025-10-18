@@ -109,7 +109,7 @@ def auto_logout_inactive_users():
     """
     Automatically log out users after 15 minutes of inactivity.
     """
-    app.permanent_session_lifetime = timedelta(minutes=15)
+    app.permanent_session_lifetime = timedelta(seconds=15)
     session.modified = True
 
     if 'user' in session and 'role' in session:
