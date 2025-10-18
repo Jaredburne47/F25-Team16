@@ -12,7 +12,7 @@ import csv
 from io import StringIO
 from flask import Response
 from werkzeug.utils import secure_filename
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import jsonify
 import os, time, json, base64
 from urllib import request as urlreq
@@ -109,23 +109,31 @@ def auto_logout_inactive_users():
     """
     Automatically log out users after 15 minutes of inactivity.
     """
-    # Set the max inactive lifetime
     app.permanent_session_lifetime = timedelta(minutes=15)
     session.modified = True
 
-    # Only run this check for logged-in users
     if 'user' in session and 'role' in session:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)  # always timezone-aware UTC
+
         last = session.get('last_activity')
+        if isinstance(last, str):
+            # Convert string back to datetime if Flask serialized it
+            try:
+                last = datetime.fromisoformat(last)
+            except Exception:
+                last = None
 
-        # If we have a timestamp and the gap exceeds 15 minutes → logout
-        if last and (now - last) > timedelta(minutes=15):
-            session.clear()
-            flash("You were logged out due to inactivity.", "warning")
-            return redirect(url_for('login'))
+        # Compare safely (normalize to UTC)
+        if isinstance(last, datetime):
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            if now - last > timedelta(minutes=15):
+                session.clear()
+                flash("You were logged out due to inactivity.", "warning")
+                return redirect(url_for('login'))
 
-        # Otherwise, refresh the last-activity timestamp
-        session['last_activity'] = now
+        # Store as ISO string (portable)
+        session['last_activity'] = now.isoformat()
 
 @app.get("/api/sponsor/ebay/search")
 def sponsor_ebay_search():
