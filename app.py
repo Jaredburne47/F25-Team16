@@ -127,8 +127,9 @@ def auto_logout_inactive_users():
         if isinstance(last, datetime):
             if last.tzinfo is None:
                 last = last.replace(tzinfo=timezone.utc)
-            if now - last > timedelta(minutes=15):
+            if now - last > timedelta(seconds=15):
                 # Remove only user info, keep flash storage alive
+                flash("You were logged out due to inactivity.", "warning")
                 session.pop('user', None)
                 session.pop('role', None)
                 session.pop('last_activity', None)
