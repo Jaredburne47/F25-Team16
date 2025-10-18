@@ -133,7 +133,7 @@ def auto_logout_inactive_users():
                 session.pop('role', None)
                 session.pop('last_activity', None)
                 
-                return redirect(url_for('login'), msg='You were logged out due to inactivity.', level='warning'))
+                return redirect(url_for('login', msg='You were logged out due to inactivity.', level='warning'))
 
         # Store as ISO string (portable)
         session['last_activity'] = now.isoformat()
