@@ -5,6 +5,17 @@
 <div class="login-container">
   <h2>Login</h2>
   
+  <!-- Shows flashed alerts (e.g., inactivity logout) -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} flash-box">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  
   <!-- Shows error messages -->
   {% if error %}
     <div class="alert alert-danger" style="background:#f8d7da; color:#721c24; padding:10px; border-radius:5px; margin-bottom:1rem;">
