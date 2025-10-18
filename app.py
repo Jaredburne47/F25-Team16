@@ -5,6 +5,7 @@ from emailScripts import welcomeEmail
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
+from emailScripts.lockEmail import send_lock_email
 import secrets
 import os
 import csv
@@ -263,6 +264,28 @@ def login():
             # fallback if DB lookup fails
             locked_until = None
 
+        if locked_until:
+            try:
+                db = MySQLdb.connect(**db_config)
+                cursor = db.cursor(MySQLdb.cursors.DictCursor)
+                # Find the user's email (and role) by username across all tables
+                cursor.execute("""
+                    SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
+                    UNION ALL
+                    SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
+                    UNION ALL
+                    SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
+                    LIMIT 1
+                """, (username, username, username))
+                r = cursor.fetchone()
+                cursor.close(); db.close()
+
+                if r and r.get('email'):
+                    locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
+                    send_lock_email(r['email'], username, r.get('role', 'user'), locked_str)
+            except Exception:
+                pass  # don't block login page rendering if email fails
+        
         #Render login.html with message
         if locked_until:
             msg = (
