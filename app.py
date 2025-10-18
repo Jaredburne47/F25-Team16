@@ -21,7 +21,7 @@ from urllib import parse as urlparse
 
 app = Flask(__name__)
 #maybe make this more secret somehow?
-app.secret_key = "team16-super-secret-key"
+app.secret_key = os.urandom(24)
 
 # --- Database configuration ---
 db_config = {
