@@ -40,30 +40,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- Route to logout inactive users ---
-@app.before_request
-def auto_logout_inactive_users():
-    """
-    Automatically log out users after 15 minutes of inactivity.
-    """
-    # Set the max inactive lifetime
-    app.permanent_session_lifetime = timedelta(minutes=15)
-    session.modified = True
-
-    # Only run this check for logged-in users
-    if 'user' in session and 'role' in session:
-        now = datetime.now()
-        last = session.get('last_activity')
-
-        # If we have a timestamp and the gap exceeds 15 minutes → logout
-        if last and (now - last) > timedelta(minutes=15):
-            session.clear()
-            flash("You were logged out due to inactivity.", "warning")
-            return redirect(url_for('login'))
-
-        # Otherwise, refresh the last-activity timestamp
-        session['last_activity'] = now
-
 EBAY_ENV = os.getenv("EBAY_ENV", "sandbox").lower()
 EBAY_BASE_URL = "https://api.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "https://api.ebay.com"
 EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID")
@@ -126,6 +102,30 @@ class EbayClient:
         return self._get_json(url)
 
 ebay = EbayClient()
+
+# --- Route to logout inactive users ---
+@app.before_request
+def auto_logout_inactive_users():
+    """
+    Automatically log out users after 15 minutes of inactivity.
+    """
+    # Set the max inactive lifetime
+    app.permanent_session_lifetime = timedelta(minutes=15)
+    session.modified = True
+
+    # Only run this check for logged-in users
+    if 'user' in session and 'role' in session:
+        now = datetime.now()
+        last = session.get('last_activity')
+
+        # If we have a timestamp and the gap exceeds 15 minutes → logout
+        if last and (now - last) > timedelta(minutes=15):
+            session.clear()
+            flash("You were logged out due to inactivity.", "warning")
+            return redirect(url_for('login'))
+
+        # Otherwise, refresh the last-activity timestamp
+        session['last_activity'] = now
 
 @app.get("/api/sponsor/ebay/search")
 def sponsor_ebay_search():
