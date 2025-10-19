@@ -385,70 +385,47 @@ def sponsor_profile():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Dashboard data
+    # --- Get sponsor information ---
+    cursor.execute("SELECT * FROM sponsor WHERE username=%s", (username,))
+    user_info = cursor.fetchone()
+
+    # --- Sponsorship stats ---
     cursor.execute("""
-        SELECT COUNT(*) as driver_count 
-        FROM driverApplications 
+        SELECT COUNT(*) AS driver_count
+        FROM driverApplications
         WHERE sponsor=%s AND status='accepted'
     """, (username,))
     driver_count = cursor.fetchone()['driver_count']
 
     cursor.execute("""
-        SELECT SUM(d.points) as total_points 
-        FROM drivers d 
-        JOIN driverApplications da ON d.username = da.driverUsername 
+        SELECT SUM(d.points) AS total_points
+        FROM drivers d
+        JOIN driverApplications da ON d.username = da.driverUsername
         WHERE da.sponsor=%s AND da.status='accepted'
     """, (username,))
     total_points = cursor.fetchone()['total_points'] or 0
 
+    # --- Driver list for sponsor ---
     cursor.execute("""
-        SELECT d.username, d.first_name, d.last_name, d.points 
-        FROM drivers d 
-        JOIN driverApplications da ON d.username = da.driverUsername 
-        WHERE da.sponsor=%s AND da.status='accepted' 
+        SELECT d.username, d.first_name, d.last_name, d.points
+        FROM drivers d
+        JOIN driverApplications da ON d.username = da.driverUsername
+        WHERE da.sponsor=%s AND da.status='accepted'
         ORDER BY d.points DESC
     """, (username,))
     driver_list = cursor.fetchall()
 
-    # --- Profile update (POST) ---
-    if request.method == 'POST':
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        address = request.form.get('address')
-        phone = request.form.get('phone')
-        organization = request.form.get('organization')
-
-        min_points = request.form.get('min_points', type=int)
-        max_points = request.form.get('max_points', type=int)
-
-        if min_points is not None and max_points is not None:
-            if min_points < 0 or max_points < 0:
-                flash("Points cannot be negative.", "warning")
-            elif min_points > max_points:
-                flash("Minimum points cannot exceed maximum points.", "warning")
-            else:
-                cursor.execute("""
-                    UPDATE sponsor
-                    SET min_points=%s, max_points=%s
-                    WHERE username=%s
-                """, (min_points, max_points, username))
-                db.commit()
-                flash("Point limits updated successfully.", "success")
-
-        cursor.execute("""
-            UPDATE sponsor
-            SET first_name=%s, last_name=%s, address=%s, phone=%s, organization=%s
-            WHERE username=%s
-        """, (first_name, last_name, address, phone, organization, username))
-        db.commit()
-
-    cursor.execute("SELECT * FROM sponsor WHERE username=%s", (username,))
-    user_info = cursor.fetchone()
-
     cursor.close()
     db.close()
 
-    return render_template("sponsor_profile.html", user=user_info, driver_count=driver_count, total_points=total_points, driver_list=driver_list)
+    # Only display info, not update
+    return render_template(
+        "sponsor_profile.html",
+        user=user_info,
+        driver_count=driver_count,
+        total_points=total_points,
+        driver_list=driver_list
+    )
     
 
 
@@ -668,7 +645,7 @@ def settings():
     username = session['user']
     role = session['role']
 
-    table = {'driver':'drivers', 'sponsor':'sponsor', 'admin':'admins'}.get(role)
+    table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}.get(role)
     profile_route = f"{role}_profile"
 
     try:
@@ -698,9 +675,27 @@ def settings():
                     update_query += f"{f}=%s, "
                     update_fields.append(request.form.get(f))
 
+                # ✅ Add support for point limits
+                min_points = request.form.get('min_points', type=int)
+                max_points = request.form.get('max_points', type=int)
+
+                if min_points is not None and max_points is not None:
+                    if min_points < 0 or max_points < 0:
+                        flash("Points cannot be negative.", "warning")
+                    elif min_points > max_points:
+                        flash("Minimum points cannot exceed maximum points.", "warning")
+                    else:
+                        cursor.execute("""
+                            UPDATE sponsor
+                            SET min_points=%s, max_points=%s
+                            WHERE username=%s
+                        """, (min_points, max_points, username))
+                        db.commit()
+                        flash("Point limits updated successfully.", "success")
+
             # --- Social media ---
-            if role in ['driver','sponsor']:
-                for f in ['twitter','facebook','instagram']:
+            if role in ['driver', 'sponsor']:
+                for f in ['twitter', 'facebook', 'instagram']:
                     update_query += f"{f}=%s, "
                     update_fields.append(request.form.get(f))
 
@@ -714,22 +709,14 @@ def settings():
             confirm_password = request.form.get('confirm_password')
             if password and confirm_password:
                 if password == confirm_password:
-                    # FLASH AN ERROR: Send an error message if passwords don't match.
-                    flash('Passwords do not match. Please try again.', 'danger')
                     cursor.execute(f"UPDATE {table} SET password_hash=%s WHERE username=%s",
                                    (password, username))
-                    
                     cursor.execute(
                         "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
                         ("password reset", f"{username} reset their password successfully while logged in.", username)
                     )
-
-                    # db.commit() // this was causing the logo error
-                    
                 else:
-                    cursor.close()
-                    db.close()
-                    return "<h3>Passwords do not match.</h3>"
+                    flash('Passwords do not match. Please try again.', 'danger')
 
             # --- Profile picture ---
             file = request.files.get('profile_picture')
@@ -740,11 +727,11 @@ def settings():
                 cursor.execute(f"UPDATE {table} SET profile_picture=%s WHERE username=%s",
                                (filename, username))
 
+            # --- Sponsor logo logic (unchanged) ---
             if role == 'sponsor':
                 logo_file = request.files.get('company_logo')
                 remove_logo_checked = 'remove_logo' in request.form
 
-                # CASE 1: User is CHANGING the logo by uploading a new one
                 if logo_file and allowed_file(logo_file.filename):
                     logo_filename = secure_filename(f"{username}_logo_{logo_file.filename}")
                     logo_folder_path = app.config['LOGO_UPLOAD_FOLDER']
@@ -752,31 +739,23 @@ def settings():
                     logo_path = os.path.join(logo_folder_path, logo_filename)
                     logo_file.save(logo_path)
                     cursor.execute("UPDATE sponsor SET company_logo=%s WHERE username=%s", (logo_filename, username))
-                
-                # CASE 2: User is REMOVING the logo (and not uploading a new one)
+
                 elif remove_logo_checked:
-                    # First, get the current logo's filename to delete the file
                     cursor.execute("SELECT company_logo FROM sponsor WHERE username=%s", (username,))
                     result = cursor.fetchone()
                     if result and result['company_logo']:
-                        logo_to_delete = result['company_logo']
-                        path_to_delete = os.path.join(app.config['LOGO_UPLOAD_FOLDER'], logo_to_delete)
-                        
-                        # Delete the physical file from the server if it exists
+                        path_to_delete = os.path.join(app.config['LOGO_UPLOAD_FOLDER'], result['company_logo'])
                         if os.path.exists(path_to_delete):
                             os.remove(path_to_delete)
+                    cursor.execute("UPDATE sponsor SET company_logo=NULL WHERE username=%s", (username,))
 
-                    # Finally, set the database field to NULL
-                    cursor.execute("UPDATE sponsor SET company_logo = NULL WHERE username=%s", (username,))
-
-            
             db.commit()
             flash('Your profile has been updated successfully!', 'success')
             cursor.close()
             db.close()
             return redirect(url_for(profile_route))
 
-        # GET request: fetch current info
+        # GET request
         cursor.execute(f"SELECT * FROM {table} WHERE username=%s", (username,))
         user = cursor.fetchone()
         cursor.close()
