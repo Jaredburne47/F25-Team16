@@ -109,7 +109,7 @@ def auto_logout_inactive_users():
     """
     Automatically log out users after 15 minutes of inactivity.
     """
-    app.permanent_session_lifetime = timedelta(seconds=15)
+    app.permanent_session_lifetime = timedelta(minutes=15)
     session.modified = True
 
     if 'user' in session and 'role' in session:
@@ -127,7 +127,7 @@ def auto_logout_inactive_users():
         if isinstance(last, datetime):
             if last.tzinfo is None:
                 last = last.replace(tzinfo=timezone.utc)
-            if now - last > timedelta(seconds=15):
+            if now - last > timedelta(minutes=15):
                 # Remove only user info, keep flash storage alive
                 flash("You were logged out due to inactivity.", "warning")
                 session.pop('user', None)
@@ -385,10 +385,7 @@ def sponsor_profile():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # ===================================================================
-    # SPRINT 4 CHANGE: FETCH SPONSOR DASHBOARD DATA
-    # These queries get the summary metrics and driver list for the sponsor.
-    # ===================================================================
+    # Dashboard data
     cursor.execute("""
         SELECT COUNT(*) as driver_count 
         FROM driverApplications 
@@ -412,15 +409,31 @@ def sponsor_profile():
         ORDER BY d.points DESC
     """, (username,))
     driver_list = cursor.fetchall()
-    # ===================================================================
 
-
+    # --- Profile update (POST) ---
     if request.method == 'POST':
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
-        address = request.form['address']
-        phone = request.form['phone']
-        organization = request.form['organization']
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        address = request.form.get('address')
+        phone = request.form.get('phone')
+        organization = request.form.get('organization')
+
+        min_points = request.form.get('min_points', type=int)
+        max_points = request.form.get('max_points', type=int)
+
+        if min_points is not None and max_points is not None:
+            if min_points < 0 or max_points < 0:
+                flash("Points cannot be negative.", "warning")
+            elif min_points > max_points:
+                flash("Minimum points cannot exceed maximum points.", "warning")
+            else:
+                cursor.execute("""
+                    UPDATE sponsor
+                    SET min_points=%s, max_points=%s
+                    WHERE username=%s
+                """, (min_points, max_points, username))
+                db.commit()
+                flash("Point limits updated successfully.", "success")
 
         cursor.execute("""
             UPDATE sponsor
@@ -918,33 +931,41 @@ def add_points():
     reason = request.form.get('reason', '(no reason provided)')
     performed_by = session['user']
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor()
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # --- Add points to driver ---
-        cursor.execute(
-            "UPDATE drivers SET points = points + %s WHERE username = %s;",
-            (points, username)
-        )
+    # Fetch sponsor limits
+    cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (performed_by,))
+    sponsor = cursor.fetchone()
+    if not sponsor:
+        flash("Sponsor not found.", "danger")
+        return redirect(url_for('drivers'))
+
+    # Fetch driver’s current points
+    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+    driver = cursor.fetchone()
+    if not driver:
+        flash("Driver not found.", "danger")
+        return redirect(url_for('drivers'))
+
+    new_total = driver['points'] + points
+
+    # Enforce limits
+    if new_total > sponsor['max_points']:
+        flash(f"Cannot add points — this would exceed your max of {sponsor['max_points']} points.", "warning")
+    else:
+        cursor.execute("UPDATE drivers SET points = %s WHERE username = %s", (new_total, username))
         db.commit()
-
-        # --- Log the action ---
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
             ("add points", f"{performed_by} added {points} points to {username}. Reason: {reason}", performed_by)
         )
         db.commit()
-
-        cursor.close()
-        db.close()
         flash(f'{points} points were successfully added to "{username}".', 'success')
 
-    except Exception as e:
-        return f"<h2>Error adding points:</h2><p>{e}</p>"
-        flash(f'Error adding points: {e}', 'danger')
-
-    return render_template('points_added.html', username=username, points=points)
+    cursor.close()
+    db.close()
+    return redirect(url_for('drivers'))
 
 
 @app.route('/remove_points', methods=['POST'])
@@ -954,33 +975,41 @@ def remove_points():
     reason = request.form.get('reason', '(no reason provided)')
     performed_by = session['user']
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor()
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # --- Remove points from driver ---
-        cursor.execute(
-            "UPDATE drivers SET points = points - %s WHERE username = %s;",
-            (points, username)
-        )
+    # Fetch sponsor limits
+    cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (performed_by,))
+    sponsor = cursor.fetchone()
+    if not sponsor:
+        flash("Sponsor not found.", "danger")
+        return redirect(url_for('drivers'))
+
+    # Fetch driver’s current points
+    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+    driver = cursor.fetchone()
+    if not driver:
+        flash("Driver not found.", "danger")
+        return redirect(url_for('drivers'))
+
+    new_total = driver['points'] - points
+
+    # Enforce limits
+    if new_total < sponsor['min_points']:
+        flash(f"Cannot remove points — this would go below your min of {sponsor['min_points']} points.", "warning")
+    else:
+        cursor.execute("UPDATE drivers SET points = %s WHERE username = %s", (new_total, username))
         db.commit()
-
-        # --- Log the action ---
         cursor.execute(
             "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
             ("remove points", f"{performed_by} removed {points} points from {username}. Reason: {reason}", performed_by)
         )
         db.commit()
-
-        cursor.close()
-        db.close()
         flash(f'{points} points were successfully removed from "{username}".', 'success')
 
-    except Exception as e:
-        return f"<h2>Error removing points:</h2><p>{e}</p>"
-        flash(f'Error removing points: {e}', 'danger')
-
-    return render_template('points_removed.html', username=username, points=points)
+    cursor.close()
+    db.close()
+    return redirect(url_for('drivers'))
 
 
 
