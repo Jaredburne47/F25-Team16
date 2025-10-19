@@ -3,186 +3,188 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Edit Profile</h1>
-    <hr>
+  <h1>Edit Profile</h1>
+  <hr>
 
-    <form method="POST" enctype="multipart/form-data">
-        <!-- Profile Picture -->
-        <div class="mb-3 text-center">
-            <img id="profilePreview" 
-                 src="{{ url_for('static', filename='uploads/profile_pics/' ~ (user.profile_picture if user.profile_picture else 'Default.jpg')) }}" 
-                 alt="Profile Picture" 
-                 class="img-thumbnail rounded-circle mb-2" 
-                 width="150" height="150"><br>
-            <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" onchange="previewImage(event)">
+  <!-- ========================= -->
+  <!-- Profile + Password (Form) -->
+  <!-- ========================= -->
+  <form method="POST" enctype="multipart/form-data">
+    <!-- Profile Picture -->
+    <div class="mb-3 text-center">
+      <img id="profilePreview"
+           src="{{ url_for('static', filename='uploads/profile_pics/' ~ (user.profile_picture if user.profile_picture else 'Default.jpg')) }}"
+           alt="Profile Picture"
+           class="img-thumbnail rounded-circle mb-2"
+           width="150" height="150"><br>
+      <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" onchange="previewImage(event)">
+    </div>
+
+    <!-- Username (read-only) -->
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" readonly>
+    </div>
+
+    <!-- Names -->
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="first_name" class="form-label">First Name</label>
+        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="last_name" class="form-label">Last Name</label>
+        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="mb-3">
+      <label for="address" class="form-label">Address</label>
+      <input type="text" class="form-control" id="address" name="address" value="{{ user.address }}">
+    </div>
+    <div class="mb-3">
+      <label for="phone" class="form-label">Phone Number</label>
+      <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone }}">
+    </div>
+
+    {% if session.get('role') in ['sponsor', 'driver'] %}
+      <!-- Socials -->
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label for="twitter" class="form-label">Twitter</label>
+          <input type="text" class="form-control" id="twitter" name="twitter" value="{{ user.twitter }}">
         </div>
-
-        <!-- Username -->
-        <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" 
-                   value="{{ user.username }}" readonly>
+        <div class="col-md-4 mb-3">
+          <label for="facebook" class="form-label">Facebook</label>
+          <input type="text" class="form-control" id="facebook" name="facebook" value="{{ user.facebook }}">
         </div>
-
-        <!-- First Name -->
-        <div class="mb-3">
-            <label for="first_name" class="form-label">First Name</label>
-            <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+        <div class="col-md-4 mb-3">
+          <label for="instagram" class="form-label">Instagram</label>
+          <input type="text" class="form-control" id="instagram" name="instagram" value="{{ user.instagram }}">
         </div>
+      </div>
+    {% endif %}
 
-        <!-- Last Name -->
-        <div class="mb-3">
-            <label for="last_name" class="form-label">Last Name</label>
-            <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+    {% if session.get('role') == 'driver' %}
+      <!-- Vehicle -->
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label for="vehicle_make" class="form-label">Vehicle Make</label>
+          <input type="text" class="form-control" id="vehicle_make" name="vehicle_make" value="{{ user.vehicle_make }}">
         </div>
-
-        <!-- Address -->
-        <div class="mb-3">
-            <label for="address" class="form-label">Address</label>
-            <input type="text" class="form-control" id="address" name="address" value="{{ user.address }}">
+        <div class="col-md-4 mb-3">
+          <label for="vehicle_model" class="form-label">Vehicle Model</label>
+          <input type="text" class="form-control" id="vehicle_model" name="vehicle_model" value="{{ user.vehicle_model }}">
         </div>
-
-        <!-- Phone Number -->
-        <div class="mb-3">
-            <label for="phone" class="form-label">Phone Number</label>
-            <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone }}">
+        <div class="col-md-4 mb-3">
+          <label for="vehicle_year" class="form-label">Vehicle Year</label>
+          <input type="text" class="form-control" id="vehicle_year" name="vehicle_year" value="{{ user.vehicle_year }}">
         </div>
+      </div>
+    {% endif %}
 
-        {% if session.get('role') in ['sponsor', 'driver'] %}
-        <div class="mb-3">
-            <label for="twitter" class="form-label">Twitter</label>
-            <input type="text" class="form-control" id="twitter" name="twitter" value="{{ user.twitter }}">
+    {% if session.get('role') == 'sponsor' %}
+      <!-- Sponsor org -->
+      <div class="mb-3">
+        <label for="organization" class="form-label">Organization</label>
+        <input type="text" class="form-control" id="organization" name="organization" value="{{ user.organization }}">
+      </div>
+      <div class="mb-3">
+        <label for="company_link" class="form-label">Company Link</label>
+        <input type="text" class="form-control" id="company_link" name="company_link" value="{{ user.company_link }}">
+      </div>
+
+      <!-- Company Logo -->
+      <div class="mb-3">
+        <label for="company_logo" class="form-label">Company Logo</label><br>
+        <img id="logoPreview"
+             src="{{ url_for('static', filename='uploads/company_logos/' ~ (user.company_logo if user.company_logo else 'Default_Logo.png')) }}"
+             alt="Company Logo Preview"
+             class="img-thumbnail mb-2"
+             style="max-width: 200px; max-height: 150px;"><br>
+        <input type="file" class="form-control" id="company_logo" name="company_logo" accept="image/*" onchange="previewLogo(event)">
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="remove_logo" id="removeLogoCheck">
+        <label class="form-check-label" for="removeLogoCheck">Remove current logo</label>
+      </div>
+    {% endif %}
+
+    <!-- ================= -->
+    <!-- Password Settings -->
+    <!-- ================= -->
+    <hr class="my-4">
+    <h4 class="text-danger">⚠️ Password Settings</h4>
+    <p class="text-muted"><small>Your password is hidden by default. Use the 👁 button to toggle visibility.</small></p>
+
+    <div class="input-group mb-3">
+      <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current password">
+      <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">👁</button>
+    </div>
+    <div class="input-group mb-4">
+      <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-enter new password">
+      <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">👁</button>
+    </div>
+
+    <button type="submit" class="btn btn-success">Save Changes</button>
+  </form>
+
+  <!-- =========================== -->
+  <!-- Point Limits (Separate Card) -->
+  <!-- =========================== -->
+  {% if session.get('role') == 'sponsor' %}
+  <div class="card shadow-sm mt-5 mb-5">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">Point Limits</h5>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('settings') }}">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="min_points" class="form-label fw-semibold">Minimum Points</label>
+            <input type="number" class="form-control" id="min_points" name="min_points"
+                   value="{{ user.min_points or 0 }}" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="max_points" class="form-label fw-semibold">Maximum Points</label>
+            <input type="number" class="form-control" id="max_points" name="max_points"
+                   value="{{ user.max_points or 0 }}" required>
+          </div>
         </div>
-
-        <div class="mb-3">
-            <label for="facebook" class="form-label">Facebook</label>
-            <input type="text" class="form-control" id="facebook" name="facebook" value="{{ user.facebook }}">
-        </div>
-
-        <div class="mb-3">
-            <label for="instagram" class="form-label">Instagram</label>
-            <input type="text" class="form-control" id="instagram" name="instagram" value="{{ user.instagram }}">
-        </div>
-        {% endif %}
-
-        {% if session.get('role') == 'driver' %}
-        <div class="mb-3">
-            <label for="vehicle_make" class="form-label">Vehicle Make</label>
-            <input type="text" class="form-control" id="vehicle_make" name="vehicle_make" value="{{ user.vehicle_make }}">
-        </div>
-
-        <div class="mb-3">
-            <label for="vehicle_model" class="form-label">Vehicle Model</label>
-            <input type="text" class="form-control" id="vehicle_model" name="vehicle_model" value="{{ user.vehicle_model }}">
-        </div>
-
-        <div class="mb-3">
-            <label for="vehicle_year" class="form-label">Vehicle Year</label>
-            <input type="text" class="form-control" id="vehicle_year" name="vehicle_year" value="{{ user.vehicle_year }}">
-        </div>
-        {% endif %}
-
-        {% if session.get('role') == 'sponsor' %}
-        <div class="mb-3">
-            <label for="organization" class="form-label">Organization</label>
-            <input type="text" class="form-control" id="organization" name="organization" value="{{ user.organization }}">
-        </div>
-
-        <div class="mb-3">
-            <label for="company_link" class="form-label">Company Link</label>
-            <input type="text" class="form-control" id="company_link" name="company_link" value="{{ user.company_link }}">
-        </div>
-
-        <!-- SPRINT 7 CHANGE: Company Logo Upload -->
-        <div class="mb-3">
-            <label for="company_logo" class="form-label">Company Logo</label><br>
-            <img id="logoPreview" 
-                 src="{{ url_for('static', filename='uploads/company_logos/' ~ (user.company_logo if user.company_logo else 'Default_Logo.png')) }}" 
-                 alt="Company Logo Preview" 
-                 class="img-thumbnail mb-2" 
-                 style="max-width: 200px; max-height: 150px;"><br>
-            <input type="file" class="form-control" id="company_logo" name="company_logo" accept="image/*" onchange="previewLogo(event)">
-        </div>
-
-        <!-- Add the Remove Logo checkbox -->
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="remove_logo" id="removeLogoCheck">
-            <label class="form-check-label" for="removeLogoCheck">
-                Remove current logo
-            </label>
-        </div>
-        <!-- Add Point Limits Section -->
-        <h2 class="mt-5">Point Limits</h2>
-        <hr>
-        <div class="card shadow-sm mb-4">
-          <div class="card-body">
-            <form method="POST" action="{{ url_for('sponsor_profile') }}">
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label for="min_points" class="form-label fw-semibold">Minimum Points</label>
-                  <input type="number" class="form-control" id="min_points" name="min_points"
-                         value="{{ user.min_points or 0 }}" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                  <label for="max_points" class="form-label fw-semibold">Maximum Points</label>
-                  <input type="number" class="form-control" id="max_points" name="max_points"
-                         value="{{ user.max_points or 0 }}" required>
-                </div>
-              </div>
-              <button type="submit" class="btn btn-primary">Save Limits</button>
-            </form>
-        {% endif %}
-
-        
-
-        <!-- ⚠️ Password Section -->
-        <hr>
-        <h4 class="text-danger">⚠️ Password Settings</h4>
-        <p class="text-muted"><small>Your password is hidden by default. Use the 👁 button to toggle visibility.</small></p>
-
-        <!-- New Password -->
-        <div class="input-group mb-3">
-            <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current password">
-            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">👁</button>
-        </div>
-
-        <!-- Confirm Password -->
-        <div class="input-group mb-3">
-            <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-enter new password">
-            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">👁</button>
-        </div>
-
-        <button type="submit" class="btn btn-success">Save Changes</button>
-    </form>
+        <button type="submit" class="btn btn-primary mt-2">Save Limits</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <script>
 function togglePassword(id) {
-    const field = document.getElementById(id);
-    field.type = (field.type === "password") ? "text" : "password";
+  const field = document.getElementById(id);
+  field.type = (field.type === "password") ? "text" : "password";
 }
 
-// Live image preview
 function previewImage(event) {
-    const input = event.target;
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('profilePreview').src = e.target.result;
-        }
-        reader.readAsDataURL(input.files[0]);
+  const input = event.target;
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('profilePreview').src = e.target.result;
     }
+    reader.readAsDataURL(input.files[0]);
+  }
 }
-// SPRINT 7 CHANGE: Live image preview for Company Logo
+
 function previewLogo(event) {
-    const input = event.target;
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('logoPreview').src = e.target.result;
-        }
-        reader.readAsDataURL(input.files[0]);
+  const input = event.target;
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('logoPreview').src = e.target.result;
     }
+    reader.readAsDataURL(input.files[0]);
+  }
 }
 </script>
 {% endblock %}
