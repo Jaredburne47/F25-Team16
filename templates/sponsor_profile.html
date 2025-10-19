@@ -49,8 +49,12 @@
 
             
             <h5>Organization Details</h5>
-                <p><strong>Organization:</strong> {{ user.organization }}</p>
-                <p><strong>Company Link:</strong> <a href="{{ user.company_link }}" target="_blank">{{ user.company_link }}</a></p>
+            <p><strong>Organization:</strong> {{ user.organization }}</p>
+            <p><strong>Company Link:</strong> <a href="{{ user.company_link }}" target="_blank">{{ user.company_link }}</a></p>
+            
+            <h5>Point Limits for Driver</h5>        
+            <p><strong>Minimum Points:</strong> {{ user.min_points or 0 }}</p>
+            <p><strong>Maximum Points:</strong> {{ user.max_points or 0 }}</p>
         </div>
     </div>
 
