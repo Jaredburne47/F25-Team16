@@ -54,6 +54,35 @@
         </div>
     </div>
 
+    <!-- Add Point Limits Section -->
+    <h2 class="mt-5">Point Limits</h2>
+    <hr>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('sponsor_profile') }}">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="min_points" class="form-label fw-semibold">Minimum Points</label>
+              <input type="number" class="form-control" id="min_points" name="min_points"
+                     value="{{ user.min_points or 0 }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="max_points" class="form-label fw-semibold">Maximum Points</label>
+              <input type="number" class="form-control" id="max_points" name="max_points"
+                     value="{{ user.max_points or 0 }}" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Limits</button>
+        </form>
+
+    <div class="mt-3 text-muted">
+      <small>
+        These limits will automatically restrict how many points you can give or remove from drivers.<br>
+        You’ll see a warning if a change would exceed these limits.
+      </small>
+    </div>
+  </div>
+</div>
     <!-- SPRINT 4 CHANGE: Sponsor-specific Stats Overview added -->
     <h2 class="mt-5">
         <a href="{{ url_for('dashboard') }}" class="text-decoration-none text-dark">Sponsorship Overview</a>
