@@ -3,6 +3,7 @@ import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
 from emailScripts import logInEmail
+from emailScripts import applicationEmail
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
@@ -1192,6 +1193,10 @@ def apply_to_sponsor(sponsor):
         cursor.close()
         db.close()
         flash(f'Your application to "{sponsor}" has been submitted successfully!', 'success')
+
+        sponsorEmail = get_email_by_username(sponsor)
+        if email:
+            applicationEmail.send_application_email(sponsorEmail, sponsor)
 
         return redirect(url_for('driver_applications'))
 
