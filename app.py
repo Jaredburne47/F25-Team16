@@ -4,6 +4,8 @@ from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
 from emailScripts import logInEmail
 from emailScripts import applicationEmail
+from emailScripts import driverAddPointsEmail
+from emailScripts import driverRemovePointsEmail
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
@@ -962,6 +964,10 @@ def add_points():
 
     cursor.close()
     db.close()
+
+    driverEmail = get_email_by_username(username)
+    if driverEmail:
+        driverAddPointsEmail.send_points_added_email(driverEmail, username, points)
     return redirect(url_for('drivers'))
 
 
@@ -1006,6 +1012,9 @@ def remove_points():
 
     cursor.close()
     db.close()
+    driverEmail = get_email_by_username(username)
+    if driverEmail:
+        driverRemovePointsEmail.send_points_removed_email(driverEmail, username, points)
     return redirect(url_for('drivers'))
 
 
