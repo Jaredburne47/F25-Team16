@@ -1195,7 +1195,7 @@ def apply_to_sponsor(sponsor):
         flash(f'Your application to "{sponsor}" has been submitted successfully!', 'success')
 
         sponsorEmail = get_email_by_username(sponsor)
-        if email:
+        if sponsorEmail:
             applicationEmail.send_application_email(sponsorEmail, sponsor)
 
         return redirect(url_for('driver_applications'))
