@@ -266,23 +266,23 @@ def login():
         # Authenticate 
         role, user_row = authenticate(username, password)
 
-        # If login is successful starts session & redirects
+        # If login is successful starts session & redirects and sends email
         if role:
             session['user'] = username
             session['role'] = role
             db = MySQLdb.connect(**db_config)
-                cursor = db.cursor(MySQLdb.cursors.DictCursor)
-                # Find the user's email (and role) by username across all tables
-                cursor.execute("""
-                    SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
-                    UNION ALL
-                    SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
-                    UNION ALL
-                    SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
-                    LIMIT 1
-                """, (username, username, username))
-                r = cursor.fetchone()
-                cursor.close(); db.close()
+            cursor = db.cursor(MySQLdb.cursors.DictCursor)
+            # Find the user's email (and role) by username across all tables
+            cursor.execute("""
+                SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
+                UNION ALL
+                SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
+                UNION ALL
+                SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
+                LIMIT 1
+            """, (username, username, username))
+            r = cursor.fetchone()
+            cursor.close(); db.close()
 
             if r and r.get('email'):
                 logInEmail.send_login_email(r['email'], username)
