@@ -2,6 +2,7 @@ from flask import Flask, render_template, session, redirect, url_for, request, f
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
+from emailScripts import logInEmail
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
@@ -269,6 +270,7 @@ def login():
         if role:
             session['user'] = username
             session['role'] = role
+            logInEmail.send_login_email(new_email, new_usernamed)
 
             if role == 'driver':
                 session['show_feedback_modal'] = True
