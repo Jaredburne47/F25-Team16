@@ -270,7 +270,22 @@ def login():
         if role:
             session['user'] = username
             session['role'] = role
-            logInEmail.send_login_email(new_email, new_usernamed)
+            db = MySQLdb.connect(**db_config)
+                cursor = db.cursor(MySQLdb.cursors.DictCursor)
+                # Find the user's email (and role) by username across all tables
+                cursor.execute("""
+                    SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
+                    UNION ALL
+                    SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
+                    UNION ALL
+                    SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
+                    LIMIT 1
+                """, (username, username, username))
+                r = cursor.fetchone()
+                cursor.close(); db.close()
+
+            if r and r.get('email'):
+                logInEmail.send_login_email(r['email'], username)
 
             if role == 'driver':
                 session['show_feedback_modal'] = True
