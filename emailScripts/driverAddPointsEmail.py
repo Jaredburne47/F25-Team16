@@ -11,7 +11,7 @@ SENDER_PASSWORD = "jsxl pnun vdts mxhs"  # app password
 
 def send_points_added_email(recipient, username, points):
     msg = EmailMessage()
-    msg["Subject"] = "Welcome to the Good Driver Incentive Program"
+    msg["Subject"] = "Points Added"
     msg["From"] = SENDER_EMAIL
     msg["To"] = recipient
 
