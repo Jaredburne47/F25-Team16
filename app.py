@@ -1610,6 +1610,29 @@ def audit_logs():
     db.close()
 
     return render_template('admin_audit_logs.html', logs=logs)
+
+def get_email_by_username(username):
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        cursor.execute("""
+            SELECT email 
+            FROM drivers WHERE username=%s
+            UNION ALL
+            SELECT email 
+            FROM sponsor WHERE username=%s
+            UNION ALL
+            SELECT email 
+            FROM admins WHERE username=%s
+            LIMIT 1
+        """, (username, username, username))
+
+        result = cursor.fetchone()
+        return result['email'] if result else None
+
+    finally:
+        cursor.close()
+        db.close()
     
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
