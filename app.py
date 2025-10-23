@@ -1840,26 +1840,53 @@ def download_audit_logs():
     end_date = request.form.get('end_date')
     user_id = request.form.get('user_id')
 
-    query = "SELECT * FROM auditLogs WHERE 1=1"
+    # --- Initialize query and params as empty ---
+    query = ""
     params = []
 
-    if action_filter != 'all':
-        if action_filter == 'point history':
-            query += " AND (action='add points' OR action='remove points')"
-        else:
-            query += " AND action=%s"
-            params.append(action_filter)
-    if user_id:
-        query += " AND user_id=%s"
-        params.append(user_id)
-    if start_date:
-        query += " AND timestamp >= %s"
-        params.append(start_date)
-    if end_date:
-        query += " AND timestamp <= %s"
-        params.append(end_date)
+    # ---  Add if/else block to choose the query ---
+    if action_filter == 'feedback':
+        # Build the special query for the feedback table
+        query = """
+            SELECT 
+                submitted_at AS timestamp, 
+                'Feedback' AS action, 
+                feedback_text AS description, 
+                user_role AS user_id 
+            FROM feedback 
+            WHERE 1=1
+        """
+        
+        # Add date filters (User ID filter is ignored)
+        if start_date:
+            query += " AND submitted_at >= %s"
+            params.append(start_date)
+        if end_date:
+            query += " AND submitted_at <= %s"
+            params.append(end_date)
+            
+        query += " ORDER BY timestamp DESC"
+    
+    else:
+        query = "SELECT * FROM auditLogs WHERE 1=1"
+        
+        if action_filter != 'all':
+            if action_filter == 'point history':
+                query += " AND (action='add points' OR action='remove points')"
+            else:
+                query += " AND action=%s"
+                params.append(action_filter)
+        if user_id:
+            query += " AND user_id=%s"
+            params.append(user_id)
+        if start_date:
+            query += " AND timestamp >= %s"
+            params.append(start_date)
+        if end_date:
+            query += " AND timestamp <= %s"
+            params.append(end_date)
 
-    query += " ORDER BY timestamp DESC"
+        query += " ORDER BY timestamp DESC"
 
     print("QUERY:", query)
     print("PARAMS:", params)
@@ -1974,7 +2001,6 @@ def audit_logs():
         query += " ORDER BY timestamp DESC"
 
     else:
-        # THIS IS YOUR TEAM'S ORIGINAL CODE - COMPLETELY UNTOUCHED
         query = "SELECT * FROM auditLogs WHERE 1=1"
         
         if action_filter != 'all':
