@@ -44,10 +44,22 @@
 <div class="row">
   {% for item in items %}
   <div class="col-md-4 mb-4">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm position-relative"><!-- Added position-relative -->
       {% if item.image_url %}
         <img src="{{ item.image_url }}" class="card-img-top" style="object-fit:contain;height:200px;">
       {% endif %}
+
+      <!-- ⭐ Favorite Toggle Button -->
+      <button
+        class="btn btn-sm {% if favorite_ids and item.product_id in favorite_ids %}btn-warning{% else %}btn-outline-warning{% endif %} position-absolute top-0 end-0 m-2"
+        style="border-radius:50%;"
+        title="Favorite"
+        onclick="toggleFavorite({{ item.product_id }}, this)"
+        aria-label="Toggle favorite"
+      >
+        {% if favorite_ids and item.product_id in favorite_ids %}★{% else %}☆{% endif %}
+      </button>
+
       <div class="card-body">
         <h5 class="card-title">{{ item.name }}</h5>
         <p class="text-muted small mb-1">Sponsor: {{ item.sponsor }}</p>
@@ -65,4 +77,51 @@
   <p class="text-center text-muted mt-4">No products found.</p>
   {% endif %}
 </div>
+
+<!-- JS for toggling favorite button -->
+<script>
+async function toggleFavorite(productId, btnEl) {
+  const isFav = btnEl.classList.contains('btn-warning');
+  const url = isFav ? '/api/driver/favorites/remove' : '/api/driver/favorites/add';
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ product_id: productId })
+    });
+
+    if (res.status === 404) {
+      // Backend not yet implemented; just toggle visually for now
+      if (isFav) {
+        btnEl.classList.remove('btn-warning');
+        btnEl.classList.add('btn-outline-warning');
+        btnEl.textContent = '☆';
+      } else {
+        btnEl.classList.remove('btn-outline-warning');
+        btnEl.classList.add('btn-warning');
+        btnEl.textContent = '★';
+      }
+      return;
+    }
+
+    const data = await res.json();
+    if (data.ok) {
+      if (isFav) {
+        btnEl.classList.remove('btn-warning');
+        btnEl.classList.add('btn-outline-warning');
+        btnEl.textContent = '☆';
+      } else {
+        btnEl.classList.remove('btn-outline-warning');
+        btnEl.classList.add('btn-warning');
+        btnEl.textContent = '★';
+      }
+    } else {
+      alert('Error: ' + (data.error || 'unknown'));
+    }
+  } catch (e) {
+    alert('Network error');
+  }
+}
+</script>
 {% endblock %}
