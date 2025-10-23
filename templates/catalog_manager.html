@@ -2,6 +2,16 @@
 {% block title %}Catalog Manager{% endblock %}
 
 {% block content %}
+<style>
+/* Make checkmark white and fade animations smooth */
+#save-ratio-btn.btn-success .save-check {
+  color: white !important;
+}
+#save-ratio-btn {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+</style>
+
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
   <h1 class="mb-0">Catalog Manager</h1>
 
@@ -16,7 +26,7 @@
     </div>
     <button class="btn btn-outline-primary d-flex align-items-center" id="save-ratio-btn" type="button">
       <span class="save-text">Save</span>
-      <span class="save-check d-none ms-2 text-success fw-bold">✔</span>
+      <span class="save-check d-none ms-2 fw-bold">✔</span>
     </button>
   </div>
 
