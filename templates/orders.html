@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Your Orders{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Your Orders</h1>
+
+<div class="mb-3">
+  <strong>Your Points:</strong>
+  <span class="badge bg-success">{{ points_balance }}</span>
+</div>
+
+{% if not orders or orders|length == 0 %}
+  <div class="text-center text-muted py-5 border rounded-3">
+    <h5 class="mb-1">No orders yet</h5>
+    <p class="mb-3">Go to the catalog to place your first order.</p>
+    <a class="btn btn-primary" href="{{ url_for('item_catalog') }}">Go to Item Catalog</a>
+  </div>
+{% else %}
+  <table class="table align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Item</th>
+        <th class="text-end">Qty</th>
+        <th class="text-end">Points</th>
+        <th>Status</th>
+        <th>Placed</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td>{{ o.reward_description }}</td>
+        <td class="text-end">{{ o.quantity }}</td>
+        <td class="text-end">{{ o.point_cost }}</td>
+        <td>{{ o.status }}</td>
+        <td>{{ o.order_date }}</td>
+        <td class="text-end">
+          {% if o.status == 'Processing' %}
+          <form action="{{ url_for('orders_cancel', order_id=o.order_id) }}" method="POST" class="d-inline">
+            <button class="btn btn-sm btn-outline-danger" type="submit">Cancel & Refund</button>
+          </form>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

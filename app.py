@@ -562,6 +562,186 @@ def cart_page():
                            points_balance=points_balance,
                            total_points=total_points)
 
+@app.post("/cart/checkout")
+def cart_checkout():
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Load driver points
+        cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+        r = cur.fetchone()
+        driver_points = int(r['points'] if r and r['points'] is not None else 0)
+
+        # Load cart (join with products for prices & stock)
+        cur.execute("""
+            SELECT ci.product_id, ci.quantity AS qty,
+                   p.name, p.points_cost, p.quantity AS stock
+            FROM cart_items ci
+            JOIN products p ON p.product_id = ci.product_id
+            WHERE ci.driver_username=%s
+            ORDER BY p.name ASC
+        """, (username,))
+        cart = cur.fetchall()
+
+        if not cart:
+            cur.close(); db.close()
+            return redirect(url_for('cart_page'))
+
+        # Validate stock & compute total
+        total_points = 0
+        for line in cart:
+            if (line['stock'] or 0) < line['qty']:
+                cur.close(); db.close()
+                return "<h3>Not enough stock for one or more items.</h3>"
+            total_points += int(line['points_cost'] or 0) * int(line['qty'])
+
+        if driver_points < total_points:
+            cur.close(); db.close()
+            return "<h3>Not enough points to checkout.</h3>"
+
+        # -- Transactional changes --
+        db.autocommit(False)
+        try:
+            # 1) Deduct points
+            cur.execute("UPDATE drivers SET points = points - %s WHERE username=%s",
+                        (total_points, username))
+
+            # 2) Create one order row per cart line
+            for line in cart:
+                cur.execute("""
+                    INSERT INTO orders (user_id, product_id, reward_description, point_cost, quantity, status)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    username,
+                    int(line['product_id']),
+                    line['name'],
+                    int(line['points_cost']) * int(line['qty']),
+                    int(line['qty']),
+                    'Processing'
+                ))
+
+            # 3) Decrement stock; delete products that hit zero
+            for line in cart:
+                cur.execute("""
+                    UPDATE products
+                    SET quantity = quantity - %s
+                    WHERE product_id=%s
+                """, (int(line['qty']), int(line['product_id'])))
+
+                # Remove if zero or below
+                cur.execute("""
+                    DELETE FROM products
+                    WHERE product_id=%s AND quantity <= 0
+                """, (int(line['product_id']),))
+
+            # 4) Clear cart
+            cur.execute("DELETE FROM cart_items WHERE driver_username=%s", (username,))
+
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            cur.close(); db.close()
+            return f"<h3>Checkout failed: {e}</h3>"
+
+        cur.close(); db.close()
+        return redirect(url_for('orders_page'))
+
+    except Exception as e:
+        return f"<h3>Database error during checkout: {e}</h3>"
+
+@app.get("/orders")
+def orders_page():
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Driver points (for context)
+        cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+        r = cur.fetchone()
+        points_balance = int(r['points'] if r and r['points'] is not None else 0)
+
+        # Driver orders (each row is a line item)
+        cur.execute("""
+            SELECT order_id, product_id, reward_description, point_cost, quantity, status, order_date
+            FROM orders
+            WHERE user_id=%s
+            ORDER BY order_date DESC, order_id DESC
+        """, (username,))
+        orders = cur.fetchall()
+
+        cur.close(); db.close()
+    except Exception as e:
+        return f"<h3>Database error loading orders: {e}</h3>"
+
+    return render_template("orders.html", orders=orders, points_balance=points_balance)
+
+@app.post("/orders/<int:order_id>/cancel")
+def orders_cancel(order_id):
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Load order (must belong to user and be cancellable)
+        cur.execute("""
+            SELECT order_id, user_id, product_id, point_cost, quantity, status
+            FROM orders
+            WHERE order_id=%s
+        """, (order_id,))
+        o = cur.fetchone()
+        if not o or o['user_id'] != username:
+            cur.close(); db.close()
+            return "<h3>Order not found.</h3>"
+        if o['status'] != 'Processing':
+            cur.close(); db.close()
+            return "<h3>Only Processing orders can be cancelled.</h3>"
+
+        db.autocommit(False)
+        try:
+            # 1) Mark as cancelled
+            cur.execute("UPDATE orders SET status='Cancelled' WHERE order_id=%s", (order_id,))
+
+            # 2) Refund points
+            cur.execute("UPDATE drivers SET points = points + %s WHERE username=%s",
+                        (int(o['point_cost']), username))
+
+            # 3) Restock if product still exists (it might have been deleted)
+            cur.execute("SELECT product_id FROM products WHERE product_id=%s", (o['product_id'],))
+            exists = cur.fetchone()
+            if exists:
+                cur.execute("""
+                    UPDATE products SET quantity = quantity + %s
+                    WHERE product_id=%s
+                """, (int(o['quantity']), o['product_id']))
+            # If product was deleted, we skip restocking.
+
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            cur.close(); db.close()
+            return f"<h3>Cancel failed: {e}</h3>"
+
+        cur.close(); db.close()
+        return redirect(url_for('orders_page'))
+
+    except Exception as e:
+        return f"<h3>Database error: {e}</h3>"
+
 
 def _get_driver_sponsor(username):
     """Return the sponsor the driver is accepted with, or None."""
