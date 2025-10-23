@@ -564,6 +564,7 @@ def cart_page():
 
 @app.post("/cart/checkout")
 def cart_checkout():
+    # Drivers only
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
@@ -573,12 +574,12 @@ def cart_checkout():
         db = MySQLdb.connect(**db_config)
         cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Load driver points
+        # 1) Load driver points
         cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
         r = cur.fetchone()
         driver_points = int(r['points'] if r and r['points'] is not None else 0)
 
-        # Load cart (join with products for prices & stock)
+        # 2) Load cart (join current product info)
         cur.execute("""
             SELECT ci.product_id, ci.quantity AS qty,
                    p.name, p.points_cost, p.quantity AS stock
@@ -591,28 +592,32 @@ def cart_checkout():
 
         if not cart:
             cur.close(); db.close()
+            # Nothing to do; back to cart
             return redirect(url_for('cart_page'))
 
-        # Validate stock & compute total
+        # 3) Validate stock & compute total cost
         total_points = 0
         for line in cart:
-            if (line['stock'] or 0) < line['qty']:
+            line_qty = int(line['qty'] or 0)
+            line_stock = int(line['stock'] or 0)
+            if line_qty <= 0 or line_stock < line_qty:
                 cur.close(); db.close()
-                return "<h3>Not enough stock for one or more items.</h3>"
-            total_points += int(line['points_cost'] or 0) * int(line['qty'])
+                return "<h3>Not enough stock for one or more items in your cart.</h3>"
+            total_points += int(line['points_cost'] or 0) * line_qty
 
+        # 4) Check points
         if driver_points < total_points:
             cur.close(); db.close()
-            return "<h3>Not enough points to checkout.</h3>"
+            return "<h3>You don't have enough points to checkout.</h3>"
 
-        # -- Transactional changes --
+        # 5) Perform changes atomically
         db.autocommit(False)
         try:
-            # 1) Deduct points
+            # 5a) Deduct driver points
             cur.execute("UPDATE drivers SET points = points - %s WHERE username=%s",
                         (total_points, username))
 
-            # 2) Create one order row per cart line
+            # 5b) Create one order row per cart line
             for line in cart:
                 cur.execute("""
                     INSERT INTO orders (user_id, product_id, reward_description, point_cost, quantity, status)
@@ -626,7 +631,7 @@ def cart_checkout():
                     'Processing'
                 ))
 
-            # 3) Decrement stock; delete products that hit zero
+            # 5c) Decrement stock; delete products that hit zero
             for line in cart:
                 cur.execute("""
                     UPDATE products
@@ -634,13 +639,12 @@ def cart_checkout():
                     WHERE product_id=%s
                 """, (int(line['qty']), int(line['product_id'])))
 
-                # Remove if zero or below
                 cur.execute("""
                     DELETE FROM products
                     WHERE product_id=%s AND quantity <= 0
                 """, (int(line['product_id']),))
 
-            # 4) Clear cart
+            # 5d) Clear cart
             cur.execute("DELETE FROM cart_items WHERE driver_username=%s", (username,))
 
             db.commit()
@@ -650,10 +654,12 @@ def cart_checkout():
             return f"<h3>Checkout failed: {e}</h3>"
 
         cur.close(); db.close()
+        # Go to the new Orders page
         return redirect(url_for('orders_page'))
 
     except Exception as e:
         return f"<h3>Database error during checkout: {e}</h3>"
+
 
 @app.get("/orders")
 def orders_page():
