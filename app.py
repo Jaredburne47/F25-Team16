@@ -535,6 +535,69 @@ def cart_page():
     points_balance = driver['points'] if driver else 0
     return render_template("cart.html", items=[], points_balance=points_balance, total_points=0)
 
+def _get_driver_sponsor(username):
+    """Return the sponsor the driver is accepted with, or None."""
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT sponsor FROM driverApplications
+        WHERE driverUsername=%s AND status='accepted'
+        LIMIT 1
+    """, (username,))
+    row = cur.fetchone()
+    cur.close(); db.close()
+    return row['sponsor'] if row else None
+
+@app.post("/api/driver/cart/add")
+def driver_cart_add():
+    if 'user' not in session or session.get('role') != 'driver':
+        return jsonify({"ok": False, "error": "auth"}), 403
+
+    body = request.get_json(silent=True) or {}
+    product_id = body.get("product_id")
+    qty = int(body.get("quantity", 1))
+    if not product_id or qty < 1:
+        return jsonify({"ok": False, "error": "product_id and quantity>=1 required"}), 400
+
+    username = session['user']
+    sponsor = _get_driver_sponsor(username)
+    if not sponsor:
+        return jsonify({"ok": False, "error": "You must be accepted by a sponsor first."}), 403
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Ensure product exists and belongs to driver’s sponsor
+    cur.execute("SELECT product_id, sponsor, quantity FROM products WHERE product_id=%s", (product_id,))
+    prod_row = cur.fetchone()
+    if not prod_row:
+        cur.close(); db.close()
+        return jsonify({"ok": False, "error": "Product not found"}), 404
+    if prod_row['sponsor'] != sponsor:
+        cur.close(); db.close()
+        return jsonify({"ok": False, "error": "Product is not offered by your sponsor"}), 403
+
+    # Optional: cap requested qty by available stock
+    available = int(prod_row['quantity'] or 0)
+    if available <= 0:
+        cur.close(); db.close()
+        return jsonify({"ok": False, "error": "Out of stock"}), 409
+    qty = min(qty, available)
+
+    try:
+        # Insert or increase (up to available)
+        cur.execute("""
+            INSERT INTO cart_items (driver_username, product_id, quantity)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE quantity = LEAST(quantity + VALUES(quantity), %s)
+        """, (username, int(product_id), qty, available))
+        db.commit()
+        cur.close(); db.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        cur.close(); db.close()
+        return jsonify({"ok": False, "error": f"DB error: {e}"}), 500
+
 
 @app.route('/catalog_manager')
 def catalog_manager():
