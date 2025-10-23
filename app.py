@@ -1900,6 +1900,9 @@ def submit_feedback():
     if not feedback_text:
         return jsonify({'status': 'error', 'message': 'Feedback cannot be empty'}), 400
 
+    # Get the user_id from the session
+    user_id = session['user']
+
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor()
