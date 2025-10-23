@@ -3,7 +3,12 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1>Item Catalog</h1>
+  <div class="d-flex align-items-center gap-3">
+    <h1>Item Catalog</h1>
+    <a href="{{ url_for('cart_page') }}" class="btn btn-outline-success">
+      🛒 View Cart
+    </a>
+  </div>
   <div>
     <h5>Your Points Balance:
       <span class="badge bg-success">{{ points_balance }}</span>
@@ -142,7 +147,6 @@ async function addToCart(productId) {
     const data = await res.json();
     if (data.ok) {
       alert('Added to cart!');
-      // Optionally, update a cart badge here without reload.
     } else {
       alert('Error: ' + (data.error || 'unknown'));
     }
