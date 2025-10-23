@@ -136,6 +136,12 @@
                 </a>
               </li>
               <li class="nav-item">
+                <a class="nav-link {% if request.path == '/cart' %}active{% endif %}" 
+                   href="{{ url_for('cart_page') }}">
+                   Cart
+                </a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link {% if request.path == '/sponsors/browse' %}active{% endif %}" 
                    href="{{ url_for('sponsor_browse') }}">
                    Browse Sponsors
