@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Your Cart{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Your Cart</h1>
+
+<!-- Points summary (optional, safe to pass 0 for now) -->
+<div class="mb-3">
+  <strong>Your Points:</strong>
+  <span class="badge bg-success">{{ points_balance or 0 }}</span>
+</div>
+
+{% if not items or items|length == 0 %}
+  <!-- Empty state -->
+  <div class="text-center text-muted py-5 border rounded-3">
+    <img src="/static/placeholder.jpg" alt="" width="96" class="mb-3 opacity-50" onerror="this.style.display='none'">
+    <h5 class="mb-1">Your cart is empty</h5>
+    <p class="mb-3">Browse the catalog and add items to see them here.</p>
+    <a class="btn btn-primary" href="{{ url_for('item_catalog') }}">Go to Item Catalog</a>
+  </div>
+{% else %}
+  <!-- When items exist (we'll wire this up later) -->
+  <table class="table align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Item</th>
+        <th>Points (each)</th>
+        <th>Qty</th>
+        <th>Subtotal</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>
+          {% if it.image_url %}
+            <img src="{{ it.image_url }}" width="48" class="me-2 rounded"
+                 onerror="this.style.display='none'">
+          {% endif %}
+          {{ it.name }}
+        </td>
+        <td>{{ it.points_cost }}</td>
+        <td>{{ it.quantity }}</td>
+        <td><strong>{{ it.points_cost * it.quantity }}</strong></td>
+        <td><!-- actions later --></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="d-flex justify-content-end align-items-center gap-3">
+    <div class="fs-5">Total Points: <strong>{{ total_points or 0 }}</strong></div>
+    <!-- Checkout button will be enabled later -->
+    <button class="btn btn-primary" disabled>Checkout (coming soon)</button>
+  </div>
+{% endif %}
+{% endblock %}

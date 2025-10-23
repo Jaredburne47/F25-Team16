@@ -518,6 +518,13 @@ def dashboard():
     # Render template and pass points_balance
     return render_template("dashboard.html", points_balance=points_balance)
 
+@app.get("/cart")
+def cart_page():
+    if 'user' not in session or session.get('role') != 'driver':
+        return redirect(url_for('login'))
+    # No functionality yet: render with empty data
+    return render_template("cart.html", items=[], points_balance=0, total_points=0)
+
 
 @app.route('/catalog_manager')
 def catalog_manager():
