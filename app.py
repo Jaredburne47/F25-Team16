@@ -762,6 +762,53 @@ def _get_driver_sponsor(username):
     cur.close(); db.close()
     return row['sponsor'] if row else None
 
+@app.post("/api/driver/favorites/add")
+def fav_add():
+    if 'user' not in session or session.get('role') != 'driver':
+        return jsonify({"ok": False, "error": "auth"}), 403
+    username = session['user']
+    pid = (request.get_json(silent=True) or {}).get("product_id")
+    if not pid: 
+        return jsonify({"ok": False, "error": "product_id required"}), 400
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO favorites (driver_username, product_id)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE created_at=NOW()
+        """, (username, int(pid)))
+        db.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        cur.close(); db.close()
+
+
+@app.post("/api/driver/favorites/remove")
+def fav_remove():
+    if 'user' not in session or session.get('role') != 'driver':
+        return jsonify({"ok": False, "error": "auth"}), 403
+    username = session['user']
+    pid = (request.get_json(silent=True) or {}).get("product_id")
+    if not pid: 
+        return jsonify({"ok": False, "error": "product_id required"}), 400
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor()
+    try:
+        cur.execute("DELETE FROM favorites WHERE driver_username=%s AND product_id=%s",
+                    (username, int(pid)))
+        db.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        cur.close(); db.close()
+
+
 @app.post("/api/driver/cart/add")
 def driver_cart_add():
     if 'user' not in session or session.get('role') != 'driver':
@@ -887,7 +934,6 @@ def delete_product(product_id):
 
 @app.route('/item_catalog', methods=['GET'])
 def item_catalog():
-    # --- Access control ---
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
@@ -905,6 +951,7 @@ def item_catalog():
     search = request.args.get('search', '').strip()
     sort = request.args.get('sort', 'points_cost_asc')
     sponsor = request.args.get('sponsor', 'all')
+    favorites_only = request.args.get('favorites', '0') == '1'
 
     # --- Build SQL query dynamically ---
     query = "SELECT * FROM products WHERE 1=1"
@@ -919,6 +966,12 @@ def item_catalog():
         query += " AND sponsor = %s"
         params.append(sponsor)
 
+    # If "favorites only", constrain to the driver's favorites
+    if favorites_only:
+        query += " AND product_id IN (SELECT product_id FROM favorites WHERE driver_username=%s)"
+        params.append(username)
+
+    # Sorting
     if sort == 'points_cost_desc':
         query += " ORDER BY points_cost DESC"
     elif sort == 'name_asc':
@@ -935,6 +988,10 @@ def item_catalog():
     cursor.execute("SELECT DISTINCT sponsor FROM products WHERE sponsor IS NOT NULL")
     sponsors = [row['sponsor'] for row in cursor.fetchall()]
 
+    # --- Get this driver's favorites for star UI ---
+    cursor.execute("SELECT product_id FROM favorites WHERE driver_username=%s", (username,))
+    favorite_ids = {row['product_id'] for row in cursor.fetchall()}
+
     cursor.close()
     db.close()
 
@@ -945,10 +1002,10 @@ def item_catalog():
         search=search,
         sort=sort,
         sponsor=sponsor,
-        sponsors=sponsors
+        sponsors=sponsors,
+        favorites_only=favorites_only,
+        favorite_ids=favorite_ids
     )
-
-
 
 
 @app.route('/settings', methods=['GET', 'POST'])
