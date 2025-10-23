@@ -2,9 +2,22 @@
 {% block title %}Catalog Manager{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1>Catalog Manager</h1>
-  <div class="btn-group">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+  <h1 class="mb-0">Catalog Manager</h1>
+
+  <!-- Points Ratio Control -->
+  <div class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0">Points Ratio:</label>
+    <div class="input-group" style="max-width: 280px;">
+      <span class="input-group-text">1 USD =</span>
+      <input type="number" class="form-control" id="points-per-dollar" min="1" step="1"
+             value="{{ points_ratio or 100 }}">
+      <span class="input-group-text">points</span>
+    </div>
+    <button class="btn btn-outline-primary" id="save-ratio-btn" type="button">Save</button>
+  </div>
+
+  <div class="btn-group ms-auto">
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addItemModal">
       Add Local Item
     </button>
@@ -96,6 +109,9 @@
           <input type="text" class="form-control" id="ebay-search-query" placeholder="Search eBay products...">
           <button class="btn btn-primary" type="submit">Search</button>
         </form>
+        <div class="alert alert-secondary py-2 small">
+          Points auto-calculate from the item price using your ratio (<span id="ratio-inline">100</span> pts / $1). You can still edit points before adding.
+        </div>
         <div id="ebay-results" class="row g-3"></div>
       </div>
     </div>
@@ -103,6 +119,66 @@
 </div>
 
 <script>
+/* ---------- Points Ratio: load/save ---------- */
+const RATIO_KEY = 'points_per_dollar';
+const ratioInput = document.getElementById('points-per-dollar');
+const ratioInline = document.getElementById('ratio-inline');
+const saveBtn = document.getElementById('save-ratio-btn');
+
+/* Initialize ratio:
+   Priority: server-provided Jinja -> localStorage -> default 100 */
+(function initRatio() {
+  const serverVal = Number('{{ points_ratio or 0 }}') || 0;
+  let ratio = serverVal > 0 ? serverVal : Number(localStorage.getItem(RATIO_KEY)) || 100;
+  ratio = Math.max(1, Math.floor(ratio)); // sanitize
+  ratioInput.value = ratio;
+  ratioInline.textContent = ratio;
+})();
+
+/* Save ratio: try server endpoint; if 404, fallback to localStorage only */
+saveBtn.addEventListener('click', async () => {
+  let ratio = Math.max(1, Math.floor(Number(ratioInput.value || 100)));
+  ratioInput.value = ratio;
+  ratioInline.textContent = ratio;
+
+  try {
+    const res = await fetch('/api/sponsor/points_ratio', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ points_per_dollar: ratio })
+    });
+
+    if (res.status === 404) {
+      // No backend yet—persist locally so the UI still works
+      localStorage.setItem(RATIO_KEY, String(ratio));
+      alert('Saved locally. (Server setting not configured yet.)');
+      return;
+    }
+
+    const data = await res.json();
+    if (data && data.ok) {
+      // Also mirror locally for convenience
+      localStorage.setItem(RATIO_KEY, String(ratio));
+      alert('Points ratio saved.');
+    } else {
+      // Fallback to local save if server returns unexpected
+      localStorage.setItem(RATIO_KEY, String(ratio));
+      alert('Saved locally (server didn’t confirm).');
+    }
+  } catch (e) {
+    localStorage.setItem(RATIO_KEY, String(ratio));
+    alert('Saved locally (network/server issue).');
+  }
+});
+
+/* Helper to get effective ratio any time we need it */
+function getEffectiveRatio() {
+  const serverVal = Number('{{ points_ratio or 0 }}') || 0;
+  const localVal = Number(localStorage.getItem(RATIO_KEY)) || 0;
+  return Math.max(1, Math.floor(serverVal || localVal || 100));
+}
+
+/* ---------- eBay Search + auto points ---------- */
 document.getElementById("ebay-search-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const q = document.getElementById("ebay-search-query").value.trim();
@@ -119,27 +195,36 @@ document.getElementById("ebay-search-form").addEventListener("submit", async (e)
     return;
   }
 
-  container.innerHTML = data.items.map(item => `
-    <div class="col-md-4">
-      <div class="card h-100 shadow-sm">
-        ${item.image ? `<img src="${item.image}" class="card-img-top" style="object-fit:contain;height:180px;">` : ''}
-        <div class="card-body">
-          <h6 class="card-title">${item.title}</h6>
-          <p class="text-muted small">${item.condition || ''}</p>
-          ${item.price ? `<p><strong>${item.price.value} ${item.price.currency}</strong></p>` : ''}
-          <div class="input-group input-group-sm mb-2">
-            <span class="input-group-text">Points</span>
-            <input type="number" class="form-control" id="points-${item.itemId}" value="100">
+  const ratio = getEffectiveRatio();
+
+  container.innerHTML = data.items.map(item => {
+    const hasPrice = item.price && item.price.value && item.price.currency;
+    // Only auto-calc when currency is USD; otherwise leave default 100
+    const isUSD = hasPrice && (String(item.price.currency).toUpperCase() === 'USD');
+    const autoPoints = isUSD ? Math.ceil(Number(item.price.value) * ratio) : 100;
+
+    return `
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          ${item.image ? `<img src="${item.image}" class="card-img-top" style="object-fit:contain;height:180px;">` : ''}
+          <div class="card-body">
+            <h6 class="card-title">${item.title}</h6>
+            <p class="text-muted small">${item.condition || ''}</p>
+            ${hasPrice ? `<p><strong>${item.price.value} ${item.price.currency}</strong></p>` : ''}
+            <div class="input-group input-group-sm mb-2">
+              <span class="input-group-text">Points</span>
+              <input type="number" class="form-control" id="points-${item.itemId}" value="${autoPoints}">
+            </div>
+            <div class="input-group input-group-sm mb-3">
+              <span class="input-group-text">Qty</span>
+              <input type="number" class="form-control" id="qty-${item.itemId}" value="1">
+            </div>
+            <button class="btn btn-success w-100" onclick="addToCatalog('${item.itemId}')">Add to Catalog</button>
           </div>
-          <div class="input-group input-group-sm mb-3">
-            <span class="input-group-text">Qty</span>
-            <input type="number" class="form-control" id="qty-${item.itemId}" value="1">
-          </div>
-          <button class="btn btn-success w-100" onclick="addToCatalog('${item.itemId}')">Add to Catalog</button>
         </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 });
 
 async function addToCatalog(itemId) {
