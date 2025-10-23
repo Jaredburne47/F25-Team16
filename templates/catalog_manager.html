@@ -14,7 +14,10 @@
              value="{{ points_ratio or 100 }}">
       <span class="input-group-text">points</span>
     </div>
-    <button class="btn btn-outline-primary" id="save-ratio-btn" type="button">Save</button>
+    <button class="btn btn-outline-primary d-flex align-items-center" id="save-ratio-btn" type="button">
+      <span class="save-text">Save</span>
+      <span class="save-check d-none ms-2 text-success fw-bold">✔</span>
+    </button>
   </div>
 
   <div class="btn-group ms-auto">
@@ -124,6 +127,8 @@ const RATIO_KEY = 'points_per_dollar';
 const ratioInput = document.getElementById('points-per-dollar');
 const ratioInline = document.getElementById('ratio-inline');
 const saveBtn = document.getElementById('save-ratio-btn');
+const saveText = saveBtn.querySelector('.save-text');
+const saveCheck = saveBtn.querySelector('.save-check');
 
 (function initRatio() {
   const serverVal = Number('{{ points_ratio or 0 }}') || 0;
@@ -138,6 +143,20 @@ saveBtn.addEventListener('click', () => {
   ratioInput.value = ratio;
   ratioInline.textContent = ratio;
   localStorage.setItem(RATIO_KEY, String(ratio));
+
+  // Visual confirmation
+  saveBtn.classList.remove('btn-outline-primary');
+  saveBtn.classList.add('btn-success');
+  saveText.textContent = 'Saved';
+  saveCheck.classList.remove('d-none');
+
+  // Revert back after 2 seconds
+  setTimeout(() => {
+    saveBtn.classList.remove('btn-success');
+    saveBtn.classList.add('btn-outline-primary');
+    saveText.textContent = 'Save';
+    saveCheck.classList.add('d-none');
+  }, 2000);
 });
 
 function getEffectiveRatio() {
