@@ -125,53 +125,21 @@ const ratioInput = document.getElementById('points-per-dollar');
 const ratioInline = document.getElementById('ratio-inline');
 const saveBtn = document.getElementById('save-ratio-btn');
 
-/* Initialize ratio:
-   Priority: server-provided Jinja -> localStorage -> default 100 */
 (function initRatio() {
   const serverVal = Number('{{ points_ratio or 0 }}') || 0;
   let ratio = serverVal > 0 ? serverVal : Number(localStorage.getItem(RATIO_KEY)) || 100;
-  ratio = Math.max(1, Math.floor(ratio)); // sanitize
+  ratio = Math.max(1, Math.floor(ratio));
   ratioInput.value = ratio;
   ratioInline.textContent = ratio;
 })();
 
-/* Save ratio: try server endpoint; if 404, fallback to localStorage only */
-saveBtn.addEventListener('click', async () => {
+saveBtn.addEventListener('click', () => {
   let ratio = Math.max(1, Math.floor(Number(ratioInput.value || 100)));
   ratioInput.value = ratio;
   ratioInline.textContent = ratio;
-
-  try {
-    const res = await fetch('/api/sponsor/points_ratio', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ points_per_dollar: ratio })
-    });
-
-    if (res.status === 404) {
-      // No backend yet—persist locally so the UI still works
-      localStorage.setItem(RATIO_KEY, String(ratio));
-      alert('Saved locally. (Server setting not configured yet.)');
-      return;
-    }
-
-    const data = await res.json();
-    if (data && data.ok) {
-      // Also mirror locally for convenience
-      localStorage.setItem(RATIO_KEY, String(ratio));
-      alert('Points ratio saved.');
-    } else {
-      // Fallback to local save if server returns unexpected
-      localStorage.setItem(RATIO_KEY, String(ratio));
-      alert('Saved locally (server didn’t confirm).');
-    }
-  } catch (e) {
-    localStorage.setItem(RATIO_KEY, String(ratio));
-    alert('Saved locally (network/server issue).');
-  }
+  localStorage.setItem(RATIO_KEY, String(ratio));
 });
 
-/* Helper to get effective ratio any time we need it */
 function getEffectiveRatio() {
   const serverVal = Number('{{ points_ratio or 0 }}') || 0;
   const localVal = Number(localStorage.getItem(RATIO_KEY)) || 0;
@@ -199,7 +167,6 @@ document.getElementById("ebay-search-form").addEventListener("submit", async (e)
 
   container.innerHTML = data.items.map(item => {
     const hasPrice = item.price && item.price.value && item.price.currency;
-    // Only auto-calc when currency is USD; otherwise leave default 100
     const isUSD = hasPrice && (String(item.price.currency).toUpperCase() === 'USD');
     const autoPoints = isUSD ? Math.ceil(Number(item.price.value) * ratio) : 100;
 
