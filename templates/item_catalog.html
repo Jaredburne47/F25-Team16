@@ -136,8 +136,12 @@ async function toggleFavorite(productId, btnEl) {
   }
 }
 
-/* Add to Cart helper */
+/* ✅ Add to Cart helper with green check animation */
 async function addToCart(productId) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = 'Adding...';
+
   try {
     const res = await fetch('/api/driver/cart/add', {
       method: 'POST',
@@ -145,14 +149,31 @@ async function addToCart(productId) {
       body: JSON.stringify({ product_id: productId, quantity: 1 })
     });
     const data = await res.json();
+
     if (data.ok) {
-      alert('Added to cart!');
+      // ✅ Success visual: green background + white check icon
+      btn.classList.remove('btn-outline-primary');
+      btn.classList.add('btn-success');
+      btn.innerHTML = '<span class="text-white fw-bold">✔ Added</span>';
+      
+      // Keep success style for a few seconds, then revert
+      setTimeout(() => {
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-primary');
+        btn.innerHTML = 'Add to Cart';
+        btn.disabled = false;
+      }, 2500);
     } else {
       alert('Error: ' + (data.error || 'unknown'));
+      btn.disabled = false;
+      btn.innerHTML = 'Add to Cart';
     }
   } catch (e) {
     alert('Network error');
+    btn.disabled = false;
+    btn.innerHTML = 'Add to Cart';
   }
 }
 </script>
+
 {% endblock %}
