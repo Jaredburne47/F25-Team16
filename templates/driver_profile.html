@@ -19,21 +19,26 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center">
-        <h1>Driver Profile</h1>
-        <!-- Settings button -->
-        <a href="{{ url_for('settings') }}" class="btn btn-primary">Edit Profile</a>
-        <div>
-            <!-- SPRINT 7: Add a button that calls the window.print() function -->
+        <h1 class="mb-0">Driver Profile</h1>
+
+        <!-- Button group aligned to the right -->
+        <div class="d-flex gap-2 no-print">
+            <!-- Print first (left) -->
             <button onclick="window.print()" class="btn btn-secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer" viewBox="0 0 16 16">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                     fill="currentColor" class="bi bi-printer" viewBox="0 0 16 16">
                     <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
                     <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
                 </svg>
                 Print Profile
             </button>
+
+            <!-- Edit second (right) -->
+            <a href="{{ url_for('settings') }}" class="btn btn-primary">Edit Profile</a>
         </div>
     </div>
-    <hr>
+
+    <hr class="no-print">
 
     <!-- Profile Information -->
     <div class="card shadow-sm">
@@ -41,9 +46,9 @@
             <!-- Profile Picture -->
             <div class="mb-3 text-center">
                 <img src="{{ url_for('static', filename='uploads/profile_pics/' ~ (user.profile_picture if user.profile_picture else 'Default.jpg')) }}" 
-                    alt="Profile Picture" 
-                    class="img-thumbnail rounded-circle" 
-                    width="150" height="150">
+                     alt="Profile Picture" 
+                     class="img-thumbnail rounded-circle" 
+                     width="150" height="150">
             </div>
 
             <p><strong>Username:</strong> {{ user.username }}</p>
@@ -59,9 +64,9 @@
 
             <!-- Social Media Links -->
             <h5>Social Media</h5>
-                <p><strong>Twitter:</strong> <a href="{{ user.twitter }}" target="_blank">{{ user.twitter }}</a></p>
-                <p><strong>Facebook:</strong> <a href="{{ user.facebook }}" target="_blank">{{ user.facebook }}</a></p>
-                <p><strong>Instagram:</strong> <a href="{{ user.instagram }}" target="_blank">{{ user.instagram }}</a></p>
+            <p><strong>Twitter:</strong> <a href="{{ user.twitter }}" target="_blank">{{ user.twitter }}</a></p>
+            <p><strong>Facebook:</strong> <a href="{{ user.facebook }}" target="_blank">{{ user.facebook }}</a></p>
+            <p><strong>Instagram:</strong> <a href="{{ user.instagram }}" target="_blank">{{ user.instagram }}</a></p>
             <hr>
 
             <!-- Vehicle Information -->
