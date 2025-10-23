@@ -520,20 +520,48 @@ def dashboard():
 
 @app.get("/cart")
 def cart_page():
-    # --- Access control ---
+    # Drivers only
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
 
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # --- Get driver’s point balance ---
-    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-    driver = cursor.fetchone()
-    points_balance = driver['points'] if driver else 0
-    return render_template("cart.html", items=[], points_balance=points_balance, total_points=0)
+        # Driver points balance
+        cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+        r = cur.fetchone()
+        points_balance = int(r['points'] if r and r['points'] is not None else 0)
+
+        # Cart lines joined with current product info
+        cur.execute("""
+            SELECT ci.product_id,
+                   ci.quantity,
+                   p.name,
+                   p.points_cost,
+                   p.image_url,
+                   p.quantity AS stock
+            FROM cart_items ci
+            JOIN products p ON p.product_id = ci.product_id
+            WHERE ci.driver_username=%s
+            ORDER BY p.name ASC
+        """, (username,))
+        items = cur.fetchall()
+
+        cur.close(); db.close()
+    except Exception as e:
+        return f"<h3>Database error loading cart: {e}</h3>"
+
+    # Compute total points on server (simple + explicit)
+    total_points = sum(int(i['points_cost'] or 0) * int(i['quantity'] or 0) for i in items)
+
+    return render_template("cart.html",
+                           items=items,
+                           points_balance=points_balance,
+                           total_points=total_points)
+
 
 def _get_driver_sponsor(username):
     """Return the sponsor the driver is accepted with, or None."""
