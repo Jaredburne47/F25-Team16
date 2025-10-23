@@ -6,8 +6,8 @@
 
 <!-- Points summary (optional, safe to pass 0 for now) -->
 <div class="mb-3">
-  <strong>Your Points:</strong>
-  <span class="badge bg-success">{{ points_balance or 0 }}</span>
+  <strong>Your Points Balance:</strong>
+  <span class="badge bg-success">{{ points_balance }}</span>
 </div>
 
 {% if not items or items|length == 0 %}

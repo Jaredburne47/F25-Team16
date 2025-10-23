@@ -520,10 +520,20 @@ def dashboard():
 
 @app.get("/cart")
 def cart_page():
+    # --- Access control ---
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
-    # No functionality yet: render with empty data
-    return render_template("cart.html", items=[], points_balance=0, total_points=0)
+
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # --- Get driver’s point balance ---
+    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+    driver = cursor.fetchone()
+    points_balance = driver['points'] if driver else 0
+    return render_template("cart.html", items=[], points_balance=points_balance, total_points=0)
 
 
 @app.route('/catalog_manager')
