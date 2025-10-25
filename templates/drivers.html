@@ -49,6 +49,18 @@
                         <input type="text" name="reason" placeholder="Reason" style="width: 140px;" class="form-control d-inline-block mb-1">
                         <button type="submit" class="btn btn-warning btn-sm">Remove Points</button>
                     </form>
+                    {% if role == 'admin' %}
+                    <!-- Disable / Enable Driver -->
+                    <form action="{{ url_for('toggle_account', role='driver', username=driver.username) }}" method="post" style="display:inline;">
+                        {% if driver.disabled %}
+                            <input type="hidden" name="action" value="enable">
+                            <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                        {% else %}
+                            <input type="hidden" name="action" value="disable">
+                            <button type="submit" class="btn btn-dark btn-sm">Disable</button>
+    {% endif %}
+</form>
+{% endif %}
                 </td>
             </tr>
             {% endfor %}
