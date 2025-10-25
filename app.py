@@ -1266,7 +1266,7 @@ def drivers():
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    return render_template("drivers.html", drivers=drivers_list)
+    return render_template("drivers.html", drivers=drivers_list, role=session.get('role'))
 
 @app.route('/sponsors')
 def sponsors():
