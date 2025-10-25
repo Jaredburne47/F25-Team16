@@ -1333,7 +1333,7 @@ def sponsors():
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    return render_template("sponsors.html", sponsors=sponsors_list)
+    return render_template("sponsors.html", sponsors=sponsors_list, role=session.get('role'))
 
 
 @app.route('/remove_driver', methods=['POST'])
