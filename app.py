@@ -404,7 +404,6 @@ def reactivate_account():
         cursor.execute("SELECT disabled_by_admin FROM admins WHERE username=%s", (username,))
     else:
         cursor.close(); db.close()
-        abort(400)
 
     result = cursor.fetchone()
     if result and result['disabled_by_admin']:
@@ -446,7 +445,6 @@ def disable_self():
         cursor.execute("UPDATE admins  SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
     else:
         cursor.close(); db.close()
-        abort(400)
 
     db.commit()
     cursor.close(); db.close()
@@ -459,9 +457,7 @@ def disable_self():
 @app.route('/toggle_account/<role>/<username>', methods=['POST'])
 def toggle_account(role, username):
     action = request.form.get('action')  # 'disable' or 'enable'
-    if role not in ('driver', 'sponsor', 'admin') or action not in ('disable', 'enable'):
-        abort(400)
-
+    
     value = (action == 'disable')
     admin_flag = (action == 'disable')
 
@@ -483,7 +479,13 @@ def toggle_account(role, username):
 
     flash(f"{role.capitalize()} '{username}' has been {'disabled' if value else 're-enabled'}.")
     return redirect(url_for('admin_profile'))
-    
+
+@app.route('/logout')
+def logout():
+    session.clear()  # Clear all session data
+    flash("You have been logged out.")
+    return redirect(url_for('login'))    
+
 # --- PROFILE ROUTES ---
 @app.route('/driver/profile', methods=['GET', 'POST'])
 def driver_profile():
