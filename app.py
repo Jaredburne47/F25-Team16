@@ -277,14 +277,18 @@ def login():
             # --- Check if user is disabled ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
-            cursor.execute(f"""
-                SELECT disabled, disabled_by_admin
-                FROM {role}s
-                WHERE username = %s
-            """, (username,))
-            status = cursor.fetchone()
-            cursor.close()
-            db.close()
+            if role == 'driver':
+                cursor.execute("SELECT disabled, disabled_by_admin FROM drivers WHERE username=%s", (username,))
+            elif role == 'sponsor':
+                cursor.execute("SELECT disabled, disabled_by_admin FROM sponsor WHERE username=%s", (username,))
+            elif role == 'admin':
+                cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
+            else:
+                cursor.close(); db.close()
+                abort(400)  # unexpected role
+        
+        status = cursor.fetchone()
+        cursor.close(); db.close()
 
             # Redirect disabled users to disabled page
             if status and status['disabled']:
@@ -378,33 +382,48 @@ def login():
 
     # GET request → render blank login form
     return render_template("login.html")
-@app.route('/logout')
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     session.clear() #clears all data from session(user,role)
     return redirect(url_for('login'))
 
 
-@app.route('/disabled_account')
-def disabled_account():
-    reason = request.args.get('reason', 'self')
-    return render_template('disabled_account.html', reason=reason)
-
 @app.route('/reactivate_account', methods=['POST'])
 def reactivate_account():
     role = session.get('role')
     username = session.get('user')
+    if not role or not username:
+        flash("Session expired. Please log in again.")
+        return redirect(url_for('login'))
+
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    cursor.execute(f"SELECT disabled_by_admin FROM {role}s WHERE username=%s", (username,))
-    result = cursor.fetchone()
-
-    if result and result['disabled_by_admin']:
-        flash("Your account was disabled by an administrator. Please contact support.")
+    # check who disabled
+    if role == 'driver':
+        cursor.execute("SELECT disabled_by_admin FROM drivers WHERE username=%s", (username,))
+    elif role == 'sponsor':
+        cursor.execute("SELECT disabled_by_admin FROM sponsor WHERE username=%s", (username,))
+    elif role == 'admin':
+        cursor.execute("SELECT disabled_by_admin FROM admins WHERE username=%s", (username,))
+    else:
         cursor.close(); db.close()
+        abort(400)
+
+    result = cursor.fetchone()
+    if result and result['disabled_by_admin']:
+        cursor.close(); db.close()
+        flash("Your account was disabled by an administrator. Please contact support.")
         return redirect('/disabled_account?reason=admin')
 
-    cursor.execute(f"UPDATE {role}s SET disabled = FALSE WHERE username=%s", (username,))
+    # reactivate (self-disabled)
+    if role == 'driver':
+        cursor.execute("UPDATE drivers SET disabled=FALSE WHERE username=%s", (username,))
+    elif role == 'sponsor':
+        cursor.execute("UPDATE sponsor SET disabled=FALSE WHERE username=%s", (username,))
+    else:  # admin
+        cursor.execute("UPDATE admins SET disabled=FALSE WHERE username=%s", (username,))
+
     db.commit()
     cursor.close(); db.close()
 
@@ -416,11 +435,26 @@ def reactivate_account():
 def disable_self():
     role = session.get('role')
     username = session.get('user')
+    if not role or not username:
+        flash("Session expired. Please log in again.")
+        return redirect(url_for('login'))
+
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute(f"UPDATE {role}s SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
+
+    if role == 'driver':
+        cursor.execute("UPDATE drivers SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
+    elif role == 'sponsor':
+        cursor.execute("UPDATE sponsor SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
+    elif role == 'admin':
+        cursor.execute("UPDATE admins  SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
+    else:
+        cursor.close(); db.close()
+        abort(400)
+
     db.commit()
     cursor.close(); db.close()
+
     session['disabled'] = True
     flash("Your account has been disabled.")
     return redirect('/disabled_account?reason=self')
@@ -429,12 +463,25 @@ def disable_self():
 @app.route('/toggle_account/<role>/<username>', methods=['POST'])
 def toggle_account(role, username):
     action = request.form.get('action')  # 'disable' or 'enable'
-    value = True if action == 'disable' else False
-    admin_flag = True if action == 'disable' else False
+    if role not in ('driver', 'sponsor', 'admin') or action not in ('disable', 'enable'):
+        abort(400)
+
+    value = (action == 'disable')
+    admin_flag = (action == 'disable')
 
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute(f"UPDATE {role}s SET disabled=%s, disabled_by_admin=%s WHERE username=%s", (value, admin_flag, username))
+
+    if role == 'driver':
+        cursor.execute("UPDATE drivers SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
+                       (value, admin_flag, username))
+    elif role == 'sponsor':
+        cursor.execute("UPDATE sponsor SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
+                       (value, admin_flag, username))
+    else:  # admin
+        cursor.execute("UPDATE admins  SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
+                       (value, admin_flag, username))
+
     db.commit()
     cursor.close(); db.close()
 
