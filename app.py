@@ -437,11 +437,11 @@ def disable_self():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    if role == 'drivers':
+    if role == 'driver':
         cursor.execute("UPDATE drivers SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
     elif role == 'sponsor':
         cursor.execute("UPDATE sponsor SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
-    elif role == 'admins':
+    elif role == 'admin':
         cursor.execute("UPDATE admins  SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
     else:
         cursor.close(); db.close()
