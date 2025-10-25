@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Account Disabled</title>
+  <style>
+    body { font-family: Arial; background: #f8f8f8; text-align: center; padding-top: 100px; }
+    .card { background: white; display: inline-block; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px #aaa; }
+    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if reason == 'admin' %}
+      <h2>Your Account Has Been Disabled by an Administrator</h2>
+      <p>Please contact your administrator to reactivate your account.</p>
+    {% else %}
+      <h2>Your Account is Disabled</h2>
+      <p>You can reactivate your account below or log out.</p>
+      <form action="/reactivate_account" method="POST">
+        <button type="submit">Reactivate Account</button>
+      </form>
+    {% endif %}
+    <form action="/logout" method="POST" style="margin-top:10px;">
+      <button type="submit" style="background:#dc3545;">Logout</button>
+    </form>
+  </div>
+</body>
+</html>
