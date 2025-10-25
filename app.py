@@ -286,13 +286,12 @@ def login():
                 cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
             else:
                 cursor.close()
-                db.close()
-                abort(400)  # unexpected role
-
+                db.close()           
+            
             status = cursor.fetchone()
             cursor.close()
             db.close()
-
+            
             # --- Redirect disabled users ---
             if status and status['disabled']:
                 session['disabled'] = True
