@@ -484,7 +484,7 @@ def toggle_account(role, username):
     flash(f"{role.capitalize()} '{username}' has been {'disabled' if value else 're-enabled'}.")
     return redirect(url_for('admin_profile'))
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     session.clear()  # Clear all session data
     flash("You have been logged out.")
