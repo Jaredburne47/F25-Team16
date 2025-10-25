@@ -138,6 +138,17 @@
       <button type="submit" class="btn btn-success btn-sm py-1 px-3">Save Changes</button>
       <a href="{{ cancel_url }}" class="btn btn-danger btn-sm py-1 px-3">Cancel</a>
     </div>
+    {% if session.get('role') in ['driver', 'sponsor'] %}
+    <hr class="my-4">
+    <div class="text-center">
+      <form action="{{ url_for('disable_self') }}" method="POST" onsubmit="return confirm('Are you sure you want to disable your account? You can reactivate it later.')">
+        <button type="submit" class="btn btn-dark">Disable My Account</button>
+      </form>
+      <small class="text-muted d-block mt-2">
+        Once disabled, you’ll only be able to log in to reactivate your account or log out.
+      </small>
+    </div>
+    {% endif %}
   </form>
 
   <!-- =========================== -->
