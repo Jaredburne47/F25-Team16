@@ -278,11 +278,11 @@ def login():
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-            if role == 'drivers':
+            if role == 'driver':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM drivers WHERE username=%s", (username,))
             elif role == 'sponsor':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-            elif role == 'admins':
+            elif role == 'admin':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
             else:
                 cursor.close()
@@ -323,7 +323,7 @@ def login():
                 logInEmail.send_login_email(r['email'], username)
 
             # Redirect based on role
-            if role == 'drivers':
+            if role == 'driver':
                 session['show_feedback_modal'] = True
                 return redirect(url_for('driver_profile'))
             elif role == 'admin':
@@ -396,11 +396,11 @@ def reactivate_account():
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     # check who disabled
-    if role == 'drivers':
+    if role == 'driver':
         cursor.execute("SELECT disabled_by_admin FROM drivers WHERE username=%s", (username,))
     elif role == 'sponsor':
         cursor.execute("SELECT disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-    elif role == 'admins':
+    elif role == 'admin':
         cursor.execute("SELECT disabled_by_admin FROM admins WHERE username=%s", (username,))
     else:
         cursor.close(); db.close()
@@ -413,7 +413,7 @@ def reactivate_account():
         return redirect('/disabled_account?reason=admin')
 
     # reactivate (self-disabled)
-    if role == 'drivers':
+    if role == 'driver':
         cursor.execute("UPDATE drivers SET disabled=FALSE WHERE username=%s", (username,))
     elif role == 'sponsor':
         cursor.execute("UPDATE sponsor SET disabled=FALSE WHERE username=%s", (username,))
