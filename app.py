@@ -1259,7 +1259,7 @@ def drivers():
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT username, email, points FROM drivers;")
+        cursor.execute("SELECT username, email, points, disabled FROM drivers;")
         drivers_list = cursor.fetchall()
         cursor.close()
         db.close()
