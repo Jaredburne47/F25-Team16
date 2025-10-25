@@ -282,7 +282,7 @@ def login():
                 cursor.execute("SELECT disabled, disabled_by_admin FROM drivers WHERE username=%s", (username,))
             elif role == 'sponsor':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-            elif role == 'admin':
+            elif role == 'admins':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
             else:
                 cursor.close()
