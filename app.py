@@ -1326,7 +1326,7 @@ def sponsors():
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT username, email FROM sponsor;")
+        cursor.execute("SELECT username, email, disabled FROM sponsor;")
         sponsors_list = cursor.fetchall()
         cursor.close()
         db.close()
