@@ -266,10 +266,10 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
-        # Authenticate 
+        # Authenticate user
         role, user_row = authenticate(username, password)
 
-        # If login is successful starts session & redirects and sends email
+        # --- If login is successful ---
         if role:
             session['user'] = username
             session['role'] = role
@@ -277,20 +277,23 @@ def login():
             # --- Check if user is disabled ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
             if role == 'drivers':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM drivers WHERE username=%s", (username,))
             elif role == 'sponsor':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-            elif role == 'admins':
+            elif role == 'admin':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
             else:
-                cursor.close(); db.close()
+                cursor.close()
+                db.close()
                 abort(400)  # unexpected role
-        
-            status = cursor.fetchone()
-            cursor.close(); db.close()
 
-            # Redirect disabled users to disabled page
+            status = cursor.fetchone()
+            cursor.close()
+            db.close()
+
+            # --- Redirect disabled users ---
             if status and status['disabled']:
                 session['disabled'] = True
                 if status['disabled_by_admin']:
@@ -299,41 +302,43 @@ def login():
                     return redirect('/disabled_account?reason=self')
             else:
                 session['disabled'] = False
-            
+
             # --- Normal login email + redirect flow ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
-            # Find the user's email (and role) by username across all tables
+
             cursor.execute("""
-                SELECT email, 'drivers'  AS role FROM drivers WHERE username=%s
+                SELECT email, 'driver' AS role FROM drivers WHERE username=%s
                 UNION ALL
                 SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
                 UNION ALL
-                SELECT email, 'admins'   AS role FROM admins  WHERE username=%s
+                SELECT email, 'admin' AS role FROM admins WHERE username=%s
                 LIMIT 1
             """, (username, username, username))
+
             r = cursor.fetchone()
-            cursor.close(); db.close()
+            cursor.close()
+            db.close()
 
             if r and r.get('email'):
                 logInEmail.send_login_email(r['email'], username)
 
+            # Redirect based on role
             if role == 'drivers':
                 session['show_feedback_modal'] = True
                 return redirect(url_for('driver_profile'))
-            elif role == 'admins':
+            elif role == 'admin':
                 return redirect(url_for('admin_profile'))
             elif role == 'sponsor':
                 session['show_feedback_modal'] = True
                 return redirect(url_for('sponsor_profile'))
 
-        # If login failed, check for lockout reason
+        # --- If login failed, handle lockout ---
         locked_until = None
         try:
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-            # Check if user exists and has an active lockout in any table
             for table in ['drivers', 'sponsor', 'admins']:
                 cursor.execute(f"SELECT locked_until FROM {table} WHERE username=%s", (username,))
                 row = cursor.fetchone()
@@ -344,48 +349,40 @@ def login():
             cursor.close()
             db.close()
         except Exception:
-            # fallback if DB lookup fails
             locked_until = None
 
         if locked_until:
             try:
                 db = MySQLdb.connect(**db_config)
                 cursor = db.cursor(MySQLdb.cursors.DictCursor)
-                # Find the user's email (and role) by username across all tables
                 cursor.execute("""
-                    SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
+                    SELECT email, 'driver' AS role FROM drivers WHERE username=%s
                     UNION ALL
                     SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
                     UNION ALL
-                    SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
+                    SELECT email, 'admin' AS role FROM admins WHERE username=%s
                     LIMIT 1
                 """, (username, username, username))
                 r = cursor.fetchone()
-                cursor.close(); db.close()
+                cursor.close()
+                db.close()
 
                 if r and r.get('email'):
                     locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
                     send_lock_email(r['email'], username, r.get('role', 'user'), locked_str)
             except Exception:
                 pass  # don't block login page rendering if email fails
-        
-        #Render login.html with message
-        if locked_until:
-            msg = (
-                    "Your account is locked until "
-                    f"{locked_until.strftime('%b %d, %Y %I:%M:%S %p')}. Please try again later."
-            )
-        else:
-            msg = "Invalid username or password."
 
+        msg = (
+            "Your account is locked until "
+            f"{locked_until.strftime('%b %d, %Y %I:%M:%S %p')}. Please try again later."
+            if locked_until else
+            "Invalid username or password."
+        )
         return render_template("login.html", error=msg, last_username=username)
 
-    # GET request → render blank login form
+    # --- GET request ---
     return render_template("login.html")
-@app.route('/logout', methods=['GET', 'POST'])
-def logout():
-    session.clear() #clears all data from session(user,role)
-    return redirect(url_for('login'))
 
 
 @app.route('/reactivate_account', methods=['POST'])
