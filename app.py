@@ -277,18 +277,18 @@ def login():
             # --- Check if user is disabled ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
-            if role == 'driver':
+            if role == 'drivers':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM drivers WHERE username=%s", (username,))
             elif role == 'sponsor':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-            elif role == 'admin':
+            elif role == 'admins':
                 cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
             else:
                 cursor.close(); db.close()
                 abort(400)  # unexpected role
         
-        status = cursor.fetchone()
-        cursor.close(); db.close()
+            status = cursor.fetchone()
+            cursor.close(); db.close()
 
             # Redirect disabled users to disabled page
             if status and status['disabled']:
@@ -305,11 +305,11 @@ def login():
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
             # Find the user's email (and role) by username across all tables
             cursor.execute("""
-                SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
+                SELECT email, 'drivers'  AS role FROM drivers WHERE username=%s
                 UNION ALL
                 SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
                 UNION ALL
-                SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
+                SELECT email, 'admins'   AS role FROM admins  WHERE username=%s
                 LIMIT 1
             """, (username, username, username))
             r = cursor.fetchone()
@@ -318,10 +318,10 @@ def login():
             if r and r.get('email'):
                 logInEmail.send_login_email(r['email'], username)
 
-            if role == 'driver':
+            if role == 'drivers':
                 session['show_feedback_modal'] = True
                 return redirect(url_for('driver_profile'))
-            elif role == 'admin':
+            elif role == 'admins':
                 return redirect(url_for('admin_profile'))
             elif role == 'sponsor':
                 session['show_feedback_modal'] = True
@@ -400,11 +400,11 @@ def reactivate_account():
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     # check who disabled
-    if role == 'driver':
+    if role == 'drivers':
         cursor.execute("SELECT disabled_by_admin FROM drivers WHERE username=%s", (username,))
     elif role == 'sponsor':
         cursor.execute("SELECT disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-    elif role == 'admin':
+    elif role == 'admins':
         cursor.execute("SELECT disabled_by_admin FROM admins WHERE username=%s", (username,))
     else:
         cursor.close(); db.close()
@@ -417,7 +417,7 @@ def reactivate_account():
         return redirect('/disabled_account?reason=admin')
 
     # reactivate (self-disabled)
-    if role == 'driver':
+    if role == 'drivers':
         cursor.execute("UPDATE drivers SET disabled=FALSE WHERE username=%s", (username,))
     elif role == 'sponsor':
         cursor.execute("UPDATE sponsor SET disabled=FALSE WHERE username=%s", (username,))
@@ -442,11 +442,11 @@ def disable_self():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    if role == 'driver':
+    if role == 'drivers':
         cursor.execute("UPDATE drivers SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
     elif role == 'sponsor':
         cursor.execute("UPDATE sponsor SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
-    elif role == 'admin':
+    elif role == 'admins':
         cursor.execute("UPDATE admins  SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
     else:
         cursor.close(); db.close()
