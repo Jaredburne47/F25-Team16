@@ -383,6 +383,10 @@ def login():
     # --- GET request ---
     return render_template("login.html")
 
+@app.route('/disabled_account')
+def disabled_account():
+    reason = request.args.get('reason', 'self')  # either 'admin' or 'self'
+    return render_template('disabled_account.html', reason=reason)
 
 @app.route('/reactivate_account', methods=['POST'])
 def reactivate_account():
