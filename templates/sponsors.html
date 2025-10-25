@@ -31,6 +31,16 @@
                         <input type="hidden" name="username" value="{{ sponsor.username }}">
                         <button type="submit" class="btn btn-secondary btn-sm">Login</button>
                     </form>
+                    {% if role == 'admin' %}
+                    <!-- Disable / Enable Sponsor -->
+                    <form action="{{ url_for('toggle_account', role='sponsor', username=sponsor.username) }}" method="post" style="display:inline;">
+                        {% if sponsor.disabled %}
+                            <input type="hidden" name="action" value="enable">
+                            <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                        {% else %}
+                            <input type="hidden" name="action" value="disable">
+                            <button type="submit" class="btn btn-dark btn-sm">Disable</button>
+    {% endif %}
                 </td>
             </tr>
             {% endfor %}
