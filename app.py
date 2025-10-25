@@ -259,7 +259,7 @@ def about():
 
     # Render template dynamically
     return render_template('about.html', rows=rows)
-#For now just a place holder
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -273,6 +273,30 @@ def login():
         if role:
             session['user'] = username
             session['role'] = role
+
+            # --- Check if user is disabled ---
+            db = MySQLdb.connect(**db_config)
+            cursor = db.cursor(MySQLdb.cursors.DictCursor)
+            cursor.execute(f"""
+                SELECT disabled, disabled_by_admin
+                FROM {role}s
+                WHERE username = %s
+            """, (username,))
+            status = cursor.fetchone()
+            cursor.close()
+            db.close()
+
+            # Redirect disabled users to disabled page
+            if status and status['disabled']:
+                session['disabled'] = True
+                if status['disabled_by_admin']:
+                    return redirect('/disabled_account?reason=admin')
+                else:
+                    return redirect('/disabled_account?reason=self')
+            else:
+                session['disabled'] = False
+            
+            # --- Normal login email + redirect flow ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
             # Find the user's email (and role) by username across all tables
@@ -299,7 +323,6 @@ def login():
                 session['show_feedback_modal'] = True
                 return redirect(url_for('sponsor_profile'))
 
-       
         # If login failed, check for lockout reason
         locked_until = None
         try:
@@ -359,10 +382,66 @@ def login():
 def logout():
     session.clear() #clears all data from session(user,role)
     return redirect(url_for('login'))
-    #return redirect(url_for('home')) this would redirect for cleaner experiance
 
+
+@app.route('/disabled_account')
+def disabled_account():
+    reason = request.args.get('reason', 'self')
+    return render_template('disabled_account.html', reason=reason)
+
+@app.route('/reactivate_account', methods=['POST'])
+def reactivate_account():
+    role = session.get('role')
+    username = session.get('user')
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    cursor.execute(f"SELECT disabled_by_admin FROM {role}s WHERE username=%s", (username,))
+    result = cursor.fetchone()
+
+    if result and result['disabled_by_admin']:
+        flash("Your account was disabled by an administrator. Please contact support.")
+        cursor.close(); db.close()
+        return redirect('/disabled_account?reason=admin')
+
+    cursor.execute(f"UPDATE {role}s SET disabled = FALSE WHERE username=%s", (username,))
+    db.commit()
+    cursor.close(); db.close()
+
+    session['disabled'] = False
+    flash("Your account has been reactivated successfully.")
+    return redirect(url_for(f'{role}_profile'))
+
+@app.route('/disable_self', methods=['POST'])
+def disable_self():
+    role = session.get('role')
+    username = session.get('user')
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute(f"UPDATE {role}s SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
+    db.commit()
+    cursor.close(); db.close()
+    session['disabled'] = True
+    flash("Your account has been disabled.")
+    return redirect('/disabled_account?reason=self')
+
+
+@app.route('/toggle_account/<role>/<username>', methods=['POST'])
+def toggle_account(role, username):
+    action = request.form.get('action')  # 'disable' or 'enable'
+    value = True if action == 'disable' else False
+    admin_flag = True if action == 'disable' else False
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute(f"UPDATE {role}s SET disabled=%s, disabled_by_admin=%s WHERE username=%s", (value, admin_flag, username))
+    db.commit()
+    cursor.close(); db.close()
+
+    flash(f"{role.capitalize()} '{username}' has been {'disabled' if value else 're-enabled'}.")
+    return redirect(url_for('admin_profile'))
+    
 # --- PROFILE ROUTES ---
-
 @app.route('/driver/profile', methods=['GET', 'POST'])
 def driver_profile():
     if 'user' not in session or session.get('role') != 'driver':
