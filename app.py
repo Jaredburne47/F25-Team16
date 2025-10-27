@@ -10,6 +10,7 @@ from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
 from emailScripts.lockEmail import send_lock_email
+from emailScripts.dropDriverEmail import send_drop_email
 import secrets
 import os
 import csv
@@ -1301,21 +1302,67 @@ def add_user():
 
 @app.route('/drivers')
 def drivers():
-    # Only sponsors/admins can access
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT username, email, points, disabled FROM drivers;")
-        drivers_list = cursor.fetchall()
-        cursor.close()
-        db.close()
-    except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    if session.get('role') == 'sponsor':
+        cur.execute("""
+            SELECT d.username, d.email, d.points, d.disabled
+            FROM drivers d
+            JOIN driverApplications a
+              ON a.driverUsername = d.username
+             AND a.sponsor = %s
+             AND a.status = 'accepted'
+            ORDER BY d.username
+        """, (session['user'],))
+    else:
+        cur.execute("SELECT username, email, points, disabled FROM drivers ORDER BY username")
+
+    drivers_list = cur.fetchall()
+    cur.close(); db.close()
 
     return render_template("drivers.html", drivers=drivers_list, role=session.get('role'))
+
+@app.route('/driver/<username>', methods=['GET', 'POST'])
+def sponsor_edit_driver(username):
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Ensure this driver belongs to this sponsor
+    cursor.execute("""
+        SELECT COUNT(*) AS valid
+        FROM driverApplications
+        WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
+    """, (username, sponsor))
+    valid = cursor.fetchone()
+    if not valid or valid['valid'] == 0:
+        flash("You are not authorized to edit this driver.", "danger")
+        return redirect(url_for('drivers'))
+
+    if request.method == 'POST':
+        phone = request.form.get('phone')
+        address = request.form.get('address')
+        cursor.execute("""
+            UPDATE drivers
+            SET phone=%s, address=%s
+            WHERE username=%s
+        """, (phone, address, username))
+        db.commit()
+        flash("Driver information updated.", "success")
+
+    cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
+    driver = cursor.fetchone()
+    cursor.close(); db.close()
+
+    return render_template("sponsor_edit_driver.html", driver=driver)
 
 @app.route('/sponsors')
 def sponsors():
@@ -1355,6 +1402,43 @@ def remove_driver():
     except Exception as e:
         return f"<h2>Error removing driver:</h2><p>{e}</p>"
         flash(f'Error removing driver: {e}', 'danger')
+
+    return redirect(url_for('drivers'))
+
+@app.route('/drop_driver', methods=['POST'])
+def drop_driver():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('login'))
+
+    driver_username = request.form.get('username')
+    sponsor_username = session['user']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # End sponsorship in applications table
+        cursor.execute("""
+            UPDATE driverApplications
+            SET status='dropped'
+            WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
+        """, (driver_username, sponsor_username))
+        db.commit()
+
+        # Get driver’s email
+        cursor.execute("SELECT email FROM drivers WHERE username=%s", (driver_username,))
+        driver = cursor.fetchone()
+
+        if driver and driver.get('email'):
+            send_drop_email(driver['email'], driver_username, sponsor_username)
+
+        flash(f'Driver "{driver_username}" has been dropped successfully.', 'success')
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        flash(f'Error dropping driver: {e}', 'danger')
 
     return redirect(url_for('drivers'))
 
@@ -1705,7 +1789,7 @@ def driver_applications():
     cursor.execute("""
         SELECT * FROM driverApplications
         WHERE driverUsername=%s
-        ORDER BY FIELD(status,'pending','accepted','rejected','withdrawn'), created_at DESC
+        ORDER BY FIELD(status,'pending','accepted','rejected','withdrawn', 'dropped'), created_at DESC
     """, (username,))
     applications = cursor.fetchall()
 
