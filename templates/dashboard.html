@@ -8,5 +8,40 @@
         <h5>Your Points Balance: <span class="badge bg-success">{{ points_balance }}</span></h5>
     </div>
 </div>
+
 <p>Here you will see your points history, recent activity, and progress toward rewards.</p>
+
+<hr class="my-4">
+
+<h4>Recent Activity</h4>
+{% if history and history|length > 0 %}
+  <table class="table table-striped table-bordered mt-3">
+    <thead class="table-light">
+      <tr>
+        <th style="width: 200px;">Date / Time</th>
+        <th style="width: 140px;">Action</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in history %}
+      <tr>
+        <td>{{ row.timestamp }}</td>
+        <td>
+          {% if row.action == 'add points' %}
+            <span class="badge bg-success">+ Added</span>
+          {% elif row.action == 'remove points' %}
+            <span class="badge bg-warning text-dark">− Removed</span>
+          {% else %}
+            {{ row.action }}
+          {% endif %}
+        </td>
+        <td>{{ row.description }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="alert alert-secondary mt-3">No point history available yet.</div>
+{% endif %}
 {% endblock %}
