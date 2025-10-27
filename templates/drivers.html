@@ -22,12 +22,21 @@
                 <td>{{ driver.email }}</td>
                 <td>{{ driver.points }}</td>
                 <td>
+                    
+                    {% if role == 'admin' %}
                     <!-- Remove driver -->
                     <form action="{{ url_for('remove_driver') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
                         <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                     </form>
+                    {% endif %}
                     
+                    {% if role == 'sponsor' %}
+                    <form action="{{ url_for('drop_driver') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="username" value="{{ driver.username }}">
+                        <button type="submit" class="btn btn-warning btn-sm">Drop</button>
+                    </form>
+                    {% endif %}
                     <!-- Login as driver -->
                     <form action="{{ url_for('login_as_driver') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
