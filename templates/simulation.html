@@ -1,47 +1,118 @@
-<h1>Simulation Rules</h1>
+{% extends 'base.html' %}
 
-<form method="POST" action="/add_rule">
-  <label>Type:</label>
-  <select name="type" required>
-    <option value="add_driver">Add Driver</option>
-    <option value="remove_driver">Remove Driver</option>
-    <option value="add_points">Add Points</option>
-    <option value="remove_points">Remove Points</option>
-  </select><br>
+{% block title %}Simulation Rules{% endblock %}
 
-  <label>Action Value (for points):</label>
-  <input type="number" name="action_value"><br>
+{% block content %}
+<div class="container my-4">
+  <h2 class="mb-4">Simulation Rules</h2>
 
-  <label>Schedule:</label>
-  <input type="text" name="schedule" placeholder="e.g. Tuesdays, 9am"><br>
+  <!-- Add Rule Card -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white">
+      Add New Rule
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('add_rule') }}">
+        <div class="row g-3">
+          <!-- Type Selection -->
+          <div class="col-md-4">
+            <label for="ruleType" class="form-label">Type</label>
+            <select class="form-select" id="ruleType" name="rule_type" required>
+              <option value="">Select type</option>
+              <option value="add_driver">Add Driver</option>
+              <option value="remove_driver">Remove Driver</option>
+              <option value="add_points">Add Points to Driver</option>
+              <option value="remove_points">Remove Points from Driver</option>
+            </select>
+          </div>
 
-  <button type="submit">Add Rule</button>
-</form>
+          <!-- Driver Selection (only for driver-related rules) -->
+          <div class="col-md-4" id="driverSection">
+            <label for="driverSelect" class="form-label">Driver</label>
+            <select class="form-select" id="driverSelect" name="driver_username">
+              {% for driver in drivers %}
+              <option value="{{ driver.username }}">{{ driver.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
-<hr>
+          <!-- Points Input (only for points-related rules) -->
+          <div class="col-md-4 d-none" id="pointsSection">
+            <label for="pointsInput" class="form-label">Points</label>
+            <input type="number" class="form-control" id="pointsInput" name="points" min="1">
+          </div>
 
-<table border="1">
-  <tr>
-    <th>ID</th>
-    <th>Type</th>
-    <th>Action Value</th>
-    <th>Schedule</th>
-    <th>Enabled</th>
-    <th>Actions</th>
-  </tr>
-  {% for rule in rules %}
-  <tr>
-    <td>{{ rule.id }}</td>
-    <td>{{ rule.type }}</td>
-    <td>{{ rule.action_value or '-' }}</td>
-    <td>{{ rule.schedule or '-' }}</td>
-    <td>{{ 'Yes' if rule.enabled else 'No' }}</td>
-    <td>
-      {% if rule.enabled %}
-        <a href="/disable_rule/{{ rule.id }}">Disable</a>
-      {% endif %}
-      <a href="/remove_rule/{{ rule.id }}">Remove</a>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+          <!-- Schedule -->
+          <div class="col-md-4">
+            <label for="scheduleInput" class="form-label">Schedule</label>
+            <input type="text" class="form-control" id="scheduleInput" name="schedule" placeholder="e.g., Tuesdays 9 AM" required>
+          </div>
+
+          <div class="col-12">
+            <button type="submit" class="btn btn-success mt-3">Add Rule</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Existing Rules Table -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-secondary text-white">
+      Existing Rules
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Type</th>
+            <th>Driver</th>
+            <th>Points</th>
+            <th>Schedule</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rule in rules %}
+          <tr>
+            <td>{{ rule.type.replace('_', ' ').title() }}</td>
+            <td>{{ rule.driver_username or '-' }}</td>
+            <td>{{ rule.points or '-' }}</td>
+            <td>{{ rule.schedule }}</td>
+            <td>{{ 'Enabled' if rule.enabled else 'Disabled' }}</td>
+            <td>
+              <a href="{{ url_for('toggle_rule', rule_id=rule.id) }}" class="btn btn-sm btn-warning">
+                {{ 'Disable' if rule.enabled else 'Enable' }}
+              </a>
+              <a href="{{ url_for('delete_rule', rule_id=rule.id) }}" class="btn btn-sm btn-danger">Delete</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show/Hide sections based on selected type
+  const typeSelect = document.getElementById('ruleType');
+  const driverSection = document.getElementById('driverSection');
+  const pointsSection = document.getElementById('pointsSection');
+
+  typeSelect.addEventListener('change', function() {
+    const val = this.value;
+    if(val === 'add_driver' || val === 'remove_driver') {
+      driverSection.classList.remove('d-none');
+      pointsSection.classList.add('d-none');
+    } else if(val === 'add_points' || val === 'remove_points') {
+      driverSection.classList.remove('d-none');
+      pointsSection.classList.remove('d-none');
+    } else {
+      driverSection.classList.add('d-none');
+      pointsSection.classList.add('d-none');
+    }
+  });
+</script>
+{% endblock %}
