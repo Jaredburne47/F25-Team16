@@ -7,10 +7,11 @@ from datetime import datetime, timedelta
 # Database Configuration
 # ----------------------
 db_config = {
-    'host': 'localhost',
+    'host': 'cpsc4910-f25.cobd8enwsupz.us-east-1.rds.amazonaws.com',
     'user': 'Team16',
-    'passwd': 'Tlaw16',
-    'db': 'Team16_DB'
+    'passwd': 'Tlaw16',  
+    'db': 'Team16_DB',
+    'charset': 'utf8'
 }
 
 # ----------------------
