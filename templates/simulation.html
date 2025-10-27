@@ -26,10 +26,16 @@
             </select>
           </div>
 
-          <!-- Driver Selection (only for driver-related rules) -->
-          <div class="col-md-4" id="driverSection">
-            <label for="driverSelect" class="form-label">Driver</label>
-            <select class="form-select" id="driverSelect" name="driver_username">
+          <!-- Driver Text Input (for Add/Remove Driver) -->
+          <div class="col-md-4 d-none" id="driverTextSection">
+            <label for="driverTextInput" class="form-label">Driver Username</label>
+            <input type="text" class="form-control" id="driverTextInput" name="driver_username_text" placeholder="Enter username">
+          </div>
+
+          <!-- Driver Dropdown (for Add/Remove Points) -->
+          <div class="col-md-4 d-none" id="driverDropdownSection">
+            <label for="driverSelect" class="form-label">Select Driver</label>
+            <select class="form-select" id="driverSelect" name="driver_username_dropdown">
               {% for driver in drivers %}
               <option value="{{ driver.username }}">{{ driver.username }}</option>
               {% endfor %}
@@ -96,21 +102,25 @@
 </div>
 
 <script>
-  // Show/Hide sections based on selected type
   const typeSelect = document.getElementById('ruleType');
-  const driverSection = document.getElementById('driverSection');
+  const driverTextSection = document.getElementById('driverTextSection');
+  const driverDropdownSection = document.getElementById('driverDropdownSection');
   const pointsSection = document.getElementById('pointsSection');
 
   typeSelect.addEventListener('change', function() {
     const val = this.value;
+
     if(val === 'add_driver' || val === 'remove_driver') {
-      driverSection.classList.remove('d-none');
+      driverTextSection.classList.remove('d-none');
+      driverDropdownSection.classList.add('d-none');
       pointsSection.classList.add('d-none');
     } else if(val === 'add_points' || val === 'remove_points') {
-      driverSection.classList.remove('d-none');
+      driverDropdownSection.classList.remove('d-none');
+      driverTextSection.classList.add('d-none');
       pointsSection.classList.remove('d-none');
     } else {
-      driverSection.classList.add('d-none');
+      driverTextSection.classList.add('d-none');
+      driverDropdownSection.classList.add('d-none');
       pointsSection.classList.add('d-none');
     }
   });
