@@ -634,18 +634,33 @@ def dashboard():
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Retrieve driver info to get their points balance
+        # Current balance (you already had this)
         cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
         driver_info = cursor.fetchone()
         points_balance = driver_info['points'] if driver_info else 0
+
+        # NEW: recent point history from auditLogs
+        cursor.execute("""
+            SELECT timestamp, action, description
+            FROM auditLogs
+            WHERE (action='add points' OR action='remove points')
+              AND (
+                    description LIKE %s  -- added ... to {username}
+                 OR description LIKE %s  -- removed ... from {username}
+              )
+            ORDER BY timestamp DESC
+            LIMIT 50
+        """, (f'% to {username}%', f'% from {username}%'))
+        history = cursor.fetchall()
 
         cursor.close()
         db.close()
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    # Render template and pass points_balance
-    return render_template("dashboard.html", points_balance=points_balance)
+    return render_template("dashboard.html",
+                           points_balance=points_balance,
+                           history=history)
 
 @app.get("/cart")
 def cart_page():
