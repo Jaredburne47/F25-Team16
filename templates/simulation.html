@@ -88,7 +88,7 @@
             <td>{{ rule.schedule }}</td>
             <td>{{ 'Enabled' if rule.enabled else 'Disabled' }}</td>
             <td>
-              <a href="{{ url_for('toggle_rule', rule_id=rule.id) }}" class="btn btn-sm btn-warning">
+              <a href="{{ url_for('disable_rule', rule_id=rule.id) }}" class="btn btn-sm btn-warning">
                 {{ 'Disable' if rule.enabled else 'Enable' }}
               </a>
               <a href="{{ url_for('delete_rule', rule_id=rule.id) }}" class="btn btn-sm btn-danger">Delete</a>
