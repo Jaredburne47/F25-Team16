@@ -1,8 +1,11 @@
 import MySQLdb
-from datetime import datetime
-from dateutil.parser import parse
+import schedule
+import time
+from datetime import datetime, timedelta
 
-# Database config
+# ----------------------
+# Database Configuration
+# ----------------------
 db_config = {
     'host': 'localhost',
     'user': 'Team16',
@@ -10,67 +13,126 @@ db_config = {
     'db': 'Team16_DB'
 }
 
-# Helper: check if rule is due now
-def is_rule_due(schedule_text):
-    """
-    Example schedule_text: "Tuesdays 9 AM", "Mondays 14:30"
-    Returns True if the current day & hour match the schedule
-    """
+# ----------------------
+# Helper Functions
+# ----------------------
+def is_rule_due(schedule_str):
+    """Check if a rule schedule matches the current time within ±15 minutes."""
     now = datetime.now()
-    
     try:
-        # Split weekday and time
-        day_part, time_part = schedule_text.split()
-        day_part = day_part.lower().rstrip('s')  # e.g., "Tuesdays" -> "tuesday"
-        
-        # Check day of week
-        if day_part != now.strftime("%A").lower():
+        parts = schedule_str.strip().split()
+        day_part = parts[0].lower()
+        time_part = parts[1]
+
+        # Convert scheduled day to number (0=Monday)
+        days_map = {
+            'mon': 0, 'monday': 0,
+            'tue': 1, 'tuesday': 1,
+            'wed': 2, 'wednesday': 2,
+            'thu': 3, 'thursday': 3,
+            'fri': 4, 'friday': 4,
+            'sat': 5, 'saturday': 5,
+            'sun': 6, 'sunday': 6
+        }
+
+        scheduled_day = days_map.get(day_part[:3])
+        if scheduled_day is None:
+            print(f"[WARN] Unknown day in schedule: {schedule_str}")
             return False
-        
-        # Parse time
-        schedule_time = parse(time_part)
-        if schedule_time.hour == now.hour:
-            return True
-    except Exception:
-        # Invalid format
+
+        # Parse scheduled time
+        scheduled_time = datetime.strptime(time_part, "%H:%M").time()
+        scheduled_datetime = datetime.combine(
+            now.date() + timedelta(days=(scheduled_day - now.weekday()) % 7),
+            scheduled_time
+        )
+
+        # Check if current time is within ±15 minutes
+        window_start = scheduled_datetime - timedelta(minutes=15)
+        window_end = scheduled_datetime + timedelta(minutes=15)
+        return window_start <= now <= window_end
+    except Exception as e:
+        print(f"[ERROR] Failed to parse schedule '{schedule_str}': {e}")
         return False
-    
-    return False
 
-# Main simulation runner
 def run_simulation():
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    
-    cursor.execute("SELECT * FROM simulation_rules WHERE enabled=1")
-    rules = cursor.fetchall()
-    
-    for rule in rules:
-        if not rule['schedule']:
-            continue  # skip rules without schedule
-        if not is_rule_due(rule['schedule']):
-            continue  # skip if not due now
-        
-        # Execute action
-        if rule['type'] in ['add_driver', 'remove_driver']:
-            driver = rule.get('driver_username')  # can be None
-            if driver:
-                if rule['type'] == 'add_driver':
-                    cursor.execute("INSERT IGNORE INTO drivers (username) VALUES (%s)", (driver,))
-                else:
-                    cursor.execute("DELETE FROM drivers WHERE username=%s", (driver,))
-        elif rule['type'] in ['add_points', 'remove_points']:
-            driver = rule.get('driver_username')
-            points = rule.get('action_value', 0)
-            if driver:
-                if rule['type'] == 'add_points':
-                    cursor.execute("UPDATE drivers SET points = points + %s WHERE username=%s", (points, driver))
-                else:
-                    cursor.execute("UPDATE drivers SET points = points - %s WHERE username=%s", (points, driver))
-    
-    db.commit()
-    cursor.close()
-    db.close()
+    """Main simulation runner."""
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-if __name__ == "__main__":
-    run_simulation()
+        # Fetch all enabled rules
+        cursor.execute("SELECT * FROM simulation_rules WHERE enabled=1")
+        rules = cursor.fetchall()
+
+        for rule in rules:
+            if is_rule_due(rule['schedule']):
+                execute_rule(rule)
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        print(f"[ERROR] Simulation failed: {e}")
+
+def execute_rule(rule):
+    """Perform the action defined by a rule."""
+    action_type = rule['type']
+    value = rule['action_value']
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+
+        if action_type == 'add_driver':
+            username = rule.get('driver_username')
+            if username:
+                cursor.execute("INSERT IGNORE INTO drivers (username) VALUES (%s)", (username,))
+                db.commit()
+                print(f"[SIM] Added driver '{username}'")
+            else:
+                print(f"[WARN] Missing username for add_driver rule {rule['id']}")
+
+        elif action_type == 'remove_driver':
+            username = rule.get('driver_username')
+            if username:
+                cursor.execute("DELETE FROM drivers WHERE username=%s", (username,))
+                db.commit()
+                print(f"[SIM] Removed driver '{username}'")
+            else:
+                print(f"[WARN] Missing username for remove_driver rule {rule['id']}")
+
+        elif action_type == 'add_points':
+            username = rule.get('driver_username')
+            if username and value is not None:
+                cursor.execute("UPDATE drivers SET points = points + %s WHERE username=%s", (value, username))
+                db.commit()
+                print(f"[SIM] Added {value} points to '{username}'")
+            else:
+                print(f"[WARN] Missing username or value for add_points rule {rule['id']}")
+
+        elif action_type == 'remove_points':
+            username = rule.get('driver_username')
+            if username and value is not None:
+                cursor.execute("UPDATE drivers SET points = GREATEST(points - %s, 0) WHERE username=%s", (value, username))
+                db.commit()
+                print(f"[SIM] Removed {value} points from '{username}'")
+            else:
+                print(f"[WARN] Missing username or value for remove_points rule {rule['id']}")
+
+        cursor.close()
+        db.close()
+    except Exception as e:
+        print(f"[ERROR] Failed to execute rule {rule['id']}: {e}")
+
+# ----------------------
+# Scheduler
+# ----------------------
+schedule.every(15).minutes.do(run_simulation)
+
+print("[INFO] Simulation scheduler started. Running every 15 minutes.")
+run_simulation()  # Optional: run immediately on startup
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
