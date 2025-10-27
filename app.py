@@ -2261,6 +2261,25 @@ def add_rule():
     flash("Rule added successfully.", "success")
     return redirect(url_for('simulation'))
 
+@app.route('/admin/simulation/toggle/<int:rule_id>', methods=['POST', 'GET'])
+def toggle_rule(rule_id):
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+    
+    # Get current status
+    cursor.execute("SELECT enabled FROM simulation_rules WHERE id=%s", (rule_id,))
+    row = cursor.fetchone()
+    if row:
+        current_status = row[0]
+        new_status = 0 if current_status else 1
+        cursor.execute("UPDATE simulation_rules SET enabled=%s WHERE id=%s", (new_status, rule_id))
+        db.commit()
+    
+    cursor.close()
+    db.close()
+    flash('Rule status updated.', 'success')
+    return redirect(url_for('simulation'))
+
 
 @app.route('/disable_rule/<int:rule_id>')
 def disable_rule(rule_id):
