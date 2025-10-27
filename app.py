@@ -2186,19 +2186,25 @@ def get_email_by_username(username):
         db.close()
 
 
-@app.route('/simulation')
+@app.route('/admin/simulation', methods=['GET'])
 def simulation():
-    if session.get('role') != 'admin':
-        return redirect(url_for('dashboard'))
-    
+    if 'user' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT * FROM simulation_rules ORDER BY created_at DESC")
+
+    cursor.execute("SELECT username FROM drivers")
+    drivers = cursor.fetchall()  # list of dicts with {'username': ...}
+
+    cursor.execute("SELECT * FROM simulationRules ORDER BY id DESC")
     rules = cursor.fetchall()
+
     cursor.close()
     db.close()
 
-    return render_template('simulation.html', rules=rules)
+    return render_template('simulation.html', drivers=drivers, rules=rules)
+
 
 @app.route('/add_rule', methods=['POST'])
 def add_rule():
