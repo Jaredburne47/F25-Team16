@@ -10,7 +10,7 @@ from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
 from emailScripts.lockEmail import send_lock_email
-from emailScripts.dropDriverEmail import send_drop_email
+from emailScripts.driverDroppedEmail import send_driver_dropped_email
 import secrets
 import os
 import csv
