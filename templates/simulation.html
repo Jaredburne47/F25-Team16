@@ -91,7 +91,7 @@
               <a href="{{ url_for('disable_rule', rule_id=rule.id) }}" class="btn btn-sm btn-warning">
                 {{ 'Disable' if rule.enabled else 'Enable' }}
               </a>
-              <a href="{{ url_for('delete_rule', rule_id=rule.id) }}" class="btn btn-sm btn-danger">Delete</a>
+              <a href="{{ url_for('remove_rule', rule_id=rule.id) }}" class="btn btn-sm btn-danger">Delete</a>
             </td>
           </tr>
           {% endfor %}
