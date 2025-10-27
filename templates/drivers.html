@@ -34,7 +34,10 @@
                     {% if role == 'sponsor' %}
                     <form action="{{ url_for('drop_driver') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
-                        <button type="submit" class="btn btn-warning btn-sm">Drop</button>
+                        <button type="submit" class="btn btn-warning btn-sm 
+                            onclick="return confirm('Are you sure you want to drop {{ driver.username }}?')">
+                            Drop
+                        </button>
                     </form>
                     {% endif %}
                     <!-- Login as driver -->
@@ -42,7 +45,11 @@
                         <input type="hidden" name="username" value="{{ driver.username }}">
                         <button type="submit" class="btn btn-secondary btn-sm">Login</button>
                     </form>
-
+                    
+                    {% if role == 'sponsor' %}
+                        <a href="{{ url_for('sponsor_edit_driver', username=driver.username) }}" class="btn btn-info btn-sm">Edit</a>
+                    {% endif %}
+                    
                     <!-- Add points -->
                     <form action="{{ url_for('add_points') }}" method="post" style="display:inline;">
                         <input type="hidden" name="username" value="{{ driver.username }}">
