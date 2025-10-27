@@ -2184,6 +2184,72 @@ def get_email_by_username(username):
     finally:
         cursor.close()
         db.close()
+
+
+@app.route('/simulation')
+def simulation():
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+    
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT * FROM simulation_rules ORDER BY created_at DESC")
+    rules = cursor.fetchall()
+    cursor.close()
+    db.close()
+
+    return render_template('simulation.html', rules=rules)
+
+@app.route('/add_rule', methods=['POST'])
+def add_rule():
+    if session.get('role') != 'admin':
+        return "Unauthorized", 403
+
+    rule_type = request.form['type']
+    action_value = request.form.get('action_value', None)
+    schedule = request.form.get('schedule', None)
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+    cursor.execute("""
+        INSERT INTO simulation_rules (type, action_value, schedule)
+        VALUES (%s, %s, %s)
+    """, (rule_type, action_value, schedule))
+    db.commit()
+    cursor.close()
+    db.close()
+
+    return redirect(url_for('simulation'))
+
+@app.route('/disable_rule/<int:rule_id>')
+def disable_rule(rule_id):
+    if session.get('role') != 'admin':
+        return "Unauthorized", 403
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+    cursor.execute("UPDATE simulation_rules SET enabled=FALSE WHERE id=%s", (rule_id,))
+    db.commit()
+    cursor.close()
+    db.close()
+    
+    return redirect(url_for('simulation'))
+
+
+@app.route('/remove_rule/<int:rule_id>')
+def remove_rule(rule_id):
+    if session.get('role') != 'admin':
+        return "Unauthorized", 403
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM simulation_rules WHERE id=%s", (rule_id,))
+    db.commit()
+    cursor.close()
+    db.close()
+    
+    return redirect(url_for('simulation'))
+
     
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
