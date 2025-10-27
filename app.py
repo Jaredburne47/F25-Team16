@@ -1431,7 +1431,7 @@ def drop_driver():
         driver = cursor.fetchone()
 
         if driver and driver.get('email'):
-            send_drop_email(driver['email'], driver_username, sponsor_username)
+            send_driver_dropped_email(driver['email'], driver_username, sponsor_username)
 
         flash(f'Driver "{driver_username}" has been dropped successfully.', 'success')
 
