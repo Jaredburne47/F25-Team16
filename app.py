@@ -2206,26 +2206,61 @@ def simulation():
     return render_template('simulation.html', drivers=drivers, rules=rules)
 
 
-@app.route('/add_rule', methods=['POST'])
+@app.route('/simulation/add_rule', methods=['POST'])
 def add_rule():
-    if session.get('role') != 'admin':
-        return "Unauthorized", 403
+    if 'user' not in session or session.get('role') != 'admin':
+        flash("You must be an admin to perform this action.", "danger")
+        return redirect(url_for('simulation'))
 
-    rule_type = request.form['type']
-    action_value = request.form.get('action_value', None)
-    schedule = request.form.get('schedule', None)
+    # Safely get form data
+    rule_type = request.form.get('rule_type')
+    schedule = request.form.get('schedule', '').strip()
+    points = request.form.get('points')  # may be None
+    driver_text = request.form.get('driver_username_text', '').strip()
+    driver_dropdown = request.form.get('driver_username_dropdown', '').strip()
 
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
-    cursor.execute("""
-        INSERT INTO simulation_rules (type, action_value, schedule)
-        VALUES (%s, %s, %s)
-    """, (rule_type, action_value, schedule))
-    db.commit()
-    cursor.close()
-    db.close()
+    if not rule_type:
+        flash("Rule type is required.", "danger")
+        return redirect(url_for('simulation'))
 
+    # Determine which driver field to use
+    if rule_type in ['add_driver', 'remove_driver']:
+        driver_username = driver_text
+        points_value = None
+    elif rule_type in ['add_points', 'remove_points']:
+        driver_username = driver_dropdown
+        points_value = int(points) if points else None
+    else:
+        flash("Invalid rule type.", "danger")
+        return redirect(url_for('simulation'))
+
+    if not schedule:
+        flash("Schedule is required.", "danger")
+        return redirect(url_for('simulation'))
+
+    # Optional: validate driver exists if points action
+    if rule_type in ['add_points', 'remove_points'] and not driver_username:
+        flash("You must select a driver for points rules.", "danger")
+        return redirect(url_for('simulation'))
+
+    # Insert into DB
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor()
+        cursor.execute("""
+            INSERT INTO simulation_rules (type, driver_username, points, schedule, enabled)
+            VALUES (%s, %s, %s, %s, 1)
+        """, (rule_type, driver_username, points_value, schedule))
+        db.commit()
+    except Exception as e:
+        flash(f"Database error: {e}", "danger")
+    finally:
+        cursor.close()
+        db.close()
+
+    flash("Rule added successfully.", "success")
     return redirect(url_for('simulation'))
+
 
 @app.route('/disable_rule/<int:rule_id>')
 def disable_rule(rule_id):
