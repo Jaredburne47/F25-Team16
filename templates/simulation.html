@@ -1,0 +1,47 @@
+<h1>Simulation Rules</h1>
+
+<form method="POST" action="/add_rule">
+  <label>Type:</label>
+  <select name="type" required>
+    <option value="add_driver">Add Driver</option>
+    <option value="remove_driver">Remove Driver</option>
+    <option value="add_points">Add Points</option>
+    <option value="remove_points">Remove Points</option>
+  </select><br>
+
+  <label>Action Value (for points):</label>
+  <input type="number" name="action_value"><br>
+
+  <label>Schedule:</label>
+  <input type="text" name="schedule" placeholder="e.g. Tuesdays, 9am"><br>
+
+  <button type="submit">Add Rule</button>
+</form>
+
+<hr>
+
+<table border="1">
+  <tr>
+    <th>ID</th>
+    <th>Type</th>
+    <th>Action Value</th>
+    <th>Schedule</th>
+    <th>Enabled</th>
+    <th>Actions</th>
+  </tr>
+  {% for rule in rules %}
+  <tr>
+    <td>{{ rule.id }}</td>
+    <td>{{ rule.type }}</td>
+    <td>{{ rule.action_value or '-' }}</td>
+    <td>{{ rule.schedule or '-' }}</td>
+    <td>{{ 'Yes' if rule.enabled else 'No' }}</td>
+    <td>
+      {% if rule.enabled %}
+        <a href="/disable_rule/{{ rule.id }}">Disable</a>
+      {% endif %}
+      <a href="/remove_rule/{{ rule.id }}">Remove</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
