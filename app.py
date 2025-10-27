@@ -2197,7 +2197,7 @@ def simulation():
     cursor.execute("SELECT username FROM drivers")
     drivers = cursor.fetchall()  # list of dicts with {'username': ...}
 
-    cursor.execute("SELECT * FROM simulationRules ORDER BY id DESC")
+    cursor.execute("SELECT * FROM simulation_rules ORDER BY id DESC")
     rules = cursor.fetchall()
 
     cursor.close()
