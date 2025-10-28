@@ -5,7 +5,7 @@ from emailScripts import welcomeEmail
 from emailScripts import logInEmail
 from emailScripts import applicationEmail
 from emailScripts import driverAddPointsEmail
-from emailScripts import driverRemovePointsEmail
+from emailScripts.driverRemovePointsEmail import send_points_removed_email
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
