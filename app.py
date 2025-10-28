@@ -11,6 +11,8 @@ from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
 from emailScripts.lockEmail import send_lock_email
 from emailScripts.driverDroppedEmail import send_driver_dropped_email
+from emailScripts.lowBalanceEmail import send_low_balance_email
+from emailScripts.spendPointsEmail import send_spent_points_email
 import secrets
 import os
 import csv
@@ -792,6 +794,17 @@ def cart_checkout():
             cur.execute("DELETE FROM cart_items WHERE driver_username=%s", (username,))
 
             db.commit()
+
+            cur.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
+            row = cur.fetchone()
+            if row:
+                # Send "spent points" email
+                send_spent_points_email(row['email'], username, total_points)
+
+                # Send "low balance" email if < 10 points
+                pts = int(row['points'])
+                if pts < 10:
+                    send_low_balance_email(row['email'], username, pts, 10)
         except Exception as e:
             db.rollback()
             cur.close(); db.close()
@@ -1595,11 +1608,18 @@ def remove_points():
         db.commit()
         flash(f'{points} points were successfully removed from "{username}".', 'success')
 
+        cursor.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
+        row = cursor.fetchone()
+        if row:
+            # send "points removed" email
+            send_points_removed_email(row['email'], username, points)
+
+            # send "low balance" email if < 10 points
+            pts = int(row['points'])
+            if pts < 10:
+                send_low_balance_email(row['email'], username, pts, 10)
     cursor.close()
     db.close()
-    driverEmail = get_email_by_username(username)
-    if driverEmail:
-        driverRemovePointsEmail.send_points_removed_email(driverEmail, username, points)
     return redirect(url_for('drivers'))
 
 
