@@ -27,6 +27,9 @@
         <select class="form-select" id="role" name="role" required>
           <option value="drivers">Drivers</option>
           <option value="sponsor">Sponsor</option>
+          {% if can_create_admin %}
+            <option value="admins">Admin</option>
+          {% endif %}
         </select>
       </div>
 
