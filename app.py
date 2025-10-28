@@ -1289,6 +1289,8 @@ def add_user():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
+    requester_role = session.get('role')
+    
     if request.method == 'POST':
         # Get data from the form
         new_username = request.form['username']
@@ -1296,7 +1298,12 @@ def add_user():
         new_password = request.form['password']
         new_role = request.form['role']
 
-        #TODO: hash the password
+        # Only admins can create other admins
+        if new_role == 'admins' and requester_role != 'admin':
+            # flash is optional; you can render an error page instead
+            flash("Only admins can create other admins.", "danger")
+            return redirect(url_for('add_user'))
+        
         #For now:
         password_hash = new_password;
         success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
@@ -1313,7 +1320,7 @@ def add_user():
             return f"<h2>Error:</h2><p>{message}</p>"
 
     # GET request – show the form
-    return render_template("add_user.html")
+    return render_template("add_user.html", can_create_admin=(requester_role == 'admin'))
 
 @app.route('/drivers')
 def drivers():
