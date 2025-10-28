@@ -1616,8 +1616,8 @@ def remove_points():
 
             # send "low balance" email if < 10 points
             pts = int(row['points'])
-            if pts < 10:
-                send_low_balance_email(row['email'], username, pts, 10)
+            if pts < 50:
+                send_low_balance_email(row['email'], username, pts, 50)
     cursor.close()
     db.close()
     return redirect(url_for('drivers'))
