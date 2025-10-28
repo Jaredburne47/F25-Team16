@@ -8,7 +8,7 @@ SMTP_PORT = 465
 SENDER_EMAIL = "team16gdip@gmail.com"
 SENDER_PASSWORD = "jsxl pnun vdts mxhs"  # app password
 
-def send_low_balance_email(recipient: str, username: str, points: int, threshold: int = 10):
+def send_low_balance_email(recipient: str, username: str, points: int, threshold: int = 50):
     msg = EmailMessage()
     msg["Subject"] = "Low Points Balance Alert"
     msg["From"] = SENDER_EMAIL
