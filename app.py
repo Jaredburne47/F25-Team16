@@ -1280,6 +1280,7 @@ def login_as_sponsor():
     username = request.form['username']
     session['user'] = username
     session['role'] = 'sponsor'
+    flash(f"You are now logged in as sponsor '{username}'.", 'info')
     return redirect(url_for('sponsor_profile'))
 
 @app.route('/add_points', methods=['POST'])
