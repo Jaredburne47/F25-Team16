@@ -1139,6 +1139,7 @@ def settings():
         db.close()
 
     except Exception as e:
+        flash(f"A database error occurred. Please try again. Error: {e}", "danger")
         return f"<h2>Database error:</h2><p>{e}</p>"
 
     return render_template("settings.html", user=user)
