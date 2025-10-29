@@ -1275,6 +1275,7 @@ def login_as_driver():
 @app.route('/login_as_sponsor', methods=['POST'])
 def login_as_sponsor():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        flash('You do not have permission to perform this action.', 'danger')
         return redirect(url_for('login'))
 
     username = request.form['username']
