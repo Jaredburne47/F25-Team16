@@ -56,6 +56,17 @@ def _promote_processing_to_shipped(db):
     db.commit()
     cur.close()
 
+def _promote_shipped_to_delivered(db):
+    cur = db.cursor()
+    cur.execute("""
+        UPDATE orders
+        SET status='Delivered'
+        WHERE status='Shipped'
+          AND DATE(NOW()) >= DATE(order_date + INTERVAL 7 DAY)
+    """)
+    db.commit()
+    cur.close()
+
 EBAY_ENV = os.getenv("EBAY_ENV", "sandbox").lower()
 EBAY_BASE_URL = "https://api.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "https://api.ebay.com"
 EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID")
