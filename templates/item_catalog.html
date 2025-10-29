@@ -57,6 +57,7 @@
 <!-- Products List -->
 <div class="row">
   {% for item in items %}
+  {% set agg = (review_agg[item.product_id] if review_agg is defined and item.product_id in review_agg else None) %}
   <div class="col-md-4 mb-4">
     <div class="card h-100 shadow-sm position-relative">
       {% if item.image_url %}
@@ -75,11 +76,36 @@
       </button>
 
       <div class="card-body d-flex flex-column">
-        <h5 class="card-title">{{ item.name }}</h5>
+        <h5 class="card-title mb-1">{{ item.name }}</h5>
+
+        <!-- ★ Average rating + count -->
+        <div class="mb-2 small text-muted d-flex align-items-center gap-2">
+          <span class="rating-stars" data-avg="{{ agg.avg_rating if agg else 0 }}">
+            <!-- Stars will be filled by JS; also render a quick server-side fallback -->
+            {% if agg %}
+              {% for i in range(1,6) %}
+                {% if i <= (agg.avg_rating|round(0, 'floor')) %}★{% else %}☆{% endif %}
+              {% endfor %}
+            {% else %}
+              ☆☆☆☆☆
+            {% endif %}
+          </span>
+          <span class="rating-label">
+            {% if agg %}
+              {{ '%.1f'|format(agg.avg_rating) }} ({{ agg.review_count }})
+            {% else %}
+              No reviews yet
+            {% endif %}
+          </span>
+          <button class="btn btn-link btn-sm p-0 ms-auto" data-bs-toggle="modal" data-bs-target="#reviewsModal-{{ item.product_id }}">
+            Reviews
+          </button>
+        </div>
+
         <p class="text-muted small mb-1">Sponsor: {{ item.sponsor }}</p>
-        <p><strong>{{ item.points_cost }} pts</strong></p>
+        <p class="mb-1"><strong>{{ item.points_cost }} pts</strong></p>
         {% if item.price_value %}
-          <p class="text-muted">Ref: ${{ item.price_value }} {{ item.price_currency }}</p>
+          <p class="text-muted mb-1">Ref: ${{ item.price_value }} {{ item.price_currency }}</p>
         {% endif %}
         <p class="text-muted small mb-3">Quantity: {{ item.quantity }}</p>
 
@@ -92,6 +118,57 @@
       </div>
     </div>
   </div>
+
+  <!-- Reviews Modal (per item) -->
+  <div class="modal fade" id="reviewsModal-{{ item.product_id }}" tabindex="-1" aria-labelledby="reviewsLabel-{{ item.product_id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="reviewsLabel-{{ item.product_id }}" class="modal-title">Reviews — {{ item.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Aggregate summary -->
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="fs-5" id="agg-stars-{{ item.product_id }}">☆☆☆☆☆</div>
+            <div class="small text-muted" id="agg-text-{{ item.product_id }}">
+              {% if agg %}
+                {{ '%.1f'|format(agg.avg_rating) }} average · {{ agg.review_count }} review{{ '' if agg.review_count==1 else 's' }}
+              {% else %}
+                No reviews yet
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Reviews list -->
+          <div id="reviews-list-{{ item.product_id }}" class="vstack gap-3">
+            <div class="text-muted small">Loading reviews…</div>
+          </div>
+
+          <hr>
+
+          <!-- Leave a review -->
+          <form class="mt-3" onsubmit="return submitReview(event, {{ item.product_id }})">
+            <label class="form-label mb-1">Your Rating</label>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <div class="review-stars" data-input="rating-{{ item.product_id }}" tabindex="0"
+                   aria-label="Select rating from 1 to 5 stars">☆☆☆☆☆</div>
+              <input type="hidden" id="rating-{{ item.product_id }}" name="rating" value="5">
+              <span class="small text-muted">(5 = great)</span>
+            </div>
+
+            <label class="form-label">Comment (optional)</label>
+            <textarea class="form-control mb-3" id="comment-{{ item.product_id }}" rows="3" maxlength="1000"
+                      placeholder="Share something helpful for other drivers…"></textarea>
+
+            <button class="btn btn-primary" type="submit">Submit Review</button>
+            <span class="small ms-2 text-muted" id="review-status-{{ item.product_id }}"></span>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endfor %}
 
   {% if items|length == 0 %}
@@ -99,8 +176,9 @@
   {% endif %}
 </div>
 
-<!-- JS for toggling favorite button -->
+<!-- JS -->
 <script>
+// ---------- Favorite toggle ----------
 async function toggleFavorite(productId, btnEl) {
   const isFav = btnEl.classList.contains('btn-warning');
   const url = isFav ? '/api/driver/favorites/remove' : '/api/driver/favorites/add';
@@ -145,7 +223,7 @@ async function toggleFavorite(productId, btnEl) {
   }
 }
 
-/* ✅ Add to Cart helper with green check animation */
+// ---------- Add to Cart (with green ✓) ----------
 async function addToCart(productId) {
   const btn = event.target;
   btn.disabled = true;
@@ -160,12 +238,10 @@ async function addToCart(productId) {
     const data = await res.json();
 
     if (data.ok) {
-      // ✅ Success visual: green background + white check icon
       btn.classList.remove('btn-outline-primary');
       btn.classList.add('btn-success');
       btn.innerHTML = '<span class="text-white fw-bold">✔ Added</span>';
-      
-      // Keep success style for a few seconds, then revert
+
       setTimeout(() => {
         btn.classList.remove('btn-success');
         btn.classList.add('btn-outline-primary');
@@ -183,6 +259,165 @@ async function addToCart(productId) {
     btn.innerHTML = 'Add to Cart';
   }
 }
-</script>
 
+// ---------- Rating star helpers ----------
+function renderStars(avg, outEl) {
+  const full = Math.floor(avg);
+  let stars = '';
+  for (let i = 1; i <= 5; i++) stars += (i <= full) ? '★' : '☆';
+  outEl.textContent = stars;
+}
+
+function attachInteractiveStars() {
+  document.querySelectorAll('.review-stars').forEach(el => {
+    const inputId = el.getAttribute('data-input');
+    const hidden = document.getElementById(inputId);
+    let current = parseInt(hidden.value || '5', 10);
+
+    const update = (n) => {
+      current = Math.min(5, Math.max(1, n));
+      let stars = '';
+      for (let i = 1; i <= 5; i++) stars += (i <= current) ? '★' : '☆';
+      el.textContent = stars;
+      hidden.value = String(current);
+    };
+
+    // Init
+    update(current);
+
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const rel = e.clientX - rect.left;
+      const width = rect.width;
+      const hovered = Math.ceil((rel / width) * 5);
+      let stars = '';
+      for (let i = 1; i <= 5; i++) stars += (i <= hovered) ? '★' : '☆';
+      el.textContent = stars;
+    });
+
+    el.addEventListener('mouseleave', () => update(current));
+    el.addEventListener('click', (e) => {
+      const rect = el.getBoundingClientRect();
+      const rel = e.clientX - rect.left;
+      const width = rect.width;
+      const chosen = Math.ceil((rel / width) * 5);
+      update(chosen);
+    });
+
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') { update(current - 1); }
+      if (e.key === 'ArrowRight') { update(current + 1); }
+    });
+  });
+}
+
+// ---------- Reviews: load / submit ----------
+async function loadReviews(productId) {
+  const listEl = document.getElementById(`reviews-list-${productId}`);
+  const aggStarsEl = document.getElementById(`agg-stars-${productId}`);
+  const aggTextEl = document.getElementById(`agg-text-${productId}`);
+
+  listEl.innerHTML = '<div class="text-muted small">Loading reviews…</div>';
+  try {
+    const res = await fetch(`/api/reviews?product_id=${productId}`);
+    if (res.status === 404) {
+      listEl.innerHTML = '<div class="text-muted small">Reviews not available yet.</div>';
+      return;
+    }
+    const data = await res.json(); // { reviews: [...], avg: number, count: number }
+    const reviews = data.reviews || [];
+    // Aggregate
+    const avg = Number(data.avg || 0);
+    const count = Number(data.count || reviews.length || 0);
+    renderStars(avg, aggStarsEl);
+    aggTextEl.textContent = count
+      ? `${avg.toFixed(1)} average · ${count} review${count===1?'':'s'}`
+      : 'No reviews yet';
+
+    // List
+    if (!reviews.length) {
+      listEl.innerHTML = '<div class="text-muted small">Be the first to review.</div>';
+    } else {
+      listEl.innerHTML = reviews.map(r => {
+        const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+        const stars = '★★★★★'.slice(0, Math.max(1, Math.min(5, Number(r.rating||0)))) +
+                      '☆☆☆☆☆'.slice(Math.max(0, Math.min(5, 5-Number(r.rating||0))));
+        return `
+          <div class="border rounded p-2">
+            <div class="d-flex justify-content-between">
+              <div class="fw-semibold">${r.username || 'Driver'}</div>
+              <div class="small text-muted">${created}</div>
+            </div>
+            <div class="text-warning-emphasis" style="letter-spacing:1px;">${stars}</div>
+            <div class="mt-1">${(r.comment || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (e) {
+    listEl.innerHTML = '<div class="text-danger small">Failed to load reviews.</div>';
+  }
+}
+
+async function submitReview(ev, productId) {
+  ev.preventDefault();
+  const ratingEl = document.getElementById(`rating-${productId}`);
+  const commentEl = document.getElementById(`comment-${productId}`);
+  const statusEl = document.getElementById(`review-status-${productId}`);
+
+  const payload = {
+    product_id: productId,
+    rating: Number(ratingEl.value || '5'),
+    comment: commentEl.value.trim()
+  };
+
+  statusEl.textContent = 'Submitting…';
+  try {
+    const res = await fetch('/api/reviews', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    if (res.status === 404) {
+      statusEl.textContent = 'Reviews not available yet.';
+      return false;
+    }
+
+    const data = await res.json();
+    if (data.ok) {
+      statusEl.textContent = 'Thanks for your review!';
+      commentEl.value = '';
+      // Reload list & aggregates
+      await loadReviews(productId);
+    } else {
+      statusEl.textContent = 'Error: ' + (data.error || 'unknown');
+    }
+  } catch (e) {
+    statusEl.textContent = 'Network error.';
+  }
+  return false;
+}
+
+// When any reviews modal opens, load its reviews
+document.addEventListener('shown.bs.modal', (e) => {
+  const id = e.target?.id || '';
+  if (id.startsWith('reviewsModal-')) {
+    const pid = Number(id.split('-')[1]);
+    if (pid) loadReviews(pid);
+  }
+});
+
+// Enhance static avg-star placeholders (in cards)
+document.querySelectorAll('.rating-stars').forEach(el => {
+  const avg = Number(el.getAttribute('data-avg') || '0');
+  const full = Math.floor(avg);
+  let s = '';
+  for (let i = 1; i <= 5; i++) s += (i <= full) ? '★' : '☆';
+  el.textContent = s;
+});
+
+// Activate interactive star widgets
+attachInteractiveStars();
+</script>
 {% endblock %}
