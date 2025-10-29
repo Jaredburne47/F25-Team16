@@ -2,7 +2,21 @@
 {% block title %}Your Orders{% endblock %}
 
 {% block content %}
+<style>
+  /* Make Delivered a darker green than Shipped */
+  .badge-delivered {
+    background-color: #0f5132; /* dark success */
+    color: #fff;
+  }
+</style>
+
 <h1 class="mb-4">Your Orders</h1>
+
+<div class="small text-muted mb-3">
+  Orders automatically move to <strong>Shipped</strong> 5 minutes after placement and to
+  <strong>Delivered</strong> on the expected delivery date (1 week after placement).
+  Shipped or delivered orders cannot be cancelled.
+</div>
 
 <div class="mb-3">
   <strong>Your Points:</strong>
@@ -30,11 +44,33 @@
     </thead>
     <tbody>
       {% for o in orders %}
-      <tr>
+      <tr
+        {% if o.status == 'Cancelled' %}
+          class="table-danger"
+        {% elif o.status == 'Delivered' %}
+          class="table-success"
+        {% elif o.status == 'Shipped' %}
+          class="table-info"
+        {% endif %}
+      >
         <td>{{ o.reward_description }}</td>
         <td class="text-end">{{ o.quantity }}</td>
         <td class="text-end">{{ o.point_cost }}</td>
-        <td>{{ o.status }}</td>
+
+        <!-- Status -->
+        <td>
+          {% if o.status == 'Cancelled' %}
+            <span class="badge bg-danger">Cancelled</span>
+          {% elif o.status == 'Delivered' %}
+            <span class="badge badge-delivered">Delivered</span>
+          {% elif o.status == 'Shipped' %}
+            <span class="badge bg-success">Shipped</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Processing</span>
+          {% endif %}
+        </td>
+
+        <!-- Dates: already provided as DATE(...) from backend -->
         <td>{{ o.order_date }}</td>
         <td>
           {% if o.status != 'Cancelled' %}
@@ -43,6 +79,8 @@
             <em class="text-muted">—</em>
           {% endif %}
         </td>
+
+        <!-- Actions -->
         <td class="text-end">
           {% if o.status == 'Processing' %}
           <form action="{{ url_for('orders_cancel', order_id=o.order_id) }}" method="POST" class="d-inline">

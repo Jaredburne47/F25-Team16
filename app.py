@@ -695,6 +695,8 @@ def orders_page():
 
     # ➊ Promote any Processing orders older than 60s to Shipped
     _promote_processing_to_shipped(db)
+    _promote_shipped_to_delivered(db)
+
 
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
