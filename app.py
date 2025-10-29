@@ -44,6 +44,18 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# --- Auto-promotion helper: Processing -> Shipped after 60s ---
+def _promote_processing_to_shipped(db):
+    cur = db.cursor()
+    cur.execute("""
+        UPDATE orders
+        SET status='Shipped'
+        WHERE status='Processing'
+          AND TIMESTAMPDIFF(SECOND, order_date, NOW()) >= 60
+    """)
+    db.commit()
+    cur.close()
+
 EBAY_ENV = os.getenv("EBAY_ENV", "sandbox").lower()
 EBAY_BASE_URL = "https://api.sandbox.ebay.com" if EBAY_ENV == "sandbox" else "https://api.ebay.com"
 EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID")
