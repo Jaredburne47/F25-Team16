@@ -23,6 +23,8 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
 from flask import jsonify
 import os, time, json, base64
+import hashlib
+import hmac
 from urllib import request as urlreq
 from urllib import parse as urlparse
 
@@ -294,6 +296,9 @@ def login():
         password = request.form.get('password', '')
         MAX_ATTEMPTS = 5  # lock after 5 failed attempts
 
+        # Hashing Password
+        #password = sha256_of_string(password)
+        
         # Try to authenticate
         role, user_row = authenticate(username, password)
 
@@ -1408,6 +1413,7 @@ def settings():
             confirm_password = request.form.get('confirm_password')
             if password and confirm_password:
                 if password == confirm_password:
+                    password = sha256_of_string(password)
                     cursor.execute(f"UPDATE {table} SET password_hash=%s WHERE username=%s",
                                    (password, username))
                     cursor.execute(
@@ -1489,8 +1495,9 @@ def add_user():
             flash("Only admins can create other admins.", "danger")
             return redirect(url_for('add_user'))
         
-        #For now:
+        #Hashing Password
         password_hash = new_password;
+        password_hash = sha256_of_string(password_hash)
         success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
 
         if success:
@@ -1883,7 +1890,7 @@ def set_new_password(token):
 
         # Determine which table to update
         table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}[reset['role']]
-
+        new_password = sha256_of_string(new_password)
         # Update password 
         cursor.execute(f"""
             UPDATE {table}
@@ -2575,6 +2582,13 @@ def remove_rule(rule_id):
     db.close()
     
     return redirect(url_for('simulation'))
+
+
+def sha256_of_string(s: str) -> str:
+    """Return hex SHA-256 of a UTF-8 string."""
+    b = s.encode('utf-8')
+    h = hashlib.sha256(b)
+    return h.hexdigest()
 
     
 if __name__ == "__main__":
