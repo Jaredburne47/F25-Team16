@@ -2,7 +2,7 @@ from flask import Flask, render_template, session, redirect, url_for, request, f
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
-from emailScripts import logInEmail
+from emailScripts.logInEmail import send_login_email
 from emailScripts import applicationEmail
 from emailScripts import driverAddPointsEmail
 from emailScripts.driverRemovePointsEmail import send_points_removed_email
