@@ -905,8 +905,9 @@ def add_product():
         db.commit()
         cursor.close()
         db.close()
+        flash(f"Product '{name}' added successfully!", "success")
     except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
+        flash(f"Database error adding product: {e}", "danger")
 
     return redirect(url_for('catalog_manager'))
 
