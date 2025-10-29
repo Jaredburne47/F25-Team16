@@ -712,54 +712,56 @@ def orders_cancel(order_id):
 
     username = session['user']
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cur = db.cursor(MySQLdb.cursors.DictCursor)
+    db = MySQLdb.connect(**db_config)
 
-        # Load order (must belong to user and be cancellable)
-        cur.execute("""
-            SELECT order_id, user_id, product_id, point_cost, quantity, status
-            FROM orders
-            WHERE order_id=%s
-        """, (order_id,))
-        o = cur.fetchone()
-        if not o or o['user_id'] != username:
-            cur.close(); db.close()
-            return "<h3>Order not found.</h3>"
-        if o['status'] != 'Processing':
-            cur.close(); db.close()
-            return "<h3>Only Processing orders can be cancelled.</h3>"
+    # ➊ Promote eligible orders before we check status
+    _promote_processing_to_shipped(db)
 
-        db.autocommit(False)
-        try:
-            # 1) Mark as cancelled
-            cur.execute("UPDATE orders SET status='Cancelled' WHERE order_id=%s", (order_id,))
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT order_id, user_id, product_id, point_cost, quantity, status
+        FROM orders
+        WHERE order_id=%s
+    """, (order_id,))
+    o = cur.fetchone()
 
-            # 2) Refund points
-            cur.execute("UPDATE drivers SET points = points + %s WHERE username=%s",
-                        (int(o['point_cost']), username))
-
-            # 3) Restock if product still exists (it might have been deleted)
-            cur.execute("SELECT product_id FROM products WHERE product_id=%s", (o['product_id'],))
-            exists = cur.fetchone()
-            if exists:
-                cur.execute("""
-                    UPDATE products SET quantity = quantity + %s
-                    WHERE product_id=%s
-                """, (int(o['quantity']), o['product_id']))
-            # If product was deleted, we skip restocking.
-
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            cur.close(); db.close()
-            return f"<h3>Cancel failed: {e}</h3>"
-
+    if not o or o['user_id'] != username:
         cur.close(); db.close()
-        return redirect(url_for('orders_page'))
+        return "<h3>Order not found.</h3>"
 
+    # ➋ Block refund if no longer Processing (i.e., Shipped or other)
+    if o['status'] != 'Processing':
+        cur.close(); db.close()
+        return "<h3>This order can no longer be cancelled (already shipped).</h3>"
+
+    try:
+        db.autocommit(False)
+
+        # 1) Mark as Cancelled
+        cur.execute("UPDATE orders SET status='Cancelled' WHERE order_id=%s", (order_id,))
+
+        # 2) Refund points to driver
+        cur.execute("UPDATE drivers SET points = points + %s WHERE username=%s",
+                    (int(o['point_cost']), username))
+
+        # 3) Restock if product still exists (it may have been deleted at checkout)
+        cur.execute("SELECT product_id FROM products WHERE product_id=%s", (o['product_id'],))
+        exists = cur.fetchone()
+        if exists:
+            cur.execute("""
+                UPDATE products SET quantity = quantity + %s
+                WHERE product_id=%s
+            """, (int(o['quantity']), o['product_id']))
+
+        db.commit()
     except Exception as e:
-        return f"<h3>Database error: {e}</h3>"
+        db.rollback()
+        cur.close(); db.close()
+        return f"<h3>Cancel failed: {e}</h3>"
+
+    cur.close(); db.close()
+    return redirect(url_for('orders_page'))
+
 
 
 def _get_driver_sponsor(username):
