@@ -51,7 +51,7 @@ def _promote_processing_to_shipped(db):
         UPDATE orders
         SET status='Shipped'
         WHERE status='Processing'
-          AND TIMESTAMPDIFF(SECOND, order_date, NOW()) >= 60
+          AND TIMESTAMPDIFF(MINUTE, order_date, NOW()) >= 5
     """)
     db.commit()
     cur.close()
