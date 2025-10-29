@@ -926,10 +926,15 @@ def delete_product(product_id):
         cursor.execute("DELETE FROM products WHERE product_id=%s AND sponsor=%s", (product_id, sponsor_name))
         db.commit()
 
+        if cursor.rowcount > 0:
+            flash("Product deleted successfully.", "success")
+        else:
+            flash("Could not delete product. It may not belong to you.", "warning")
+
         cursor.close()
         db.close()
     except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
+        flash(f"Database error deleting product: {e}", "danger")
 
     return redirect(url_for('catalog_manager'))
 
