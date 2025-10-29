@@ -297,7 +297,7 @@ def login():
         MAX_ATTEMPTS = 5  # lock after 5 failed attempts
 
         # Hashing Password
-        #password = sha256_of_string(password)
+        password = sha256_of_string(password)
         
         # Try to authenticate
         role, user_row = authenticate(username, password)
