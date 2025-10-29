@@ -680,29 +680,30 @@ def orders_page():
 
     username = session['user']
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cur = db.cursor(MySQLdb.cursors.DictCursor)
+    db = MySQLdb.connect(**db_config)
 
-        # Driver points (for context)
-        cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-        r = cur.fetchone()
-        points_balance = int(r['points'] if r and r['points'] is not None else 0)
+    # ➊ Promote any Processing orders older than 60s to Shipped
+    _promote_processing_to_shipped(db)
 
-        # Driver orders (each row is a line item)
-        cur.execute("""
-            SELECT order_id, product_id, reward_description, point_cost, quantity, status, order_date
-            FROM orders
-            WHERE user_id=%s
-            ORDER BY order_date DESC, order_id DESC
-        """, (username,))
-        orders = cur.fetchall()
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-        cur.close(); db.close()
-    except Exception as e:
-        return f"<h3>Database error loading orders: {e}</h3>"
+    # Driver points for context
+    cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
+    r = cur.fetchone()
+    points_balance = int(r['points'] if r and r['points'] is not None else 0)
 
+    # Load orders
+    cur.execute("""
+        SELECT order_id, product_id, reward_description, point_cost, quantity, status, order_date
+        FROM orders
+        WHERE user_id=%s
+        ORDER BY order_date DESC, order_id DESC
+    """, (username,))
+    orders = cur.fetchall()
+
+    cur.close(); db.close()
     return render_template("orders.html", orders=orders, points_balance=points_balance)
+
 
 @app.post("/orders/<int:order_id>/cancel")
 def orders_cancel(order_id):
