@@ -887,6 +887,38 @@ def driver_cart_add():
         cur.close(); db.close()
         return jsonify({"ok": False, "error": f"DB error: {e}"}), 500
 
+@app.get("/api/products/<int:product_id>/reviews")
+def product_reviews(product_id):
+    if 'user' not in session or session.get('role') != 'driver':
+        return jsonify({"ok": False, "error": "auth"}), 403
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Reviews list
+        cur.execute("""
+            SELECT review_id, driver_username, rating, title, body,
+                   DATE(created_at) AS created_date
+            FROM reviews
+            WHERE product_id=%s
+            ORDER BY created_at DESC
+        """, (product_id,))
+        reviews = cur.fetchall()
+
+        # Aggregate
+        cur.execute("""
+            SELECT AVG(rating) AS avg_rating, COUNT(*) AS review_count
+            FROM reviews
+            WHERE product_id=%s
+        """, (product_id,))
+        agg = cur.fetchone() or {"avg_rating": None, "review_count": 0}
+
+        cur.close(); db.close()
+        return jsonify({"ok": True, "reviews": reviews, "aggregate": agg})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 @app.route('/catalog_manager')
 def catalog_manager():
