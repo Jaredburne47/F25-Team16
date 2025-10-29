@@ -36,7 +36,13 @@
         <td class="text-end">{{ o.point_cost }}</td>
         <td>{{ o.status }}</td>
         <td>{{ o.order_date }}</td>
-        <td>{{ o.expected_date }}</td>
+        <td>
+          {% if o.status != 'Cancelled' %}
+            {{ o.expected_date }}
+          {% else %}
+            <em class="text-muted">—</em>
+          {% endif %}
+        </td>
         <td class="text-end">
           {% if o.status == 'Processing' %}
           <form action="{{ url_for('orders_cancel', order_id=o.order_id) }}" method="POST" class="d-inline">
