@@ -2,18 +2,14 @@ from flask import Flask, render_template, session, redirect, url_for, request, f
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
-from emailScripts.logInEmail import send_login_email
+from emailScripts import logInEmail
 from emailScripts import applicationEmail
 from emailScripts import driverAddPointsEmail
-from emailScripts.driverRemovePointsEmail import send_points_removed_email
+from emailScripts import driverRemovePointsEmail
 from createUser import _create_user_in_table
 from emailScripts.resetEmail import send_reset_email
 from emailScripts.decisionEmail import send_decision_email
 from emailScripts.lockEmail import send_lock_email
-from emailScripts.driverDroppedEmail import send_driver_dropped_email
-from emailScripts.lowBalanceEmail import send_low_balance_email
-from emailScripts.spendPointsEmail import send_spent_points_email
-from emailScripts.sponsorLockedEmail import send_sponsor_locked_email
 import secrets
 import os
 import csv
@@ -263,68 +259,37 @@ def about():
 
     # Render template dynamically
     return render_template('about.html', rows=rows)
-
+#For now just a place holder
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        MAX_ATTEMPTS = 5  # lock after 5 failed attempts
 
-        # Try to authenticate
+        # Authenticate 
         role, user_row = authenticate(username, password)
 
-        # ✅ Successful login
+        # If login is successful starts session & redirects and sends email
         if role:
             session['user'] = username
             session['role'] = role
-
-            # --- Check if user is disabled ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-            if role == 'driver':
-                cursor.execute("SELECT disabled, disabled_by_admin FROM drivers WHERE username=%s", (username,))
-            elif role == 'sponsor':
-                cursor.execute("SELECT disabled, disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-            elif role == 'admin':
-                cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
-            else:
-                cursor.close()
-                db.close()
-                return redirect(url_for('login'))
-
-            status = cursor.fetchone()
-            cursor.close()
-            db.close()
-
-            if status and status['disabled']:
-                session['disabled'] = True
-                if status['disabled_by_admin']:
-                    return redirect('/disabled_account?reason=admin')
-                else:
-                    return redirect('/disabled_account?reason=self')
-            else:
-                session['disabled'] = False
-
-            # --- Send login email ---
-            db = MySQLdb.connect(**db_config)
-            cursor = db.cursor(MySQLdb.cursors.DictCursor)
+            # Find the user's email (and role) by username across all tables
             cursor.execute("""
-                SELECT email, 'driver' AS role FROM drivers WHERE username=%s
+                SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
                 UNION ALL
                 SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
                 UNION ALL
-                SELECT email, 'admin' AS role FROM admins WHERE username=%s
+                SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
                 LIMIT 1
             """, (username, username, username))
             r = cursor.fetchone()
             cursor.close(); db.close()
 
             if r and r.get('email'):
-                send_login_email(r['email'], username)
+                logInEmail.send_login_email(r['email'], username)
 
-            # --- Redirect based on role ---
             if role == 'driver':
                 session['show_feedback_modal'] = True
                 return redirect(url_for('driver_profile'))
@@ -334,194 +299,70 @@ def login():
                 session['show_feedback_modal'] = True
                 return redirect(url_for('sponsor_profile'))
 
-        # ❌ Failed login
-        try:
-            db = MySQLdb.connect(**db_config)
-            cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-            # Increment failed_attempts for sponsor accounts
-            cursor.execute("SELECT failed_attempts, locked_until FROM sponsor WHERE username=%s", (username,))
-            sponsor = cursor.fetchone()
-
-            if sponsor:
-                failed_attempts = int(sponsor.get('failed_attempts') or 0) + 1
-                cursor.execute("UPDATE sponsor SET failed_attempts=%s WHERE username=%s", (failed_attempts, username))
-                db.commit()
-
-                # Lock sponsor after too many attempts
-                if failed_attempts >= MAX_ATTEMPTS:
-                    locked_until = datetime.now() + timedelta(minutes=15)
-                    cursor.execute("""
-                        UPDATE sponsor
-                        SET locked_until=%s, disabled=TRUE
-                        WHERE username=%s
-                    """, (locked_until, username))
-                    db.commit()
-
-                    # Get admin emails
-                    cursor.execute("SELECT email FROM admins")
-                    admins = cursor.fetchall()
-                    locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
-
-                    # Send admin alert
-                    for admin in admins:
-                        send_sponsor_locked_email(admin['email'], username, locked_str)
-
-                    flash("Your account has been locked due to too many failed login attempts.", "danger")
-                    cursor.close(); db.close()
-                    return render_template("login.html", error="Account locked.", last_username=username)
-                else:
-                    remaining = MAX_ATTEMPTS - failed_attempts
-                    flash(f"Incorrect password. {remaining} attempts remaining before lockout.", "warning")
-
-            cursor.close(); db.close()
-        except Exception as e:
-            print(f"[Error] Login failure tracking: {e}")
-
-        # --- Check if already locked ---
+       
+        # If login failed, check for lockout reason
         locked_until = None
         try:
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
-            cursor.execute("SELECT locked_until FROM sponsor WHERE username=%s", (username,))
-            row = cursor.fetchone()
-            if row and row.get('locked_until') and row['locked_until'] > datetime.now():
-                locked_until = row['locked_until']
-            cursor.close(); db.close()
+
+            # Check if user exists and has an active lockout in any table
+            for table in ['drivers', 'sponsor', 'admins']:
+                cursor.execute(f"SELECT locked_until FROM {table} WHERE username=%s", (username,))
+                row = cursor.fetchone()
+                if row and row.get('locked_until') and row['locked_until'] > datetime.now():
+                    locked_until = row['locked_until']
+                    break
+
+            cursor.close()
+            db.close()
         except Exception:
-            pass
+            # fallback if DB lookup fails
+            locked_until = None
 
         if locked_until:
-            # Send lock email to sponsor (optional)
-            locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
             try:
                 db = MySQLdb.connect(**db_config)
                 cursor = db.cursor(MySQLdb.cursors.DictCursor)
-                cursor.execute("SELECT email FROM sponsor WHERE username=%s", (username,))
+                # Find the user's email (and role) by username across all tables
+                cursor.execute("""
+                    SELECT email, 'driver'  AS role FROM drivers WHERE username=%s
+                    UNION ALL
+                    SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
+                    UNION ALL
+                    SELECT email, 'admin'   AS role FROM admins  WHERE username=%s
+                    LIMIT 1
+                """, (username, username, username))
                 r = cursor.fetchone()
-                if r and r.get('email'):
-                    send_lock_email(r['email'], username, 'sponsor', locked_str)
                 cursor.close(); db.close()
-            except Exception as e:
-                print(f"[Warning] Failed to send sponsor lock email: {e}")
 
-            msg = f"Your account is locked until {locked_str}. Please try again later."
+                if r and r.get('email'):
+                    locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
+                    send_lock_email(r['email'], username, r.get('role', 'user'), locked_str)
+            except Exception:
+                pass  # don't block login page rendering if email fails
+        
+        #Render login.html with message
+        if locked_until:
+            msg = (
+                    "Your account is locked until "
+                    f"{locked_until.strftime('%b %d, %Y %I:%M:%S %p')}. Please try again later."
+            )
         else:
             msg = "Invalid username or password."
 
         return render_template("login.html", error=msg, last_username=username)
 
-    # GET request
+    # GET request → render blank login form
     return render_template("login.html")
-
-@app.route('/disabled_account')
-def disabled_account():
-    reason = request.args.get('reason', 'self')  # either 'admin' or 'self'
-    return render_template('disabled_account.html', reason=reason)
-
-@app.route('/reactivate_account', methods=['POST'])
-def reactivate_account():
-    role = session.get('role')
-    username = session.get('user')
-    if not role or not username:
-        flash("Session expired. Please log in again.")
-        return redirect(url_for('login'))
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    # check who disabled
-    if role == 'driver':
-        cursor.execute("SELECT disabled_by_admin FROM drivers WHERE username=%s", (username,))
-    elif role == 'sponsor':
-        cursor.execute("SELECT disabled_by_admin FROM sponsor WHERE username=%s", (username,))
-    elif role == 'admin':
-        cursor.execute("SELECT disabled_by_admin FROM admins WHERE username=%s", (username,))
-    else:
-        cursor.close(); db.close()
-
-    result = cursor.fetchone()
-    if result and result['disabled_by_admin']:
-        cursor.close(); db.close()
-        flash("Your account was disabled by an administrator. Please contact support.")
-        return redirect('/disabled_account?reason=admin')
-
-    # reactivate (self-disabled)
-    if role == 'driver':
-        cursor.execute("UPDATE drivers SET disabled=FALSE WHERE username=%s", (username,))
-    elif role == 'sponsor':
-        cursor.execute("UPDATE sponsor SET disabled=FALSE WHERE username=%s", (username,))
-    else:  # admin
-        cursor.execute("UPDATE admins SET disabled=FALSE WHERE username=%s", (username,))
-
-    db.commit()
-    cursor.close(); db.close()
-
-    session['disabled'] = False
-    flash("Your account has been reactivated successfully.")
-    return redirect(url_for(f'{role}_profile'))
-
-@app.route('/disable_self', methods=['POST'])
-def disable_self():
-    role = session.get('role')
-    username = session.get('user')
-    if not role or not username:
-        flash("Session expired. Please log in again.")
-        return redirect(url_for('login'))
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    if role == 'driver':
-        cursor.execute("UPDATE drivers SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
-    elif role == 'sponsor':
-        cursor.execute("UPDATE sponsor SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
-    elif role == 'admin':
-        cursor.execute("UPDATE admins  SET disabled=TRUE, disabled_by_admin=FALSE WHERE username=%s", (username,))
-    else:
-        cursor.close(); db.close()
-
-    db.commit()
-    cursor.close(); db.close()
-
-    session['disabled'] = True
-    flash("Your account has been disabled.")
-    return redirect('/disabled_account?reason=self')
-
-
-@app.route('/toggle_account/<role>/<username>', methods=['POST'])
-def toggle_account(role, username):
-    action = request.form.get('action')  # 'disable' or 'enable'
-    
-    value = (action == 'disable')
-    admin_flag = (action == 'disable')
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    if role == 'driver':
-        cursor.execute("UPDATE drivers SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
-                       (value, admin_flag, username))
-    elif role == 'sponsor':
-        cursor.execute("UPDATE sponsor SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
-                       (value, admin_flag, username))
-    else:  # admin
-        cursor.execute("UPDATE admins  SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
-                       (value, admin_flag, username))
-
-    db.commit()
-    cursor.close(); db.close()
-
-    flash(f"{role.capitalize()} '{username}' has been {'disabled' if value else 're-enabled'}.")
-    return redirect(url_for('admin_profile'))
-
-@app.route('/logout', methods=['GET', 'POST'])
+@app.route('/logout')
 def logout():
-    session.clear()  # Clear all session data
-    flash("You have been logged out.")
-    return redirect(url_for('login'))    
+    session.clear() #clears all data from session(user,role)
+    return redirect(url_for('login'))
+    #return redirect(url_for('home')) this would redirect for cleaner experiance
 
 # --- PROFILE ROUTES ---
+
 @app.route('/driver/profile', methods=['GET', 'POST'])
 def driver_profile():
     if 'user' not in session or session.get('role') != 'driver':
@@ -664,33 +505,18 @@ def dashboard():
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Current balance (you already had this)
+        # Retrieve driver info to get their points balance
         cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
         driver_info = cursor.fetchone()
         points_balance = driver_info['points'] if driver_info else 0
-
-        # NEW: recent point history from auditLogs
-        cursor.execute("""
-            SELECT timestamp, action, description
-            FROM auditLogs
-            WHERE (action='add points' OR action='remove points')
-              AND (
-                    description LIKE %s  -- added ... to {username}
-                 OR description LIKE %s  -- removed ... from {username}
-              )
-            ORDER BY timestamp DESC
-            LIMIT 50
-        """, (f'% to {username}%', f'% from {username}%'))
-        history = cursor.fetchall()
 
         cursor.close()
         db.close()
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    return render_template("dashboard.html",
-                           points_balance=points_balance,
-                           history=history)
+    # Render template and pass points_balance
+    return render_template("dashboard.html", points_balance=points_balance)
 
 @app.get("/cart")
 def cart_page():
@@ -822,17 +648,6 @@ def cart_checkout():
             cur.execute("DELETE FROM cart_items WHERE driver_username=%s", (username,))
 
             db.commit()
-
-            cur.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
-            row = cur.fetchone()
-            if row:
-                # Send "spent points" email
-                send_spent_points_email(row['email'], username, total_points)
-
-                # Send "low balance" email if < 10 points
-                pts = int(row['points'])
-                if pts < 50:
-                    send_low_balance_email(row['email'], username, pts, 50)
         except Exception as e:
             db.rollback()
             cur.close(); db.close()
@@ -1063,7 +878,7 @@ def catalog_manager():
         cursor.close()
         db.close()
     except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
+        flash(f"A database error occurred while loading your catalog: {e}", "danger")
 
     return render_template("catalog_manager.html", products=products)
 
@@ -1330,8 +1145,6 @@ def add_user():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
-    requester_role = session.get('role')
-    
     if request.method == 'POST':
         # Get data from the form
         new_username = request.form['username']
@@ -1339,12 +1152,7 @@ def add_user():
         new_password = request.form['password']
         new_role = request.form['role']
 
-        # Only admins can create other admins
-        if new_role == 'admins' and requester_role != 'admin':
-            # flash is optional; you can render an error page instead
-            flash("Only admins can create other admins.", "danger")
-            return redirect(url_for('add_user'))
-        
+        #TODO: hash the password
         #For now:
         password_hash = new_password;
         success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
@@ -1361,71 +1169,25 @@ def add_user():
             return f"<h2>Error:</h2><p>{message}</p>"
 
     # GET request – show the form
-    return render_template("add_user.html", can_create_admin=(requester_role == 'admin'))
+    return render_template("add_user.html")
 
 @app.route('/drivers')
 def drivers():
+    # Only sponsors/admins can access
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
-    db = MySQLdb.connect(**db_config)
-    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        db = MySQLdb.connect(**db_config)
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT username, email, points FROM drivers;")
+        drivers_list = cursor.fetchall()
+        cursor.close()
+        db.close()
+    except Exception as e:
+        return f"<h2>Database error:</h2><p>{e}</p>"
 
-    if session.get('role') == 'sponsor':
-        cur.execute("""
-            SELECT d.username, d.email, d.points, d.disabled
-            FROM drivers d
-            JOIN driverApplications a
-              ON a.driverUsername = d.username
-             AND a.sponsor = %s
-             AND a.status = 'accepted'
-            ORDER BY d.username
-        """, (session['user'],))
-    else:
-        cur.execute("SELECT username, email, points, disabled FROM drivers ORDER BY username")
-
-    drivers_list = cur.fetchall()
-    cur.close(); db.close()
-
-    return render_template("drivers.html", drivers=drivers_list, role=session.get('role'))
-
-@app.route('/driver/<username>', methods=['GET', 'POST'])
-def sponsor_edit_driver(username):
-    if 'user' not in session or session.get('role') != 'sponsor':
-        return redirect(url_for('login'))
-
-    sponsor = session['user']
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    # Ensure this driver belongs to this sponsor
-    cursor.execute("""
-        SELECT COUNT(*) AS valid
-        FROM driverApplications
-        WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
-    """, (username, sponsor))
-    valid = cursor.fetchone()
-    if not valid or valid['valid'] == 0:
-        flash("You are not authorized to edit this driver.", "danger")
-        return redirect(url_for('drivers'))
-
-    if request.method == 'POST':
-        phone = request.form.get('phone')
-        address = request.form.get('address')
-        cursor.execute("""
-            UPDATE drivers
-            SET phone=%s, address=%s
-            WHERE username=%s
-        """, (phone, address, username))
-        db.commit()
-        flash("Driver information updated.", "success")
-
-    cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
-    driver = cursor.fetchone()
-    cursor.close(); db.close()
-
-    return render_template("sponsor_edit_driver.html", driver=driver)
+    return render_template("drivers.html", drivers=drivers_list)
 
 @app.route('/sponsors')
 def sponsors():
@@ -1436,14 +1198,14 @@ def sponsors():
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT username, email, disabled FROM sponsor;")
+        cursor.execute("SELECT username, email FROM sponsor;")
         sponsors_list = cursor.fetchall()
         cursor.close()
         db.close()
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    return render_template("sponsors.html", sponsors=sponsors_list, role=session.get('role'))
+    return render_template("sponsors.html", sponsors=sponsors_list)
 
 
 @app.route('/remove_driver', methods=['POST'])
@@ -1465,43 +1227,6 @@ def remove_driver():
     except Exception as e:
         return f"<h2>Error removing driver:</h2><p>{e}</p>"
         flash(f'Error removing driver: {e}', 'danger')
-
-    return redirect(url_for('drivers'))
-
-@app.route('/drop_driver', methods=['POST'])
-def drop_driver():
-    if 'user' not in session or session.get('role') != 'sponsor':
-        flash("Unauthorized action.", "danger")
-        return redirect(url_for('login'))
-
-    driver_username = request.form.get('username')
-    sponsor_username = session['user']
-
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-        # End sponsorship in applications table
-        cursor.execute("""
-            UPDATE driverApplications
-            SET status='dropped'
-            WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
-        """, (driver_username, sponsor_username))
-        db.commit()
-
-        # Get driver’s email
-        cursor.execute("SELECT email FROM drivers WHERE username=%s", (driver_username,))
-        driver = cursor.fetchone()
-
-        if driver and driver.get('email'):
-            send_driver_dropped_email(driver['email'], driver_username, sponsor_username)
-
-        flash(f'Driver "{driver_username}" has been dropped successfully.', 'success')
-
-        cursor.close()
-        db.close()
-    except Exception as e:
-        flash(f'Error dropping driver: {e}', 'danger')
 
     return redirect(url_for('drivers'))
 
@@ -1636,18 +1361,11 @@ def remove_points():
         db.commit()
         flash(f'{points} points were successfully removed from "{username}".', 'success')
 
-        cursor.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
-        row = cursor.fetchone()
-        if row:
-            # send "points removed" email
-            send_points_removed_email(row['email'], username, points)
-
-            # send "low balance" email if < 10 points
-            pts = int(row['points'])
-            if pts < 50:
-                send_low_balance_email(row['email'], username, pts, 50)
     cursor.close()
     db.close()
+    driverEmail = get_email_by_username(username)
+    if driverEmail:
+        driverRemovePointsEmail.send_points_removed_email(driverEmail, username, points)
     return redirect(url_for('drivers'))
 
 
@@ -1859,7 +1577,7 @@ def driver_applications():
     cursor.execute("""
         SELECT * FROM driverApplications
         WHERE driverUsername=%s
-        ORDER BY FIELD(status,'pending','accepted','rejected','withdrawn', 'dropped'), created_at DESC
+        ORDER BY FIELD(status,'pending','accepted','rejected','withdrawn'), created_at DESC
     """, (username,))
     applications = cursor.fetchall()
 
@@ -2338,132 +2056,6 @@ def get_email_by_username(username):
     finally:
         cursor.close()
         db.close()
-
-
-@app.route('/admin/simulation', methods=['GET'])
-def simulation():
-    if 'user' not in session or session['role'] != 'admin':
-        return redirect(url_for('login'))
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    cursor.execute("SELECT username FROM drivers")
-    drivers = cursor.fetchall()  # list of dicts with {'username': ...}
-
-    cursor.execute("SELECT * FROM simulation_rules ORDER BY id DESC")
-    rules = cursor.fetchall()
-
-    cursor.close()
-    db.close()
-
-    return render_template('simulation.html', drivers=drivers, rules=rules)
-
-
-@app.route('/simulation/add_rule', methods=['POST'])
-def add_rule():
-    if 'user' not in session or session.get('role') != 'admin':
-        flash("You must be an admin to perform this action.", "danger")
-        return redirect(url_for('simulation'))
-
-    # Safely get form data
-    rule_type = request.form.get('rule_type')
-    schedule = request.form.get('schedule', '').strip()
-    points = request.form.get('points')  # may be None
-    driver_text = request.form.get('driver_username_text', '').strip()
-    driver_dropdown = request.form.get('driver_username_dropdown', '').strip()
-
-    if not rule_type:
-        flash("Rule type is required.", "danger")
-        return redirect(url_for('simulation'))
-
-    # Determine which driver field to use
-    if rule_type in ['add_driver', 'remove_driver']:
-        driver_username = driver_text
-        points_value = None
-    elif rule_type in ['add_points', 'remove_points']:
-        driver_username = driver_dropdown
-        points_value = int(points) if points else None
-    else:
-        flash("Invalid rule type.", "danger")
-        return redirect(url_for('simulation'))
-
-    if not schedule:
-        flash("Schedule is required.", "danger")
-        return redirect(url_for('simulation'))
-
-    # Optional: validate driver exists if points action
-    if rule_type in ['add_points', 'remove_points'] and not driver_username:
-        flash("You must select a driver for points rules.", "danger")
-        return redirect(url_for('simulation'))
-
-    # Insert into DB
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor()
-        cursor.execute("""
-            INSERT INTO simulation_rules (type, driver_username, points, schedule, enabled)
-            VALUES (%s, %s, %s, %s, 1)
-        """, (rule_type, driver_username, points_value, schedule))
-        db.commit()
-    except Exception as e:
-        flash(f"Database error: {e}", "danger")
-    finally:
-        cursor.close()
-        db.close()
-
-    flash("Rule added successfully.", "success")
-    return redirect(url_for('simulation'))
-
-@app.route('/admin/simulation/toggle/<int:rule_id>', methods=['POST', 'GET'])
-def toggle_rule(rule_id):
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
-    
-    # Get current status
-    cursor.execute("SELECT enabled FROM simulation_rules WHERE id=%s", (rule_id,))
-    row = cursor.fetchone()
-    if row:
-        current_status = row[0]
-        new_status = 0 if current_status else 1
-        cursor.execute("UPDATE simulation_rules SET enabled=%s WHERE id=%s", (new_status, rule_id))
-        db.commit()
-    
-    cursor.close()
-    db.close()
-    flash('Rule status updated.', 'success')
-    return redirect(url_for('simulation'))
-
-
-@app.route('/disable_rule/<int:rule_id>')
-def disable_rule(rule_id):
-    if session.get('role') != 'admin':
-        return "Unauthorized", 403
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
-    cursor.execute("UPDATE simulation_rules SET enabled=FALSE WHERE id=%s", (rule_id,))
-    db.commit()
-    cursor.close()
-    db.close()
-    
-    return redirect(url_for('simulation'))
-
-
-@app.route('/remove_rule/<int:rule_id>')
-def remove_rule(rule_id):
-    if session.get('role') != 'admin':
-        return "Unauthorized", 403
-
-    db = MySQLdb.connect(**db_config)
-    cursor = db.cursor()
-    cursor.execute("DELETE FROM simulation_rules WHERE id=%s", (rule_id,))
-    db.commit()
-    cursor.close()
-    db.close()
-    
-    return redirect(url_for('simulation'))
-
     
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000, debug=True)
