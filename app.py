@@ -1099,6 +1099,25 @@ def item_catalog():
     cursor.execute(query, tuple(params))
     items = cursor.fetchall()
 
+    # --- Aggregate reviews for the listed products ---
+    pids = [row['product_id'] for row in items]
+    review_agg = {}
+    if pids:
+        fmt = ",".join(["%s"] * len(pids))
+        cursor.execute(f"""
+            SELECT product_id,
+                   AVG(rating)   AS avg_rating,
+                   COUNT(*)      AS review_count
+            FROM reviews
+            WHERE product_id IN ({fmt})
+            GROUP BY product_id
+        """, pids)
+        for r in cursor.fetchall():
+            review_agg[r['product_id']] = {
+                "avg_rating": float(r['avg_rating'] or 0.0),
+                "review_count": int(r['review_count'] or 0)
+            }
+
     # --- Get unique sponsors for dropdown filter ---
     cursor.execute("SELECT DISTINCT sponsor FROM products WHERE sponsor IS NOT NULL")
     sponsors = [row['sponsor'] for row in cursor.fetchall()]
@@ -1119,8 +1138,10 @@ def item_catalog():
         sponsor=sponsor,
         sponsors=sponsors,
         favorites_only=favorites_only,
-        favorite_ids=favorite_ids
+        favorite_ids=favorite_ids,
+        review_agg=review_agg,  # ⬅️ pass to template
     )
+
 
 
 @app.route('/settings', methods=['GET', 'POST'])
