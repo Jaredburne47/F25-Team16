@@ -921,6 +921,9 @@ def add_product():
     sponsor_name = session['user']
 
     if not name or not points_cost:
+        # If AJAX request, return JSON error
+        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('ajax') == '1':
+            return jsonify({"ok": False, "error": "Name and points cost are required."}), 400
         return "<h3>Name and points cost are required.</h3>"
 
     try:
@@ -933,11 +936,17 @@ def add_product():
         db.commit()
         cursor.close()
         db.close()
-        flash(f"Product '{name}' added successfully!", "success")
     except Exception as e:
-        flash(f"Database error adding product: {e}", "danger")
+        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('ajax') == '1':
+            return jsonify({"ok": False, "error": str(e)}), 500
+        return f"<h2>Database error:</h2><p>{e}</p>"
+
+    # If AJAX/fetch, return JSON success; otherwise keep old redirect flow
+    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('ajax') == '1':
+        return jsonify({"ok": True})
 
     return redirect(url_for('catalog_manager'))
+
 
 @app.route('/delete_product/<int:product_id>', methods=['POST'])
 def delete_product(product_id):
