@@ -13,6 +13,7 @@ from emailScripts.lockEmail import send_lock_email
 from emailScripts.driverDroppedEmail import send_driver_dropped_email
 from emailScripts.lowBalanceEmail import send_low_balance_email
 from emailScripts.spendPointsEmail import send_spent_points_email
+from emailScripts.sponsorLockedEmail import send_sponsor_locked_email
 import secrets
 import os
 import csv
@@ -268,11 +269,12 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
+        MAX_ATTEMPTS = 5  # lock after 5 failed attempts
 
-        # Authenticate user
+        # Try to authenticate
         role, user_row = authenticate(username, password)
 
-        # --- If login is successful ---
+        # ✅ Successful login
         if role:
             session['user'] = username
             session['role'] = role
@@ -289,13 +291,13 @@ def login():
                 cursor.execute("SELECT disabled, disabled_by_admin FROM admins WHERE username=%s", (username,))
             else:
                 cursor.close()
-                db.close()           
-            
+                db.close()
+                return redirect(url_for('login'))
+
             status = cursor.fetchone()
             cursor.close()
             db.close()
-            
-            # --- Redirect disabled users ---
+
             if status and status['disabled']:
                 session['disabled'] = True
                 if status['disabled_by_admin']:
@@ -305,10 +307,9 @@ def login():
             else:
                 session['disabled'] = False
 
-            # --- Normal login email + redirect flow ---
+            # --- Send login email ---
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
             cursor.execute("""
                 SELECT email, 'driver' AS role FROM drivers WHERE username=%s
                 UNION ALL
@@ -317,15 +318,13 @@ def login():
                 SELECT email, 'admin' AS role FROM admins WHERE username=%s
                 LIMIT 1
             """, (username, username, username))
-
             r = cursor.fetchone()
-            cursor.close()
-            db.close()
+            cursor.close(); db.close()
 
             if r and r.get('email'):
-                logInEmail.send_login_email(r['email'], username)
+                send_login_email(r['email'], username)
 
-            # Redirect based on role
+            # --- Redirect based on role ---
             if role == 'driver':
                 session['show_feedback_modal'] = True
                 return redirect(url_for('driver_profile'))
@@ -335,55 +334,84 @@ def login():
                 session['show_feedback_modal'] = True
                 return redirect(url_for('sponsor_profile'))
 
-        # --- If login failed, handle lockout ---
-        locked_until = None
+        # ❌ Failed login
         try:
             db = MySQLdb.connect(**db_config)
             cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-            for table in ['drivers', 'sponsor', 'admins']:
-                cursor.execute(f"SELECT locked_until FROM {table} WHERE username=%s", (username,))
-                row = cursor.fetchone()
-                if row and row.get('locked_until') and row['locked_until'] > datetime.now():
-                    locked_until = row['locked_until']
-                    break
+            # Increment failed_attempts for sponsor accounts
+            cursor.execute("SELECT failed_attempts, locked_until FROM sponsor WHERE username=%s", (username,))
+            sponsor = cursor.fetchone()
 
-            cursor.close()
-            db.close()
+            if sponsor:
+                failed_attempts = int(sponsor.get('failed_attempts') or 0) + 1
+                cursor.execute("UPDATE sponsor SET failed_attempts=%s WHERE username=%s", (failed_attempts, username))
+                db.commit()
+
+                # Lock sponsor after too many attempts
+                if failed_attempts >= MAX_ATTEMPTS:
+                    locked_until = datetime.now() + timedelta(minutes=15)
+                    cursor.execute("""
+                        UPDATE sponsor
+                        SET locked_until=%s, disabled=TRUE
+                        WHERE username=%s
+                    """, (locked_until, username))
+                    db.commit()
+
+                    # Get admin emails
+                    cursor.execute("SELECT email FROM admins")
+                    admins = cursor.fetchall()
+                    locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
+
+                    # Send admin alert
+                    for admin in admins:
+                        send_sponsor_locked_email(admin['email'], username, locked_str)
+
+                    flash("Your account has been locked due to too many failed login attempts.", "danger")
+                    cursor.close(); db.close()
+                    return render_template("login.html", error="Account locked.", last_username=username)
+                else:
+                    remaining = MAX_ATTEMPTS - failed_attempts
+                    flash(f"Incorrect password. {remaining} attempts remaining before lockout.", "warning")
+
+            cursor.close(); db.close()
+        except Exception as e:
+            print(f"[Error] Login failure tracking: {e}")
+
+        # --- Check if already locked ---
+        locked_until = None
+        try:
+            db = MySQLdb.connect(**db_config)
+            cursor = db.cursor(MySQLdb.cursors.DictCursor)
+            cursor.execute("SELECT locked_until FROM sponsor WHERE username=%s", (username,))
+            row = cursor.fetchone()
+            if row and row.get('locked_until') and row['locked_until'] > datetime.now():
+                locked_until = row['locked_until']
+            cursor.close(); db.close()
         except Exception:
-            locked_until = None
+            pass
 
         if locked_until:
+            # Send lock email to sponsor (optional)
+            locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
             try:
                 db = MySQLdb.connect(**db_config)
                 cursor = db.cursor(MySQLdb.cursors.DictCursor)
-                cursor.execute("""
-                    SELECT email, 'driver' AS role FROM drivers WHERE username=%s
-                    UNION ALL
-                    SELECT email, 'sponsor' AS role FROM sponsor WHERE username=%s
-                    UNION ALL
-                    SELECT email, 'admin' AS role FROM admins WHERE username=%s
-                    LIMIT 1
-                """, (username, username, username))
+                cursor.execute("SELECT email FROM sponsor WHERE username=%s", (username,))
                 r = cursor.fetchone()
-                cursor.close()
-                db.close()
-
                 if r and r.get('email'):
-                    locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
-                    send_lock_email(r['email'], username, r.get('role', 'user'), locked_str)
-            except Exception:
-                pass  # don't block login page rendering if email fails
+                    send_lock_email(r['email'], username, 'sponsor', locked_str)
+                cursor.close(); db.close()
+            except Exception as e:
+                print(f"[Warning] Failed to send sponsor lock email: {e}")
 
-        msg = (
-            "Your account is locked until "
-            f"{locked_until.strftime('%b %d, %Y %I:%M:%S %p')}. Please try again later."
-            if locked_until else
-            "Invalid username or password."
-        )
+            msg = f"Your account is locked until {locked_str}. Please try again later."
+        else:
+            msg = "Invalid username or password."
+
         return render_template("login.html", error=msg, last_username=username)
 
-    # --- GET request ---
+    # GET request
     return render_template("login.html")
 
 @app.route('/disabled_account')
