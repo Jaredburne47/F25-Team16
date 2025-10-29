@@ -694,7 +694,7 @@ def orders_page():
 
     # Load orders
     cur.execute("""
-        SELECT order_id, product_id, reward_description, point_cost, quantity, status, order_date, DATE(order_date + INTERVAL 7 DAY) AS expected_date
+        SELECT order_id, product_id, reward_description, point_cost, quantity, status, DATE(order_date) AS order_date, DATE(order_date + INTERVAL 7 DAY) AS expected_date
         FROM orders
         WHERE user_id=%s
         ORDER BY order_date DESC, order_id DESC
