@@ -1269,6 +1269,7 @@ def login_as_driver():
     username = request.form['username']
     session['user'] = username
     session['role'] = 'driver'
+    flash(f"You are now logged in as driver '{username}'.", 'info')
     return redirect(url_for('driver_profile'))
 
 @app.route('/login_as_sponsor', methods=['POST'])
