@@ -919,6 +919,46 @@ def product_reviews(product_id):
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.post("/api/products/<int:product_id>/reviews")
+def create_or_update_review(product_id):
+    if 'user' not in session or session.get('role') != 'driver':
+        return jsonify({"ok": False, "error": "auth"}), 403
+
+    username = session['user']
+    body = request.get_json(silent=True) or {}
+    rating = int(body.get("rating", 0))
+    title  = (body.get("title") or "").strip()[:120]
+    text   = (body.get("body") or "").strip()
+
+    if rating < 1 or rating > 5:
+        return jsonify({"ok": False, "error": "Rating must be 1–5"}), 400
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor()
+
+        # (Optional) gate: verify the product exists
+        cur.execute("SELECT product_id FROM products WHERE product_id=%s", (product_id,))
+        exists = cur.fetchone()
+        if not exists:
+            cur.close(); db.close()
+            return jsonify({"ok": False, "error": "Product not found"}), 404
+
+        # Upsert (update if the driver already reviewed this product)
+        cur.execute("""
+            INSERT INTO reviews (product_id, driver_username, rating, title, body)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                rating=VALUES(rating),
+                title=VALUES(title),
+                body=VALUES(body)
+        """, (product_id, username, rating, title, text))
+        db.commit()
+        cur.close(); db.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 @app.route('/catalog_manager')
 def catalog_manager():
