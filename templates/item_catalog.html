@@ -2,55 +2,66 @@
 {% block title %}Item Catalog - Driver Incentive Program{% endblock %}
 
 {% block content %}
+<!-- Header with active sponsor + points -->
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div class="d-flex align-items-center gap-3">
-    <h1>Item Catalog</h1>
-    <a href="{{ url_for('cart_page') }}" class="btn btn-outline-success">
-      🛒 View Cart
-    </a>
+    <h1 class="mb-0">Item Catalog</h1>
+    <a href="{{ url_for('cart_page') }}" class="btn btn-outline-success">🛒 View Cart</a>
   </div>
-  <div>
-    <h5>Your Points Balance:
-      <span class="badge bg-success">{{ points_balance }}</span>
-    </h5>
+  <div class="text-end">
+    {% if sponsor and sponsor != 'none' %}
+      <div class="mb-1">
+        <span class="badge bg-primary">Active sponsor: {{ sponsor }}</span>
+      </div>
+      <div>Points: <span class="badge bg-success">{{ points_balance }}</span></div>
+    {% else %}
+      <div class="alert alert-warning py-1 px-2 mb-0">
+        No active sponsor — apply and get accepted to shop.
+      </div>
+    {% endif %}
   </div>
 </div>
 
-<!-- Search / Filter Form -->
+{% if not sponsors or sponsors|length == 0 %}
+  <div class="alert alert-info d-flex justify-content-between align-items-center">
+    <div>You’re not accepted with any sponsors yet. Apply to start shopping.</div>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('sponsor_browse') }}">Browse sponsors</a>
+  </div>
+{% endif %}
+
+<!-- Search / Filter Form (no "All Sponsors"; this select switches active sponsor) -->
 <form method="get" class="row g-3 mb-4">
   <div class="col-md-4">
-    <input type="text" name="search" class="form-control" placeholder="Search products or sponsors..." value="{{ search }}">
+    <input type="text" name="search" class="form-control" placeholder="Search product names…" value="{{ search }}">
   </div>
 
   <div class="col-md-3">
-    <select name="sponsor" class="form-select">
-      <option value="all">All Sponsors</option>
+    <select name="sponsor" class="form-select" {% if not sponsors or sponsors|length == 0 %}disabled{% endif %}>
       {% for s in sponsors %}
-      <option value="{{ s }}" {% if sponsor == s %}selected{% endif %}>{{ s }}</option>
+        <option value="{{ s }}" {% if sponsor == s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
+    <div class="form-text">Switch active sponsor</div>
   </div>
 
   <div class="col-md-3">
     <select name="sort" class="form-select">
-      <option value="points_cost_asc" {% if sort == 'points_cost_asc' %}selected{% endif %}>Sort by: Cost (Low → High)</option>
+      <option value="points_cost_asc"  {% if sort == 'points_cost_asc'  %}selected{% endif %}>Cost (Low → High)</option>
       <option value="points_cost_desc" {% if sort == 'points_cost_desc' %}selected{% endif %}>Cost (High → Low)</option>
-      <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Name (A → Z)</option>
-      <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Name (Z → A)</option>
+      <option value="name_asc"         {% if sort == 'name_asc'         %}selected{% endif %}>Name (A → Z)</option>
+      <option value="name_desc"        {% if sort == 'name_desc'        %}selected{% endif %}>Name (Z → A)</option>
     </select>
   </div>
 
   <div class="col-md-2 d-flex align-items-center">
     <div class="form-check ms-md-2">
       <input class="form-check-input" type="checkbox" id="favOnly" name="favorites" value="1" {% if favorites_only %}checked{% endif %}>
-      <label class="form-check-label" for="favOnly">
-        Favorites only
-      </label>
+      <label class="form-check-label" for="favOnly">Favorites only</label>
     </div>
   </div>
 
   <div class="col-md-2">
-    <button class="btn btn-primary w-100" type="submit">Apply</button>
+    <button class="btn btn-primary w-100" type="submit" {% if not sponsors or sponsors|length == 0 %}disabled{% endif %}>Apply</button>
   </div>
 </form>
 
@@ -81,7 +92,6 @@
         <!-- ★ Average rating + count -->
         <div class="mb-2 small text-muted d-flex align-items-center gap-2">
           <span class="rating-stars" data-avg="{{ agg.avg_rating if agg else 0 }}">
-            <!-- Stars will be filled by JS; also render a quick server-side fallback -->
             {% if agg %}
               {% for i in range(1,6) %}
                 {% if i <= (agg.avg_rating|round(0, 'floor')) %}★{% else %}☆{% endif %}
@@ -176,7 +186,7 @@
   {% endif %}
 </div>
 
-<!-- JS -->
+<!-- JS (unchanged except for context text) -->
 <script>
 // ---------- Favorite toggle ----------
 async function toggleFavorite(productId, btnEl) {
@@ -191,7 +201,6 @@ async function toggleFavorite(productId, btnEl) {
     });
 
     if (res.status === 404) {
-      // Backend not yet implemented; just toggle visually for now
       if (isFav) {
         btnEl.classList.remove('btn-warning');
         btnEl.classList.add('btn-outline-warning');
@@ -319,14 +328,13 @@ async function loadReviews(productId) {
 
   listEl.innerHTML = '<div class="text-muted small">Loading reviews…</div>';
   try {
-    // ✅ Use your implemented GET route
     const res = await fetch(`/api/products/${productId}/reviews`);
     if (!res.ok) {
       listEl.innerHTML = '<div class="text-muted small">Reviews not available yet.</div>';
       return;
     }
 
-    const data = await res.json(); // { ok, reviews, aggregate:{avg_rating, review_count} }
+    const data = await res.json();
     if (!data.ok) {
       listEl.innerHTML = '<div class="text-danger small">Failed to load reviews.</div>';
       return;
@@ -370,23 +378,20 @@ async function loadReviews(productId) {
   }
 }
 
-
 async function submitReview(ev, productId) {
   ev.preventDefault();
   const ratingEl = document.getElementById(`rating-${productId}`);
   const commentEl = document.getElementById(`comment-${productId}`);
   const statusEl = document.getElementById(`review-status-${productId}`);
 
-  // Your API expects: { rating, title, body }
   const payload = {
     rating: Number(ratingEl.value || '5'),
-    title: '',              // optional, keep empty unless you add a title field
+    title: '',
     body: commentEl.value.trim()
   };
 
   statusEl.textContent = 'Submitting…';
   try {
-    // ✅ Use your implemented POST route
     const res = await fetch(`/api/products/${productId}/reviews`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -397,7 +402,7 @@ async function submitReview(ev, productId) {
     if (res.ok && data.ok) {
       statusEl.textContent = 'Thanks for your review!';
       commentEl.value = '';
-      await loadReviews(productId); // refresh list & aggregates
+      await loadReviews(productId);
     } else {
       statusEl.textContent = 'Error: ' + (data.error || 'unknown');
     }
@@ -406,7 +411,6 @@ async function submitReview(ev, productId) {
   }
   return false;
 }
-
 
 // When any reviews modal opens, load its reviews
 document.addEventListener('shown.bs.modal', (e) => {

@@ -441,22 +441,26 @@ def sponsor_profile():
     driver_count = cursor.fetchone()['driver_count']
 
     cursor.execute("""
-        SELECT SUM(d.points) AS total_points
-        FROM drivers d
-        JOIN driverApplications da ON d.username = da.driverUsername
-        WHERE da.sponsor=%s AND da.status='accepted'
+        SELECT COALESCE(SUM(points),0) AS total_points
+        FROM driver_sponsor_points
+        WHERE sponsor=%s
     """, (username,))
     total_points = cursor.fetchone()['total_points'] or 0
 
-    # --- Driver list for sponsor ---
+    # --- Driver list for sponsor (per-sponsor points) ---
     cursor.execute("""
-        SELECT d.username, d.first_name, d.last_name, d.points
-        FROM drivers d
-        JOIN driverApplications da ON d.username = da.driverUsername
+        SELECT d.username, d.first_name, d.last_name,
+            COALESCE(dsp.points,0) AS points
+        FROM driverApplications da
+        JOIN drivers d ON d.username = da.driverUsername
+        LEFT JOIN driver_sponsor_points dsp
+        ON dsp.driver_username = da.driverUsername
+        AND dsp.sponsor = da.sponsor
         WHERE da.sponsor=%s AND da.status='accepted'
-        ORDER BY d.points DESC
+        ORDER BY points DESC
     """, (username,))
     driver_list = cursor.fetchall()
+
 
     cursor.close()
     db.close()
@@ -518,157 +522,123 @@ def admin_profile():
 
 @app.route('/dashboard')
 def dashboard():
-    # Ensure only drivers can access
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
+    active = _get_active_sponsor(username)
+    points_balance = _get_points(username, active) if active else 0
 
-    try:
-        db = MySQLdb.connect(**db_config)
-        cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-        # Retrieve driver info to get their points balance
-        cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
-        driver_info = cursor.fetchone()
-        points_balance = driver_info['points'] if driver_info else 0
-
-        cursor.close()
-        db.close()
-    except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
-
-    # Render template and pass points_balance
     return render_template("dashboard.html", points_balance=points_balance)
+
 
 @app.get("/cart")
 def cart_page():
-    # Drivers only
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
+    active_sponsor = _get_active_sponsor(username)
+    if not active_sponsor:
+        return render_template("cart.html", items=[], points_balance=0, total_points=0)
 
     try:
         db = MySQLdb.connect(**db_config)
         cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Driver points balance
-        cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-        r = cur.fetchone()
-        points_balance = int(r['points'] if r and r['points'] is not None else 0)
+        points_balance = _get_points(username, active_sponsor)
 
-        # Cart lines joined with current product info
         cur.execute("""
-            SELECT ci.product_id,
-                   ci.quantity,
-                   p.name,
-                   p.points_cost,
-                   p.image_url,
-                   p.quantity AS stock
+            SELECT ci.product_id, ci.quantity,
+                   p.name, p.points_cost, p.image_url, p.quantity AS stock
             FROM cart_items ci
             JOIN products p ON p.product_id = ci.product_id
-            WHERE ci.driver_username=%s
+            WHERE ci.driver_username=%s AND ci.sponsor=%s
             ORDER BY p.name ASC
-        """, (username,))
+        """, (username, active_sponsor))
         items = cur.fetchall()
 
         cur.close(); db.close()
     except Exception as e:
         return f"<h3>Database error loading cart: {e}</h3>"
 
-    # Compute total points on server (simple + explicit)
     total_points = sum(int(i['points_cost'] or 0) * int(i['quantity'] or 0) for i in items)
+    return render_template("cart.html", items=items, points_balance=points_balance, total_points=total_points)
 
-    return render_template("cart.html",
-                           items=items,
-                           points_balance=points_balance,
-                           total_points=total_points)
 
 @app.post("/cart/checkout")
 def cart_checkout():
-    # Drivers only
     if 'user' not in session or session.get('role') != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
+    active_sponsor = _get_active_sponsor(username)
+    if not active_sponsor:
+        return "<h3>No active sponsor selected.</h3>"
 
     try:
         db = MySQLdb.connect(**db_config)
         cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # 1) Load driver points
-        cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-        r = cur.fetchone()
-        driver_points = int(r['points'] if r and r['points'] is not None else 0)
+        driver_points = _get_points(username, active_sponsor)
 
-        # 2) Load cart (join current product info)
         cur.execute("""
             SELECT ci.product_id, ci.quantity AS qty,
                    p.name, p.points_cost, p.quantity AS stock
             FROM cart_items ci
             JOIN products p ON p.product_id = ci.product_id
-            WHERE ci.driver_username=%s
+            WHERE ci.driver_username=%s AND ci.sponsor=%s
             ORDER BY p.name ASC
-        """, (username,))
+        """, (username, active_sponsor))
         cart = cur.fetchall()
 
         if not cart:
             cur.close(); db.close()
-            # Nothing to do; back to cart
             return redirect(url_for('cart_page'))
 
-        # 3) Validate stock & compute total cost
         total_points = 0
         for line in cart:
-            line_qty = int(line['qty'] or 0)
-            line_stock = int(line['stock'] or 0)
-            if line_qty <= 0 or line_stock < line_qty:
+            if int(line['qty']) <= 0 or int(line['stock']) < int(line['qty']):
                 cur.close(); db.close()
                 return "<h3>Not enough stock for one or more items in your cart.</h3>"
-            total_points += int(line['points_cost'] or 0) * line_qty
+            total_points += int(line['points_cost']) * int(line['qty'])
 
-        # 4) Check points
         if driver_points < total_points:
             cur.close(); db.close()
-            return "<h3>You don't have enough points to checkout.</h3>"
+            return "<h3>You don't have enough points with this sponsor.</h3>"
 
-        # 5) Perform changes atomically
         db.autocommit(False)
         try:
-            # 5a) Deduct driver points
-            cur.execute("UPDATE drivers SET points = points - %s WHERE username=%s",
-                        (total_points, username))
+            # Deduct per-sponsor points
+            cur.execute("""
+                UPDATE driver_sponsor_points
+                SET points = points - %s
+                WHERE driver_username=%s AND sponsor=%s
+            """, (total_points, username, active_sponsor))
 
-            # 5b) Create one order row per cart line
+            # Create orders, decrement stock
             for line in cart:
                 cur.execute("""
-                    INSERT INTO orders (user_id, product_id, reward_description, point_cost, quantity, status)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    INSERT INTO orders (user_id, product_id, sponsor, reward_description, point_cost, quantity, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'Processing')
                 """, (
                     username,
                     int(line['product_id']),
+                    active_sponsor,
                     line['name'],
                     int(line['points_cost']) * int(line['qty']),
                     int(line['qty']),
-                    'Processing'
                 ))
 
-            # 5c) Decrement stock; delete products that hit zero
-            for line in cart:
                 cur.execute("""
                     UPDATE products
                     SET quantity = quantity - %s
                     WHERE product_id=%s
                 """, (int(line['qty']), int(line['product_id'])))
 
-                cur.execute("""
-                    DELETE FROM products
-                    WHERE product_id=%s AND quantity <= 0
-                """, (int(line['product_id']),))
-
-            # 5d) Clear cart
-            cur.execute("DELETE FROM cart_items WHERE driver_username=%s", (username,))
+            # Clear only this sponsor's cart lines
+            cur.execute("DELETE FROM cart_items WHERE driver_username=%s AND sponsor=%s",
+                        (username, active_sponsor))
 
             db.commit()
         except Exception as e:
@@ -677,7 +647,6 @@ def cart_checkout():
             return f"<h3>Checkout failed: {e}</h3>"
 
         cur.close(); db.close()
-        # Go to the new Orders page
         return redirect(url_for('orders_page'))
 
     except Exception as e:
@@ -693,21 +662,20 @@ def orders_page():
 
     db = MySQLdb.connect(**db_config)
 
-    # ➊ Promote any Processing orders older than 60s to Shipped
+    # Promote statuses
     _promote_processing_to_shipped(db)
     _promote_shipped_to_delivered(db)
 
-
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Driver points for context
-    cur.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-    r = cur.fetchone()
-    points_balance = int(r['points'] if r and r['points'] is not None else 0)
+    # Per-sponsor balance for active sponsor
+    active_sponsor = _get_active_sponsor(username)
+    points_balance = _get_points(username, active_sponsor) if active_sponsor else 0
 
-    # Load orders
+    # Load orders (all sponsors is fine here)
     cur.execute("""
-        SELECT order_id, product_id, reward_description, point_cost, quantity, status, DATE(order_date) AS order_date, DATE(order_date + INTERVAL 7 DAY) AS expected_date
+        SELECT order_id, product_id, reward_description, point_cost, quantity, status,
+               DATE(order_date) AS order_date, DATE(order_date + INTERVAL 7 DAY) AS expected_date
         FROM orders
         WHERE user_id=%s
         ORDER BY order_date DESC, order_id DESC
@@ -716,6 +684,7 @@ def orders_page():
 
     cur.close(); db.close()
     return render_template("orders.html", orders=orders, points_balance=points_balance)
+
 
 
 @app.post("/orders/<int:order_id>/cancel")
@@ -775,20 +744,63 @@ def orders_cancel(order_id):
     cur.close(); db.close()
     return redirect(url_for('orders_page'))
 
-
-
-def _get_driver_sponsor(username):
-    """Return the sponsor the driver is accepted with, or None."""
+def _get_driver_accepted_sponsors(username):
+    """List of sponsors this driver is accepted with (from driverApplications)."""
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("""
-        SELECT sponsor FROM driverApplications
+        SELECT sponsor
+        FROM driverApplications
         WHERE driverUsername=%s AND status='accepted'
-        LIMIT 1
+        ORDER BY sponsor ASC
     """, (username,))
+    rows = cur.fetchall()
+    cur.close(); db.close()
+    return [r['sponsor'] for r in rows]
+
+def _get_active_sponsor(username):
+    """
+    Active sponsor for the driver: ?sponsor=... > session > first accepted.
+    Stores the chosen value in session['active_sponsor'].
+    """
+    sel = request.args.get('sponsor')
+    if sel:
+        session['active_sponsor'] = sel
+        return sel
+    if session.get('active_sponsor'):
+        return session['active_sponsor']
+    accepted = _get_driver_accepted_sponsors(username)
+    if accepted:
+        session['active_sponsor'] = accepted[0]
+        return accepted[0]
+    return None
+
+def _get_points(username, sponsor):
+    """Per-sponsor balance from driver_sponsor_points."""
+    if not sponsor:
+        return 0
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT points FROM driver_sponsor_points
+        WHERE driver_username=%s AND sponsor=%s
+    """, (username, sponsor))
     row = cur.fetchone()
     cur.close(); db.close()
-    return row['sponsor'] if row else None
+    return int(row['points']) if row and row['points'] is not None else 0
+
+def _add_points(username, sponsor, delta):
+    """Adds (or subtracts) points for (driver, sponsor)."""
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor()
+    cur.execute("""
+        INSERT INTO driver_sponsor_points (driver_username, sponsor, points)
+        VALUES (%s,%s,%s)
+        ON DUPLICATE KEY UPDATE points = GREATEST(0, points + VALUES(points))
+    """, (username, sponsor, int(delta)))
+    db.commit()
+    cur.close(); db.close()
+
 
 @app.post("/api/driver/favorites/add")
 def fav_add():
@@ -849,43 +861,46 @@ def driver_cart_add():
         return jsonify({"ok": False, "error": "product_id and quantity>=1 required"}), 400
 
     username = session['user']
-    sponsor = _get_driver_sponsor(username)
-    if not sponsor:
+    active_sponsor = _get_active_sponsor(username)
+    if not active_sponsor:
         return jsonify({"ok": False, "error": "You must be accepted by a sponsor first."}), 403
+
+    # Ensure driver is accepted with active sponsor
+    if active_sponsor not in _get_driver_accepted_sponsors(username):
+        return jsonify({"ok": False, "error": "Not accepted with this sponsor."}), 403
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Ensure product exists and belongs to driver’s sponsor
+    # Product must belong to the active sponsor
     cur.execute("SELECT product_id, sponsor, quantity FROM products WHERE product_id=%s", (product_id,))
-    prod_row = cur.fetchone()
-    if not prod_row:
+    prod = cur.fetchone()
+    if not prod:
         cur.close(); db.close()
         return jsonify({"ok": False, "error": "Product not found"}), 404
-    if prod_row['sponsor'] != sponsor:
+    if prod['sponsor'] != active_sponsor:
         cur.close(); db.close()
-        return jsonify({"ok": False, "error": "Product is not offered by your sponsor"}), 403
+        return jsonify({"ok": False, "error": "Product is not offered by the active sponsor"}), 403
 
-    # Optional: cap requested qty by available stock
-    available = int(prod_row['quantity'] or 0)
+    available = int(prod['quantity'] or 0)
     if available <= 0:
         cur.close(); db.close()
         return jsonify({"ok": False, "error": "Out of stock"}), 409
     qty = min(qty, available)
 
     try:
-        # Insert or increase (up to available)
         cur.execute("""
-            INSERT INTO cart_items (driver_username, product_id, quantity)
-            VALUES (%s, %s, %s)
+            INSERT INTO cart_items (driver_username, product_id, sponsor, quantity)
+            VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE quantity = LEAST(quantity + VALUES(quantity), %s)
-        """, (username, int(product_id), qty, available))
+        """, (username, int(product_id), active_sponsor, qty, available))
         db.commit()
-        cur.close(); db.close()
         return jsonify({"ok": True})
     except Exception as e:
-        cur.close(); db.close()
         return jsonify({"ok": False, "error": f"DB error: {e}"}), 500
+    finally:
+        cur.close(); db.close()
+
 
 @app.get("/api/products/<int:product_id>/reviews")
 def product_reviews(product_id):
@@ -1053,61 +1068,48 @@ def item_catalog():
         return redirect(url_for('login'))
 
     username = session['user']
-
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # --- Get driver’s point balance ---
-    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-    driver = cursor.fetchone()
-    points_balance = driver['points'] if driver else 0
+    accepted_sponsors = _get_driver_accepted_sponsors(username)
+    active_sponsor = _get_active_sponsor(username)  # may be None
 
-    # --- Get search, sort, and filter parameters ---
     search = request.args.get('search', '').strip()
     sort = request.args.get('sort', 'points_cost_asc')
-    sponsor = request.args.get('sponsor', 'all')
     favorites_only = request.args.get('favorites', '0') == '1'
 
-    # --- Build SQL query dynamically ---
-    query = "SELECT * FROM products WHERE 1=1"
-    params = []
+    items = []
+    if active_sponsor:
+        query = "SELECT * FROM products WHERE sponsor=%s"
+        params = [active_sponsor]
 
-    if search:
-        query += " AND (name LIKE %s OR sponsor LIKE %s)"
-        like_term = f"%{search}%"
-        params.extend([like_term, like_term])
+        if search:
+            query += " AND (name LIKE %s)"
+            params.append(f"%{search}%")
 
-    if sponsor != 'all':
-        query += " AND sponsor = %s"
-        params.append(sponsor)
+        if favorites_only:
+            query += " AND product_id IN (SELECT product_id FROM favorites WHERE driver_username=%s)"
+            params.append(username)
 
-    # If "favorites only", constrain to the driver's favorites
-    if favorites_only:
-        query += " AND product_id IN (SELECT product_id FROM favorites WHERE driver_username=%s)"
-        params.append(username)
+        if sort == 'points_cost_desc':
+            query += " ORDER BY points_cost DESC"
+        elif sort == 'name_asc':
+            query += " ORDER BY name ASC"
+        elif sort == 'name_desc':
+            query += " ORDER BY name DESC"
+        else:
+            query += " ORDER BY points_cost ASC"
 
-    # Sorting
-    if sort == 'points_cost_desc':
-        query += " ORDER BY points_cost DESC"
-    elif sort == 'name_asc':
-        query += " ORDER BY name ASC"
-    elif sort == 'name_desc':
-        query += " ORDER BY name DESC"
-    else:
-        query += " ORDER BY points_cost ASC"
+        cursor.execute(query, tuple(params))
+        items = cursor.fetchall()
 
-    cursor.execute(query, tuple(params))
-    items = cursor.fetchall()
-
-    # --- Aggregate reviews for the listed products ---
-    pids = [row['product_id'] for row in items]
+    # Aggregate reviews for listed products
     review_agg = {}
-    if pids:
+    if items:
+        pids = [row['product_id'] for row in items]
         fmt = ",".join(["%s"] * len(pids))
         cursor.execute(f"""
-            SELECT product_id,
-                   AVG(rating)   AS avg_rating,
-                   COUNT(*)      AS review_count
+            SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
             FROM reviews
             WHERE product_id IN ({fmt})
             GROUP BY product_id
@@ -1118,16 +1120,12 @@ def item_catalog():
                 "review_count": int(r['review_count'] or 0)
             }
 
-    # --- Get unique sponsors for dropdown filter ---
-    cursor.execute("SELECT DISTINCT sponsor FROM products WHERE sponsor IS NOT NULL")
-    sponsors = [row['sponsor'] for row in cursor.fetchall()]
-
-    # --- Get this driver's favorites for star UI ---
     cursor.execute("SELECT product_id FROM favorites WHERE driver_username=%s", (username,))
     favorite_ids = {row['product_id'] for row in cursor.fetchall()}
 
-    cursor.close()
-    db.close()
+    points_balance = _get_points(username, active_sponsor) if active_sponsor else 0
+
+    cursor.close(); db.close()
 
     return render_template(
         "item_catalog.html",
@@ -1135,13 +1133,12 @@ def item_catalog():
         points_balance=points_balance,
         search=search,
         sort=sort,
-        sponsor=sponsor,
-        sponsors=sponsors,
+        sponsor=active_sponsor or 'none',
+        sponsors=accepted_sponsors,   # only sponsors you’re accepted with
         favorites_only=favorites_only,
         favorite_ids=favorite_ids,
-        review_agg=review_agg,  # ⬅️ pass to template
+        review_agg=review_agg,
     )
-
 
 
 @app.route('/settings', methods=['GET', 'POST'])
@@ -1416,55 +1413,57 @@ def login_as_sponsor():
 
 @app.route('/add_points', methods=['POST'])
 def add_points():
-    username = request.form['username']
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    target_driver = request.form['username']
     points = int(request.form['points_to_add'])
     reason = request.form.get('reason', '(no reason provided)')
-    performed_by = session['user']
+    performed_by = session['user']  # sponsor giving points
 
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Fetch sponsor limits
     cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (performed_by,))
-    sponsor = cursor.fetchone()
-    if not sponsor:
-        flash("Sponsor not found.", "danger")
-        return redirect(url_for('drivers'))
+    sp = cursor.fetchone()
+    if not sp:
+        flash("Sponsor not found.", "danger");  return redirect(url_for('drivers'))
 
-    # Fetch driver’s current points
-    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-    driver = cursor.fetchone()
-    if not driver:
-        flash("Driver not found.", "danger")
-        return redirect(url_for('drivers'))
+    cursor.execute("""
+        SELECT points FROM driver_sponsor_points
+        WHERE driver_username=%s AND sponsor=%s
+    """, (target_driver, performed_by))
+    row = cursor.fetchone()
+    current = int(row['points']) if row and row['points'] is not None else 0
+    new_total = current + points
 
-    new_total = driver['points'] + points
-
-    # Enforce limits
-    if new_total > sponsor['max_points']:
-        flash(f"Cannot add points — this would exceed your max of {sponsor['max_points']} points.", "warning")
+    if new_total > sp['max_points']:
+        flash(f"Cannot add points — this would exceed your max of {sp['max_points']} points.", "warning")
     else:
-        cursor.execute("UPDATE drivers SET points = %s WHERE username = %s", (new_total, username))
+        cursor.execute("""
+            INSERT INTO driver_sponsor_points (driver_username, sponsor, points)
+            VALUES (%s,%s,%s)
+            ON DUPLICATE KEY UPDATE points = points + VALUES(points)
+        """, (target_driver, performed_by, points))
         db.commit()
-        cursor.execute(
-            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("add points", f"{performed_by} added {points} points to {username}. Reason: {reason}", performed_by)
-        )
+        cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+                       ("add points", f"{performed_by} added {points} points to {target_driver}. Reason: {reason}", performed_by))
         db.commit()
-        flash(f'{points} points were successfully added to "{username}".', 'success')
+        flash(f'{points} points were successfully added to "{target_driver}".', 'success')
 
-    cursor.close()
-    db.close()
-
-    driverEmail = get_email_by_username(username)
+    cursor.close(); db.close()
+    driverEmail = get_email_by_username(target_driver)
     if driverEmail:
-        driverAddPointsEmail.send_points_added_email(driverEmail, username, points)
+        driverAddPointsEmail.send_points_added_email(driverEmail, target_driver, points)
     return redirect(url_for('drivers'))
 
 
 @app.route('/remove_points', methods=['POST'])
 def remove_points():
-    username = request.form['username']
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    target_driver = request.form['username']
     points = int(request.form['points_to_remove'])
     reason = request.form.get('reason', '(no reason provided)')
     performed_by = session['user']
@@ -1472,40 +1471,37 @@ def remove_points():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Fetch sponsor limits
     cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (performed_by,))
-    sponsor = cursor.fetchone()
-    if not sponsor:
-        flash("Sponsor not found.", "danger")
-        return redirect(url_for('drivers'))
+    sp = cursor.fetchone()
+    if not sp:
+        flash("Sponsor not found.", "danger");  return redirect(url_for('drivers'))
 
-    # Fetch driver’s current points
-    cursor.execute("SELECT points FROM drivers WHERE username=%s", (username,))
-    driver = cursor.fetchone()
-    if not driver:
-        flash("Driver not found.", "danger")
-        return redirect(url_for('drivers'))
+    cursor.execute("""
+        SELECT points FROM driver_sponsor_points
+        WHERE driver_username=%s AND sponsor=%s
+    """, (target_driver, performed_by))
+    row = cursor.fetchone()
+    current = int(row['points']) if row and row['points'] is not None else 0
+    new_total = current - points
 
-    new_total = driver['points'] - points
-
-    # Enforce limits
-    if new_total < sponsor['min_points']:
-        flash(f"Cannot remove points — this would go below your min of {sponsor['min_points']} points.", "warning")
+    if new_total < sp['min_points']:
+        flash(f"Cannot remove points — this would go below your min of {sp['min_points']} points.", "warning")
     else:
-        cursor.execute("UPDATE drivers SET points = %s WHERE username = %s", (new_total, username))
+        cursor.execute("""
+            UPDATE driver_sponsor_points
+            SET points = GREATEST(0, points - %s)
+            WHERE driver_username=%s AND sponsor=%s
+        """, (points, target_driver, performed_by))
         db.commit()
-        cursor.execute(
-            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("remove points", f"{performed_by} removed {points} points from {username}. Reason: {reason}", performed_by)
-        )
+        cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+                       ("remove points", f"{performed_by} removed {points} points from {target_driver}. Reason: {reason}", performed_by))
         db.commit()
-        flash(f'{points} points were successfully removed from "{username}".', 'success')
+        flash(f'{points} points were successfully removed from "{target_driver}".', 'success')
 
-    cursor.close()
-    db.close()
-    driverEmail = get_email_by_username(username)
+    cursor.close(); db.close()
+    driverEmail = get_email_by_username(target_driver)
     if driverEmail:
-        driverRemovePointsEmail.send_points_removed_email(driverEmail, username, points)
+        driverRemovePointsEmail.send_points_removed_email(driverEmail, target_driver, points)
     return redirect(url_for('drivers'))
 
 
@@ -1629,70 +1625,37 @@ def sponsor_browse():
 
 @app.route('/apply/<sponsor>', methods=['POST'])
 def apply_to_sponsor(sponsor):
-    """
-    Allows a driver to apply to a sponsor.
-    Enforces the following rules:
-      1. A driver can have only one active (pending/accepted) application per sponsor.
-      2. A driver cannot apply to another sponsor if already accepted by one.
-      3. Drivers can reapply only after rejection or withdrawal.
-    """
-    # Ensure user is logged in and is a driver
     if 'user' not in session or session['role'] != 'driver':
         return redirect(url_for('login'))
 
     username = session['user']
-
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Check if driver already has an accepted sponsor (any sponsor)
+        # Only block duplicate active app to the SAME sponsor
         cursor.execute("""
-            SELECT sponsor FROM driverApplications
-            WHERE driverUsername = %s AND status = 'accepted'
-            LIMIT 1
-        """, (username,))
-        accepted_anywhere = cursor.fetchone()
-        if accepted_anywhere:
-            cursor.close()
-            db.close()
-            return (
-                f"<h3>You are already accepted by {accepted_anywhere['sponsor']}. "
-                f"Withdraw first if you want to apply elsewhere.</h3>"
-            )
-
-        # Check for existing active application (pending/accepted) to this sponsor
-        cursor.execute("""
-            SELECT id, status FROM driverApplications
-            WHERE driverUsername = %s AND sponsor = %s
-              AND status IN ('pending', 'accepted')
+            SELECT id FROM driverApplications
+            WHERE driverUsername=%s AND sponsor=%s
+              AND status IN ('pending','accepted')
         """, (username, sponsor))
-        existing = cursor.fetchone()
-        if existing:
-            cursor.close()
-            db.close()
+        if cursor.fetchone():
+            cursor.close(); db.close()
             return "<h3>You already have an active application with this sponsor.</h3>"
 
-        # Create new pending application
         cursor.execute("""
             INSERT INTO driverApplications (driverUsername, sponsor, status, created_at, updated_at)
             VALUES (%s, %s, 'pending', NOW(), NOW())
         """, (username, sponsor))
         db.commit()
 
-        # Log audit entry for transparency
         cursor.execute("""
             INSERT INTO auditLogs (action, description, user_id)
             VALUES (%s, %s, %s)
-        """, (
-            "application_created",
-            f"{username} applied to sponsor {sponsor}.",
-            username
-        ))
+        """, ("application_created", f"{username} applied to sponsor {sponsor}.", username))
         db.commit()
 
-        cursor.close()
-        db.close()
+        cursor.close(); db.close()
         flash(f'Your application to "{sponsor}" has been submitted successfully!', 'success')
 
         sponsorEmail = get_email_by_username(sponsor)
@@ -1703,7 +1666,7 @@ def apply_to_sponsor(sponsor):
 
     except Exception as e:
         return f"<h2>Error applying to sponsor:</h2><p>{e}</p>"
-        flash(f'An error occurred while applying: {e}', 'danger')
+
 
 @app.route('/applications')
 def driver_applications():
@@ -1805,62 +1768,51 @@ def accept_application(app_id):
         return redirect(url_for('login'))
 
     sponsor = session['user']
-
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Get driverUsername for this application
-        cursor.execute("SELECT driverUsername FROM driverApplications WHERE id=%s", (app_id,))
+        cursor.execute("""
+            SELECT driverUsername FROM driverApplications
+            WHERE id=%s AND sponsor=%s
+        """, (app_id, sponsor))
         app_row = cursor.fetchone()
         if not app_row:
+            cursor.close(); db.close()
             return "<h3>Application not found.</h3>"
 
         driver_username = app_row['driverUsername']
 
-        # Check if driver already has an accepted sponsor
-        cursor.execute("""
-            SELECT COUNT(*) AS count
-            FROM driverApplications
-            WHERE driverUsername=%s AND status='accepted'
-        """, (driver_username,))
-        existing = cursor.fetchone()
-        if existing['count'] > 0:
-            cursor.close()
-            db.close()
-            return "<h3>This driver already has an accepted sponsor. Withdraw/reject before accepting another.</h3>"
-
-        # Accept the application
+        # Accept without global single-sponsor restriction
         cursor.execute("""
             UPDATE driverApplications
-            SET status='accepted'
+            SET status='accepted', updated_at=NOW()
             WHERE id=%s AND sponsor=%s AND status='pending'
         """, (app_id, sponsor))
         db.commit()
 
-        #Log accepting
-        description = f"{sponsor} accepted {driver['driverUsername']}'s application"
-        cursor.execute(
-            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", description, sponsor)
-        )
-
+        # Ensure per-(driver,sponsor) balance row exists
+        cursor.execute("""
+            INSERT IGNORE INTO driver_sponsor_points (driver_username, sponsor, points)
+            VALUES (%s,%s,0)
+        """, (driver_username, sponsor))
         db.commit()
 
-        # Fetch driver info for email
+        description = f"{sponsor} accepted {driver_username}'s application"
+        cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+                       ("application", description, sponsor))
+        db.commit()
+
         cursor.execute("""
-            SELECT d.email, d.first_name, a.sponsor
-            FROM driverApplications a
-            JOIN drivers d ON a.driverUsername = d.username
-            WHERE a.id=%s
-        """, (app_id,))
+            SELECT d.email, d.first_name
+            FROM drivers d
+            WHERE d.username=%s
+        """, (driver_username,))
         driver = cursor.fetchone()
-
         if driver:
-            send_decision_email(driver['email'], driver['first_name'], driver['sponsor'], "accepted")
+            send_decision_email(driver['email'], driver['first_name'], sponsor, "accepted")
 
-        cursor.close()
-        db.close()
+        cursor.close(); db.close()
         return redirect(url_for('sponsor_applications'))
 
     except Exception as e:
