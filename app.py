@@ -1192,7 +1192,7 @@ def drivers():
         cursor.close()
         db.close()
     except Exception as e:
-        return f"<h2>Database error:</h2><p>{e}</p>"
+        flash(f"Database error loading drivers list: {e}", "danger")
 
     return render_template("drivers.html", drivers=drivers_list)
 
