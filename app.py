@@ -1254,7 +1254,7 @@ def remove_sponsor():
         db.close()
         flash(f'Sponsor "{username}" has been removed successfully.', 'success')
     except Exception as e:
-        return f"<h2>Error removing sponsor:</h2><p>{e}</p>"
+        #return f"<h2>Error removing sponsor:</h2><p>{e}</p>"
         flash(f'Error removing sponsor: {e}', 'danger')
 
     return redirect(url_for('sponsors'))
