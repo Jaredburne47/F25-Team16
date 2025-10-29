@@ -1401,6 +1401,7 @@ def reset_password():
 
         if not user:
             cursor.close(); db.close()
+            flash('No account found for that username and email.', 'danger')
             return "<h3>No account found for that username and email.</h3>"
 
         # Generate a secure random token
