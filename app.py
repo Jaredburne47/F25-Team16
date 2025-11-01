@@ -352,10 +352,14 @@ def login():
             if r and r.get('email'):
                 email = r['email']
                 table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}.get(role)
-                cur = db.cursor(MySQLdb.cursors.DictCursor)
+            
+                # open a NEW connection (since db was closed)
+                db2 = MySQLdb.connect(**db_config)
+                cur = db2.cursor(MySQLdb.cursors.DictCursor)
                 cur.execute(f"SELECT receive_emails, login_email FROM {table} WHERE username=%s", (username,))
                 prefs = cur.fetchone()
-                cur.close()
+                cur.close(); db2.close()
+            
                 if prefs and prefs['receive_emails'] and prefs['login_email']:
                     send_login_email(email, username)
 
@@ -1879,26 +1883,44 @@ def remove_points():
 
     cursor.close(); db.close()
 
-    driverEmail = get_email_by_username(target_driver)
-    if driverEmail:
-        cur.execute("SELECT receive_emails, points_removed_email FROM drivers WHERE username=%s", (username,))
-        prefs = cur.fetchone()
-        if prefs and prefs['receive_emails'] and prefs['points_removed_email']:
-            send_points_removed_email(driverEmail, username, points)
+    # Get the driver's email and notification preferences
+driverEmail = get_email_by_username(target_driver)
 
-        # Optional: low balance alert (per sponsor)
-        db = MySQLdb.connect(**db_config)
-        cur = db.cursor(MySQLdb.cursors.DictCursor)
-        cur.execute("""
-            SELECT points
-            FROM driver_sponsor_points
-            WHERE driver_username=%s AND sponsor=%s
-        """, (target_driver, performed_by))
-        r = cur.fetchone()
-        if r and int(r['points'] or 0) < 50:
-            send_low_balance_email(driverEmail, target_driver, int(r['points'] or 0), 50)
-        cur.close(); db.close()
+if driverEmail:
+    # Open a new connection for preference lookup (since main db might be closed)
+    db2 = MySQLdb.connect(**db_config)
+    cur = db2.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT receive_emails, points_removed_email, low_balance_email
+        FROM drivers
+        WHERE username=%s
+    """, (target_driver,))
+    prefs = cur.fetchone()
+    cur.close(); db2.close()
 
+    # --- Send points removed email ---
+    if prefs and prefs['receive_emails'] and prefs['points_removed_email']:
+        send_points_removed_email(driverEmail, target_driver, points)
+
+    # --- Optional: low balance alert (per sponsor) ---
+    db3 = MySQLdb.connect(**db_config)
+    cur = db3.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT points
+        FROM driver_sponsor_points
+        WHERE driver_username=%s AND sponsor=%s
+    """, (target_driver, performed_by))
+    r = cur.fetchone()
+    cur.close(); db3.close()
+
+    if (
+        r
+        and int(r['points'] or 0) < 50
+        and prefs
+        and prefs['receive_emails']
+        and prefs['low_balance_email']
+    ):
+        send_low_balance_email(driverEmail, target_driver, int(r['points'] or 0), 50)
         return redirect(url_for('drivers'))
 
 
