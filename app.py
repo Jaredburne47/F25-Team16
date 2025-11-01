@@ -1729,8 +1729,9 @@ def drop_driver():
         driver = cursor.fetchone()
 
         if driver and driver.get('email'):
-            cur.execute("SELECT receive_emails, driver_dropped_email FROM drivers WHERE username=%s", (driver_username,))
-            prefs = cur.fetchone()
+            driver_email = driver['email']
+            cursor.execute("SELECT receive_emails, driver_dropped_email FROM drivers WHERE username=%s", (driver_username,))
+            prefs = cursor.fetchone()
             if prefs and prefs['receive_emails'] and prefs['driver_dropped_email']:
                 send_driver_dropped_email(driver_email, driver_username, sponsor_username)
 
@@ -1831,12 +1832,21 @@ def add_points():
         flash(f'{points} points were successfully added to "{target_driver}".', 'success')
 
     cursor.close(); db.close()
+    
     driverEmail = get_email_by_username(target_driver)
     if driverEmail:
-        cur.execute("SELECT receive_emails, points_added_email FROM drivers WHERE username=%s", (username,))
-        prefs = cur.fetchone()
-        if prefs and prefs['receive_emails'] and prefs['points_added_email']:
-            driverAddPointsEmail.send_points_added_email(driver_email, username, points)
+            db2 = MySQLdb.connect(**db_config)
+            cur2 = db2.cursor(MySQLdb.cursors.DictCursor)
+            cur2.execute("""
+                SELECT receive_emails, points_added_email
+                FROM drivers
+                WHERE username=%s
+            """, (target_driver,))
+            prefs = cur2.fetchone()
+            cur2.close(); db2.close()
+
+            if prefs and prefs.get('receive_emails') and prefs.get('points_added_email'):
+                driverAddPointsEmail.send_points_added_email(driver_email, target_driver, int(points))
     
     return redirect(url_for('drivers'))
 
