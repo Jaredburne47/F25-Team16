@@ -147,17 +147,17 @@
       <label><input type="checkbox" name="receive_emails" {% if user.receive_emails %}checked{% endif %}> Receive any emails</label><br>
       <label><input type="checkbox" name="login_email" {% if user.login_email %}checked{% endif %}> Login alerts</label><br>
     
-      {% if role == 'driver' %}
+      {% if session.get('role') == 'driver' %}
         <label><input type="checkbox" name="low_balance_email" {% if user.low_balance_email %}checked{% endif %}> Low balance alerts</label><br>
         <label><input type="checkbox" name="points_added_email" {% if user.points_added_email %}checked{% endif %}> Points added notifications</label><br>
         <label><input type="checkbox" name="points_removed_email" {% if user.points_removed_email %}checked{% endif %}> Points removed notifications</label><br>
         <label><input type="checkbox" name="driver_dropped_email" {% if user.driver_dropped_email %}checked{% endif %}> Sponsor dropped me alerts</label><br>
         <label><input type="checkbox" name="spend_points_email" {% if user.spend_points_email %}checked{% endif %}> Purchase confirmation (Spend points)</label><br>
-    
-      {% elif role == 'sponsor' %}
+      {% endif %}
+      {% if session.get('role') == 'sponsor' %}
         <label><input type="checkbox" name="driver_app_email" {% if user.driver_app_email %}checked{% endif %}> New driver application notifications</label><br>
-    
-      {% elif role == 'admin' %}
+      {% endif %}
+      {% if session.get('role') == 'driver' %}
         <label><input type="checkbox" name="sponsor_locked_email" {% if user.sponsor_locked_email %}checked{% endif %}> Sponsor locked alerts</label><br>
       {% endif %}
     
