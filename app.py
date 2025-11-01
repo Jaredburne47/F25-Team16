@@ -846,19 +846,19 @@ def cart_checkout():
             cur.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
             row = cur.fetchone()
             if row:
-            # Send "spent points" email
-            cur.execute("SELECT email, receive_emails, spend_points_email FROM drivers WHERE username=%s", (username,))
-            prefs = cur.fetchone()
-            if prefs and prefs['email'] and prefs['receive_emails'] and prefs['spend_points_email']:
-                send_spent_points_email(prefs['email'], username, total_points)
-        
-            # Send "low balance" email if < 50 points
-            pts = int(row['points'])
-            if pts < 50:
-                cur.execute("SELECT email, receive_emails, low_balance_email FROM drivers WHERE username=%s", (username,))
+                # Send "spent points" email
+                cur.execute("SELECT email, receive_emails, spend_points_email FROM drivers WHERE username=%s", (username,))
                 prefs = cur.fetchone()
-                if prefs and prefs['email'] and prefs['receive_emails'] and prefs['low_balance_email']:
-                    send_low_balance_email(prefs['email'], username, pts, 50)
+                if prefs and prefs['email'] and prefs['receive_emails'] and prefs['spend_points_email']:
+                    send_spent_points_email(prefs['email'], username, total_points)
+            
+                # Send "low balance" email if < 50 points
+                pts = int(row['points'])
+                if pts < 50:
+                    cur.execute("SELECT email, receive_emails, low_balance_email FROM drivers WHERE username=%s", (username,))
+                    prefs = cur.fetchone()
+                    if prefs and prefs['email'] and prefs['receive_emails'] and prefs['low_balance_email']:
+                        send_low_balance_email(prefs['email'], username, pts, 50)
         except Exception as e:
             db.rollback()
             cur.close(); db.close()
