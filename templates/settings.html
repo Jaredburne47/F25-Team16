@@ -118,9 +118,8 @@
       </div>
     {% endif %}
 
-    <!-- ================= -->
-    <!-- Password Settings -->
-    <!-- ================= -->
+    
+      <!-- Password Settings -->
     <hr class="my-4">
     <h4 class="text-danger">⚠️ Password Settings</h4>
     <p class="text-muted"><small>Your password is hidden by default. Use the 👁 button to toggle visibility.</small></p>
@@ -139,7 +138,33 @@
       <a href="{{ cancel_url }}" class="btn btn-danger btn-sm py-1 px-3">Cancel</a>
     </div>
   </form>
-
+    
+    <hr>
+    <h3>Email Notification Preferences</h3>
+    
+    <form action="{{ url_for('update_notifications') }}" method="post" class="mt-3">
+    
+      <label><input type="checkbox" name="receive_emails" {% if user.receive_emails %}checked{% endif %}> Receive any emails</label><br>
+      <label><input type="checkbox" name="login_email" {% if user.login_email %}checked{% endif %}> Login alerts</label><br>
+    
+      {% if role == 'driver' %}
+        <label><input type="checkbox" name="low_balance_email" {% if user.low_balance_email %}checked{% endif %}> Low balance alerts</label><br>
+        <label><input type="checkbox" name="points_added_email" {% if user.points_added_email %}checked{% endif %}> Points added notifications</label><br>
+        <label><input type="checkbox" name="points_removed_email" {% if user.points_removed_email %}checked{% endif %}> Points removed notifications</label><br>
+        <label><input type="checkbox" name="driver_dropped_email" {% if user.driver_dropped_email %}checked{% endif %}> Sponsor dropped me alerts</label><br>
+        <label><input type="checkbox" name="spend_points_email" {% if user.spend_points_email %}checked{% endif %}> Purchase confirmation (Spend points)</label><br>
+    
+      {% elif role == 'sponsor' %}
+        <label><input type="checkbox" name="driver_app_email" {% if user.driver_app_email %}checked{% endif %}> New driver application notifications</label><br>
+    
+      {% elif role == 'admin' %}
+        <label><input type="checkbox" name="sponsor_locked_email" {% if user.sponsor_locked_email %}checked{% endif %}> Sponsor locked alerts</label><br>
+      {% endif %}
+    
+      <button type="submit" class="btn btn-primary mt-3">Save Preferences</button>
+    </form>
+    
+    <!--Disable Account-->
     {% if session.get('role') in ['driver', 'sponsor'] %}
     <hr class="my-4">
     <div class="text-center">
