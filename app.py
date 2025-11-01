@@ -1921,7 +1921,8 @@ if driverEmail:
         and prefs['low_balance_email']
     ):
         send_low_balance_email(driverEmail, target_driver, int(r['points'] or 0), 50)
-        return redirect(url_for('drivers'))
+        
+    return redirect(url_for('drivers'))
 
 
 
