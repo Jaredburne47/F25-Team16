@@ -1846,7 +1846,7 @@ def add_points():
             cur2.close(); db2.close()
 
             if prefs and prefs.get('receive_emails') and prefs.get('points_added_email'):
-                driverAddPointsEmail.send_points_added_email(driver_email, target_driver, int(points))
+                driverAddPointsEmail.send_points_added_email(driverEmail, target_driver, int(points))
     
     return redirect(url_for('drivers'))
 
