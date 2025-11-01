@@ -350,7 +350,14 @@ def login():
             cursor.close(); db.close()
 
             if r and r.get('email'):
-                send_login_email(r['email'], username)
+                email = r['email']
+                table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}.get(role)
+                cur = db.cursor(MySQLdb.cursors.DictCursor)
+                cur.execute(f"SELECT receive_emails, login_email FROM {table} WHERE username=%s", (username,))
+                prefs = cur.fetchone()
+                cur.close()
+                if prefs and prefs['receive_emails'] and prefs['login_email']:
+                    send_login_email(email, username)
 
             # --- Redirect based on role ---
             if role == 'driver':
@@ -387,12 +394,13 @@ def login():
                     db.commit()
 
                     # Get admin emails
-                    cursor.execute("SELECT email FROM admins")
+                    cursor.execute("SELECT email, receive_emails, sponsor_locked_email FROM admins")
                     admins = cursor.fetchall()
                     locked_str = locked_until.strftime('%b %d, %Y %I:%M:%S %p')
 
                     # Send admin alert
                     for admin in admins:
+                    if admin['receive_emails'] and admin['sponsor_locked_email']:
                         send_sponsor_locked_email(admin['email'], username, locked_str)
 
                     flash("Your account has been locked due to too many failed login attempts.", "danger")
@@ -835,12 +843,18 @@ def cart_checkout():
             row = cur.fetchone()
             if row:
                 # Send "spent points" email
-                send_spent_points_email(row['email'], username, total_points)
+                cur.execute("SELECT email, receive_emails, spend_points_email FROM drivers WHERE username=%s", (username,))
+                prefs = cur.fetchone()
+                if prefs and prefs['email'] and prefs['receive_emails'] and prefs['spend_points_email']:
+                    send_spent_points_email(prefs['email'], username, total_points)
 
                 # Send "low balance" email if < 10 points
                 pts = int(row['points'])
                 if pts < 50:
-                    send_low_balance_email(row['email'], username, pts, 50)
+                    cur.execute("SELECT receive_emails, low_balance_email FROM drivers WHERE username=%s", (username,))
+                    prefs = cur.fetchone()
+                    if prefs and prefs['receive_emails'] and prefs['low_balance_email']:
+                        send_low_balance_email(driver_email, username, pts, 50)
         except Exception as e:
             db.rollback()
             cur.close(); db.close()
@@ -1472,6 +1486,71 @@ def settings():
 
     return render_template("settings.html", user=user)
 
+@app.route('/update_notifications', methods=['POST'])
+def update_notifications():
+    if 'user' not in session or 'role' not in session:
+        return redirect(url_for('login'))
+
+    username = session['user']
+    role = session['role']
+    table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}.get(role)
+
+    form = request.form
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+        if role == 'driver':
+            cur.execute(f"""
+                UPDATE {table}
+                SET receive_emails=%s, login_email=%s, low_balance_email=%s,
+                    points_added_email=%s, points_removed_email=%s,
+                    driver_dropped_email=%s, spend_points_email=%s
+                WHERE username=%s
+            """, (
+                'receive_emails' in form,
+                'login_email' in form,
+                'low_balance_email' in form,
+                'points_added_email' in form,
+                'points_removed_email' in form,
+                'driver_dropped_email' in form,
+                'spend_points_email' in form,
+                username
+            ))
+
+        elif role == 'sponsor':
+            cur.execute(f"""
+                UPDATE {table}
+                SET receive_emails=%s, login_email=%s, driver_app_email=%s
+                WHERE username=%s
+            """, (
+                'receive_emails' in form,
+                'login_email' in form,
+                'driver_app_email' in form,
+                username
+            ))
+
+        elif role == 'admin':
+            cur.execute(f"""
+                UPDATE {table}
+                SET receive_emails=%s, login_email=%s, sponsor_locked_email=%s
+                WHERE username=%s
+            """, (
+                'receive_emails' in form,
+                'login_email' in form,
+                'sponsor_locked_email' in form,
+                username
+            ))
+
+        db.commit()
+        cur.close(); db.close()
+        flash("Notification preferences updated successfully.", "success")
+
+    except Exception as e:
+        flash(f"Error updating preferences: {e}", "danger")
+
+    return redirect(url_for('settings'))
 
 
 @app.route('/add_user', methods=['GET', 'POST'])
@@ -1646,7 +1725,10 @@ def drop_driver():
         driver = cursor.fetchone()
 
         if driver and driver.get('email'):
-            send_driver_dropped_email(driver['email'], driver_username, sponsor_username)
+            cur.execute("SELECT receive_emails, driver_dropped_email FROM drivers WHERE username=%s", (driver_username,))
+            prefs = cur.fetchone()
+            if prefs and prefs['receive_emails'] and prefs['driver_dropped_email']:
+                send_driver_dropped_email(driver_email, driver_username, sponsor_username)
 
         flash(f'Driver "{driver_username}" has been dropped successfully.', 'success')
 
@@ -1747,7 +1829,11 @@ def add_points():
     cursor.close(); db.close()
     driverEmail = get_email_by_username(target_driver)
     if driverEmail:
-        driverAddPointsEmail.send_points_added_email(driverEmail, target_driver, points)
+        cur.execute("SELECT receive_emails, points_added_email FROM drivers WHERE username=%s", (username,))
+        prefs = cur.fetchone()
+        if prefs and prefs['receive_emails'] and prefs['points_added_email']:
+            driverAddPointsEmail.send_points_added_email(driver_email, username, points)
+    
     return redirect(url_for('drivers'))
 
 
@@ -1795,7 +1881,10 @@ def remove_points():
 
     driverEmail = get_email_by_username(target_driver)
     if driverEmail:
-        send_points_removed_email(driverEmail, target_driver, points)
+        cur.execute("SELECT receive_emails, points_removed_email FROM drivers WHERE username=%s", (username,))
+        prefs = cur.fetchone()
+        if prefs and prefs['receive_emails'] and prefs['points_removed_email']:
+            send_points_removed_email(driverEmail, username, points)
 
         # Optional: low balance alert (per sponsor)
         db = MySQLdb.connect(**db_config)
@@ -1968,7 +2057,10 @@ def apply_to_sponsor(sponsor):
 
         sponsorEmail = get_email_by_username(sponsor)
         if sponsorEmail:
-            applicationEmail.send_application_email(sponsorEmail, sponsor)
+            cursor.execute("SELECT receive_emails, driver_app_email FROM sponsor WHERE username=%s", (sponsor_username,))
+            prefs = cursor.fetchone()
+            if prefs and prefs['receive_emails'] and prefs['driver_app_email']:
+                applicationEmail.send_application_email(sponsor_email, sponsor_username)
 
         return redirect(url_for('driver_applications'))
 
