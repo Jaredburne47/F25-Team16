@@ -400,8 +400,8 @@ def login():
 
                     # Send admin alert
                     for admin in admins:
-                    if admin['receive_emails'] and admin['sponsor_locked_email']:
-                        send_sponsor_locked_email(admin['email'], username, locked_str)
+                        if admin['receive_emails'] and admin['sponsor_locked_email']:
+                            send_sponsor_locked_email(admin['email'], username, locked_str)
 
                     flash("Your account has been locked due to too many failed login attempts.", "danger")
                     cursor.close(); db.close()
