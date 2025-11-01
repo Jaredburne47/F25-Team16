@@ -157,7 +157,7 @@
       {% if session.get('role') == 'sponsor' %}
         <label><input type="checkbox" name="driver_app_email" {% if user.driver_app_email %}checked{% endif %}> New driver application notifications</label><br>
       {% endif %}
-      {% if session.get('role') == 'driver' %}
+      {% if session.get('role') == 'admin' %}
         <label><input type="checkbox" name="sponsor_locked_email" {% if user.sponsor_locked_email %}checked{% endif %}> Sponsor locked alerts</label><br>
       {% endif %}
     
