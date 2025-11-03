@@ -10,7 +10,7 @@ SENDER_PASSWORD = "jsxl pnun vdts mxhs"  # app password
 
 def send_cancelled_purchase_email(recipient: str, username: str):
     msg = EmailMessage()
-    msg["Subject"] = "Points Redeemed in Catalog"
+    msg["Subject"] = "Order Cancelled"
     msg["From"] = SENDER_EMAIL
     msg["To"] = recipient
 
