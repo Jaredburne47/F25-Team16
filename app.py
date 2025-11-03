@@ -2,6 +2,7 @@ from flask import Flask, render_template, session, redirect, url_for, request, f
 import MySQLdb  # mysqlclient
 from logInFunctions.auth import authenticate
 from emailScripts import welcomeEmail
+from emailScripts import cancelledPurchase
 from emailScripts.logInEmail import send_login_email
 from emailScripts import applicationEmail
 from emailScripts import driverAddPointsEmail
@@ -954,12 +955,17 @@ def orders_cancel(order_id):
             """, (int(o['quantity']), o['product_id']))
 
         db.commit()
+        
     except Exception as e:
         db.rollback()
         cur.close(); db.close()
         return f"<h3>Cancel failed: {e}</h3>"
 
     cur.close(); db.close()
+
+    email = getEmailByUsername(username)
+    cancelledPurchase.send_cancelled_purchase_email(email, username)
+
     return redirect(url_for('orders_page'))
 
 def _get_driver_accepted_sponsors(username):
