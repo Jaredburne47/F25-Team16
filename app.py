@@ -963,7 +963,7 @@ def orders_cancel(order_id):
 
     cur.close(); db.close()
 
-    email = getEmailByUsername(username)
+    email = get_email_by_username(username)
     cancelledPurchase.send_cancelled_purchase_email(email, username)
 
     return redirect(url_for('orders_page'))
