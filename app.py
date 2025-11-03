@@ -942,8 +942,11 @@ def orders_cancel(order_id):
         cur.execute("UPDATE orders SET status='Cancelled' WHERE order_id=%s", (order_id,))
 
         # 2) Refund points to driver
+        print(f"Refunding {o['point_cost']} points to {username}")
+        print(f"Order data: {o}")
         cur.execute("UPDATE drivers SET points = points + %s WHERE username=%s",
                     (int(o['point_cost']), username))
+        print(f"Rows affected: {cur.rowcount}")
 
         # 3) Restock if product still exists (it may have been deleted at checkout)
         cur.execute("SELECT product_id FROM products WHERE product_id=%s", (o['product_id'],))
