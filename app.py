@@ -1640,7 +1640,7 @@ def add_user():
             return f"<h2>Error:</h2><p>{message}</p>"
 
     # GET request – show the form
-    return render_template("add_user.html")
+    return render_template("add_user.html", can_create_admin=(requester_role == 'admin'))
 
 @app.route('/drivers')
 def drivers():
