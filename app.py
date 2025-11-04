@@ -489,7 +489,7 @@ def login():
         return render_template("login.html", error=msg, last_username=username, site_key=app.config['RECAPTCHA_SITE_KEY'])
 
     # GET request → render blank login form
-    return render_template("login.html")
+    return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
 
 @app.route('/disabled_account')
 def disabled_account():
