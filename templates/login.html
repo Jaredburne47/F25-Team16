@@ -19,6 +19,12 @@
   <form method="POST" action="/login">
     <input type="text" name="username" placeholder="Username" required value="{{ last_username or '' }}">
     <input type="password" name="password" placeholder="Password" required>
+
+    <div class="g-recaptcha" 
+         data-sitekey="{{ site_key }}" 
+         style="margin-bottom: 1rem; transform: scale(0.9); -webkit-transform: scale(0.9); transform-origin: 0 0; -webkit-transform-origin: 0 0;">
+    </div>
+    
     <button type="submit">Login</button>
   </form>
   <p>
