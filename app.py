@@ -43,6 +43,10 @@ db_config = {
     'charset': 'utf8'
 }
 
+# --- reCAPTCHA keys ---
+app.config['RECAPTCHA_SITE_KEY'] = '6LeEZQIsAAAAAEDy9mv_BznR738L1eYLSxHzMyrL'
+app.config['RECAPTCHA_SECRET_KEY'] = '6LeEZQIsAAAAAMCNJL46o17NMP80XxwJn1Xr-WZX'
+
 # --- Upload configuration ---
 app.config['UPLOAD_FOLDER'] = 'static/uploads/profile_pics'
 app.config['LOGO_UPLOAD_FOLDER'] = 'static/uploads/company_logos'
