@@ -933,46 +933,100 @@ def cart_checkout():
         return f"<h3>Database error during checkout: {e}</h3>"
 
 
-@app.get("/orders")
+@app.route("/orders")
 def orders_page():
-    if 'user' not in session or session.get('role') != 'driver':
-        return redirect(url_for('login'))
+    if "user" not in session or session.get("role") != "driver":
+        return redirect(url_for("login"))
 
-    username = session['user']
+    username = session["user"]
 
     db = MySQLdb.connect(**db_config)
 
-    # Promote statuses
+    # Auto-promote statuses
     _promote_processing_to_shipped(db)
     _promote_shipped_to_delivered(db)
 
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Per-sponsor balance for active sponsor
+    # Active sponsor and current point balance
     active_sponsor = _get_active_sponsor(username)
     points_balance = _get_points(username, active_sponsor) if active_sponsor else 0
 
-    # 👉 Join drivers to fetch the current delivery address from drivers.address
+    # Join drivers to get address; prefer order's delivery_address if present
     cur.execute("""
         SELECT 
-            o.order_id, 
-            o.product_id, 
-            o.reward_description, 
-            o.point_cost, 
-            o.quantity, 
+            o.order_id,
+            o.product_id,
+            o.reward_description,
+            o.point_cost,
+            o.quantity,
             o.status,
-            DATE(o.order_date) AS order_date, 
+            DATE(o.order_date) AS order_date,
             DATE(o.order_date + INTERVAL 7 DAY) AS expected_date,
-            d.address AS delivery_address
+            COALESCE(o.delivery_address, d.address) AS delivery_address
         FROM orders o
         JOIN drivers d ON d.username = o.user_id
-        WHERE o.user_id=%s
+        WHERE o.user_id = %s
         ORDER BY o.order_date DESC, o.order_id DESC
     """, (username,))
     orders = cur.fetchall()
 
-    cur.close(); db.close()
+    cur.close()
+    db.close()
+
     return render_template("orders.html", orders=orders, points_balance=points_balance)
+
+
+# ========== NEW ROUTE ==========
+@app.post("/orders/<int:order_id>/update_address")
+def orders_update_address(order_id):
+    """Allow a driver to update delivery address for a Processing order"""
+    if "user" not in session or session.get("role") != "driver":
+        return redirect(url_for("login"))
+
+    username = session["user"]
+    new_address = (request.form.get("delivery_address") or "").strip()
+
+    if not new_address:
+        flash("Address cannot be empty.", "warning")
+        return redirect(url_for("orders_page"))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Ensure it's your order and still in Processing
+    cur.execute("""
+        SELECT order_id, status
+        FROM orders
+        WHERE order_id=%s AND user_id=%s
+    """, (order_id, username))
+    o = cur.fetchone()
+
+    if not o:
+        cur.close()
+        db.close()
+        flash("Order not found.", "danger")
+        return redirect(url_for("orders_page"))
+
+    if o["status"] != "Processing":
+        cur.close()
+        db.close()
+        flash("Only Processing orders can be updated.", "warning")
+        return redirect(url_for("orders_page"))
+
+    # Update the order's delivery address
+    cur.execute("""
+        UPDATE orders
+        SET delivery_address = %s
+        WHERE order_id = %s AND user_id = %s
+    """, (new_address, order_id, username))
+    db.commit()
+
+    cur.close()
+    db.close()
+
+    flash("Delivery address updated for this order.", "success")
+    return redirect(url_for("orders_page"))
 
 @app.post("/orders/<int:order_id>/cancel")
 def orders_cancel(order_id):
