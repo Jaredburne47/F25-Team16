@@ -1064,6 +1064,70 @@ def _add_points(username, sponsor, delta):
     db.commit()
     cur.close(); db.close()
 
+def _assign_driver_to_sponsor(driver_username: str, sponsor_username: str):
+    """
+    Ensure (driver, sponsor) is an accepted relationship in driverApplications,
+    and ensure a driver_sponsor_points row exists.
+    Returns (created_or_updated: bool, message: str).
+    """
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # Check existing app
+        cur.execute("""
+            SELECT id, status
+            FROM driverApplications
+            WHERE driverUsername=%s AND sponsor=%s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (driver_username, sponsor_username))
+        row = cur.fetchone()
+
+        if row:
+            if row['status'] == 'accepted':
+                # Nothing to change
+                created_or_updated = False
+                msg = "Driver is already accepted by this sponsor."
+            elif row['status'] in ('pending', 'rejected', 'withdrawn', 'dropped'):
+                # Promote/update to accepted
+                cur.execute("""
+                    UPDATE driverApplications
+                    SET status='accepted', updated_at=NOW()
+                    WHERE id=%s
+                """, (row['id'],))
+                db.commit()
+                created_or_updated = True
+                msg = "Existing application updated to accepted."
+        else:
+            # Create a new accepted application record
+            cur.execute("""
+                INSERT INTO driverApplications (driverUsername, sponsor, status, created_at, updated_at)
+                VALUES (%s, %s, 'accepted', NOW(), NOW())
+            """, (driver_username, sponsor_username))
+            db.commit()
+            created_or_updated = True
+            msg = "New accepted sponsorship created."
+
+        # Ensure a per-(driver,sponsor) points row exists
+        cur.execute("""
+            INSERT IGNORE INTO driver_sponsor_points (driver_username, sponsor, points)
+            VALUES (%s, %s, 0)
+        """, (driver_username, sponsor_username))
+        db.commit()
+
+        # Audit log
+        cur.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("assign_driver",
+             f"Admin assigned {driver_username} to sponsor {sponsor_username}.",
+             session.get('user') or 'system')
+        )
+        db.commit()
+
+        return created_or_updated, msg
+    finally:
+        cur.close()
+        db.close()
 
 @app.post("/api/driver/favorites/add")
 def fav_add():
@@ -2458,6 +2522,59 @@ def bulk_update_applications():
     flash(f'Successfully updated {len(apps_info)} application(s) to "{new_status}".', 'success')
 
     return redirect(url_for('sponsor_applications'))
+
+@app.route('/admin/assign', methods=['GET', 'POST'])
+def admin_assign():
+    if 'user' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        if request.method == 'POST':
+            driver_username = request.form.get('driver_username', '').strip()
+            sponsor_username = request.form.get('sponsor_username', '').strip()
+            if not driver_username or not sponsor_username:
+                flash("Please choose both a driver and a sponsor.", "warning")
+                return redirect(url_for('admin_assign'))
+
+            # Validate both exist
+            cur.execute("SELECT username FROM drivers WHERE username=%s", (driver_username,))
+            d = cur.fetchone()
+            cur.execute("SELECT username FROM sponsor WHERE username=%s", (sponsor_username,))
+            s = cur.fetchone()
+            if not d or not s:
+                flash("Invalid driver or sponsor.", "danger")
+                return redirect(url_for('admin_assign'))
+
+            changed, msg = _assign_driver_to_sponsor(driver_username, sponsor_username)
+            flash(msg, "success" if changed else "info")
+            return redirect(url_for('admin_assign'))
+
+        # GET → show form
+        cur.execute("SELECT username FROM drivers ORDER BY username ASC")
+        drivers = cur.fetchall()
+
+        cur.execute("SELECT username, organization FROM sponsor ORDER BY username ASC")
+        sponsors = cur.fetchall()
+
+        # Optional: list a recent summary of accepted links to help admins see state
+        cur.execute("""
+            SELECT a.driverUsername AS driver, a.sponsor, a.status, a.updated_at
+            FROM driverApplications a
+            WHERE a.status='accepted'
+            ORDER BY a.updated_at DESC
+            LIMIT 50
+        """)
+        recent = cur.fetchall()
+
+        return render_template('admin_assign.html', drivers=drivers, sponsors=sponsors, recent=recent)
+
+    finally:
+        cur.close()
+        db.close()
+
 
 @app.route('/admin/audit_logs/download', methods=['POST'])
 def download_audit_logs():
