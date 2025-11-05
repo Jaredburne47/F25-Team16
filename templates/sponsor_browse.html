@@ -16,7 +16,7 @@
         <tr>
           <th style="width: 30%">Sponsor</th>
           <th style="width: 50%">Organization</th>
-          <th style="width: 20%" class="text-end">Actions</th>
+          <th style="width: 20%" class="text-end">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -26,18 +26,10 @@
             <td class="fw-semibold">{{ sp.username }}</td>
             <td>{{ sp.organization or '-' }}</td>
             <td class="text-end">
-              <div class="btn-group">
-                <a class="btn btn-outline-primary btn-sm"
-                   href="{{ url_for('item_catalog', sponsor=sp.username) }}">
-                   View Catalog
-                </a>
-                <form method="POST" action="{{ url_for('drop_sponsor', sponsor=sp.username) }}" class="ms-2">
-                  <button type="submit" class="btn btn-outline-danger btn-sm"
-                          onclick="return confirm('Are you sure you want to drop this sponsor?');">
-                    Drop Sponsor
-                  </button>
-                </form>
-              </div>
+              <a class="btn btn-outline-primary btn-sm"
+                 href="{{ url_for('item_catalog', sponsor=sp.username) }}">
+                 View Catalog
+              </a>
             </td>
           </tr>
           {% endfor %}
@@ -87,7 +79,7 @@
           </td>
           <td class="text-end">
             {% if st == 'accepted' %}
-              <!-- Replace Apply with Drop Sponsor -->
+              <!-- Accepted: show Drop here (NOT in My Sponsors) -->
               <form method="POST" action="{{ url_for('drop_sponsor', sponsor=sponsor.username) }}" class="m-0">
                 <button type="submit"
                         class="btn btn-outline-danger btn-sm"
@@ -96,7 +88,7 @@
                 </button>
               </form>
             {% else %}
-              <!-- Show Apply if not accepted -->
+              <!-- Not accepted: Apply (disabled if pending) -->
               <form method="POST" action="{{ url_for('apply_to_sponsor', sponsor=sponsor.username) }}" class="m-0">
                 <button type="submit"
                         class="btn btn-primary btn-sm"
