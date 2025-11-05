@@ -14,7 +14,7 @@ def send_order_placed_email(
     username: str,
     items: Iterable[Dict[str, Any]],
     total_points: int,
-    shipping_address: str | None,
+    delivery_address: str | None,
     expected_date_str: str | None,
     sponsor: str | None
 ) -> None:
@@ -34,7 +34,7 @@ def send_order_placed_email(
         lines.append(f"  • {nm} — {qty} × {pts} pts")
 
     items_block = "\n".join(lines) if lines else "  (No line items could be listed.)"
-    addr_block = shipping_address or "(No address on file)"
+    addr_block = delivery_address or "(No address on file)"
     eta_block  = expected_date_str or "(TBD)"
     sponsor_line = f"\nSponsor: {sponsor}" if sponsor else ""
 

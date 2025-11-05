@@ -868,7 +868,7 @@ def cart_checkout():
         db = MySQLdb.connect(**db_config)
         cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Get driver's shipping address from profile
+        # Get driver's delivery address from profile
         cur.execute("SELECT address FROM drivers WHERE username=%s", (username,))
         addr_row = cur.fetchone()
         delivery_address = (addr_row.get('address') or '').strip() if addr_row else ''
@@ -938,7 +938,7 @@ def cart_checkout():
 
             db.commit()
 
-            # Emails & low-balance logic (unchanged)
+            # --- Emails & low-balance logic (unchanged) ---
             cur.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
             row = cur.fetchone()
             if row:
@@ -947,12 +947,28 @@ def cart_checkout():
                 if prefs and prefs['receive_emails'] and prefs['spend_points_email']:
                     send_spent_points_email(prefs['email'], username, total_points)
 
+                # --- NEW: Order placed email ---
+                try:
+                    # Only send if driver allows emails in general
+                    if prefs and prefs.get('receive_emails'):
+                        from emailScripts.orderPlacedEmail import send_order_placed_email
+                        send_order_placed_email(
+                            recipient=prefs.get('email'),
+                            username=username,
+                            sponsor=active_sponsor,
+                            total_points=total_points,
+                            delivery_address=delivery_address
+                        )
+                except Exception as mail_err:
+                    print(f"[orderPlacedEmail] Failed to send: {mail_err}")
+
+                # Low balance alert uses the *overall* drivers.points column as in your existing code
                 pts = int(row['points'])
                 if pts < 50:
                     cur.execute("SELECT email, receive_emails, low_balance_email FROM drivers WHERE username=%s", (username,))
-                    prefs = cur.fetchone()
-                    if prefs and prefs['receive_emails'] and prefs['low_balance_email']:
-                        send_low_balance_email(prefs['email'], username, pts, 50)
+                    prefs_low = cur.fetchone()
+                    if prefs_low and prefs_low['receive_emails'] and prefs_low['low_balance_email']:
+                        send_low_balance_email(prefs_low['email'], username, pts, 50)
 
         except Exception as e:
             db.rollback()
