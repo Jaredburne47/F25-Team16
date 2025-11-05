@@ -3,28 +3,100 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Available Sponsors</h2>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Sponsor</th>
-                <th>Organization</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for sponsor in sponsors %}
-            <tr>
-                <td>{{ sponsor.username }}</td>
-                <td>{{ sponsor.organization }}</td>
-                <td>
-                    <form method="POST" action="{{ url_for('apply_to_sponsor', sponsor=sponsor.username) }}">
-                        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
+  <!-- ======================= -->
+  <!-- My Sponsors (Accepted)  -->
+  <!-- ======================= -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">My Sponsors</h2>
+  </div>
+
+  <div class="table-responsive mb-4">
+    <table class="table table-striped align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 30%">Sponsor</th>
+          <th style="width: 50%">Organization</th>
+          <th style="width: 20%" class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if my_sponsors and my_sponsors|length > 0 %}
+          {% for sp in my_sponsors %}
+          <tr>
+            <td class="fw-semibold">{{ sp.username }}</td>
+            <td>{{ sp.organization or '-' }}</td>
+            <td class="text-end">
+              <!-- Optional quick links that are useful for drivers -->
+              <a class="btn btn-outline-primary btn-sm"
+                 href="{{ url_for('item_catalog', sponsor=sp.username) }}">
+                 View Catalog
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="3" class="text-muted">You have no accepted sponsors yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
     </table>
+  </div>
+
+  <!-- ======================= -->
+  <!-- Available Sponsors      -->
+  <!-- ======================= -->
+  <h2>Available Sponsors</h2>
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 25%">Sponsor</th>
+          <th style="width: 45%">Organization</th>
+          <th style="width: 15%">Status</th>
+          <th style="width: 15%" class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sponsor in sponsors %}
+        {% set st = sponsor.my_status %}
+        <tr>
+          <td class="fw-semibold">{{ sponsor.username }}</td>
+          <td>{{ sponsor.organization or '-' }}</td>
+          <td>
+            {% if st == 'accepted' %}
+              <span class="badge bg-success">accepted</span>
+            {% elif st == 'pending' %}
+              <span class="badge bg-warning text-dark">pending</span>
+            {% elif st == 'rejected' %}
+              <span class="badge bg-danger">rejected</span>
+            {% elif st == 'withdrawn' %}
+              <span class="badge bg-secondary">withdrawn</span>
+            {% elif st == 'dropped' %}
+              <span class="badge bg-secondary">dropped</span>
+            {% else %}
+              <span class="badge bg-light text-dark">no application</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            {% set disable_apply = (st in ['pending', 'accepted']) %}
+            <form method="POST" action="{{ url_for('apply_to_sponsor', sponsor=sponsor.username) }}" class="m-0">
+              <button type="submit"
+                      class="btn btn-primary btn-sm"
+                      {% if disable_apply %}disabled title="You already have an active application with this sponsor."{% endif %}>
+                Apply
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if sponsors|length == 0 %}
+        <tr>
+          <td colspan="4" class="text-muted">No sponsors found.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

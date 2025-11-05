@@ -2212,14 +2212,50 @@ def sponsor_browse():
     if 'user' not in session or session['role'] != 'driver':
         return redirect(url_for('login'))
 
+    username = session['user']
+
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("SELECT username, organization FROM sponsor")
+
+    # --- My Sponsors (accepted only) ---
+    cursor.execute("""
+        SELECT s.username, s.organization
+        FROM driverApplications da
+        JOIN sponsor s ON s.username = da.sponsor
+        WHERE da.driverUsername = %s
+          AND da.status = 'accepted'
+        ORDER BY s.username ASC
+    """, (username,))
+    my_sponsors = cursor.fetchall()
+
+    # --- All sponsors with my current application status (if any) ---
+    # We peek at the driver's most recent status per sponsor to drive the UI (badge/disable state).
+    cursor.execute("""
+        SELECT
+            s.username,
+            s.organization,
+            (
+                SELECT da.status
+                FROM driverApplications da
+                WHERE da.driverUsername = %s
+                  AND da.sponsor = s.username
+                ORDER BY da.updated_at DESC
+                LIMIT 1
+            ) AS my_status
+        FROM sponsor s
+        ORDER BY s.username ASC
+    """, (username,))
     sponsors = cursor.fetchall()
+
     cursor.close()
     db.close()
 
-    return render_template("sponsor_browse.html", sponsors=sponsors)
+    return render_template(
+        "sponsor_browse.html",
+        my_sponsors=my_sponsors,
+        sponsors=sponsors
+    )
+
 
 @app.route('/apply/<sponsor>', methods=['POST'])
 def apply_to_sponsor(sponsor):
