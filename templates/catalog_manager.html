@@ -3,11 +3,8 @@
 
 {% block content %}
 <style>
-/* Make checkmark white and fade animations smooth */
 #save-ratio-btn.btn-success .save-check { color: white !important; }
 #save-ratio-btn { transition: background-color 0.3s ease, color 0.3s ease; }
-
-/* Reusable success style for action buttons */
 .btn-success .check-white { color: #fff !important; font-weight: 700; }
 </style>
 
@@ -48,7 +45,7 @@
       <th>Points Cost</th>
       <th>Quantity</th>
       <th>Source</th>
-      <th>Actions</th>
+      <th class="text-end">Actions</th>
     </tr>
   </thead>
   <tbody>
@@ -60,12 +57,30 @@
           <img src="{{ product.image_url }}" alt="" width="40" class="me-2 rounded">
         {% endif %}
         {{ product.name }}
+        {% if product.price_value %}
+          <div class="small text-muted">Ref: ${{ product.price_value }} {{ product.price_currency }}</div>
+        {% endif %}
       </td>
       <td>{{ product.points_cost }}</td>
       <td>{{ product.quantity }}</td>
       <td>{{ product.source_type|default('local')|capitalize }}</td>
-      <td>
-        <form action="{{ url_for('delete_product', product_id=product.product_id) }}" method="POST" style="display:inline;">
+      <td class="text-end">
+        <!-- EDIT button passes data to the single modal -->
+        <button type="button"
+                class="btn btn-sm btn-outline-primary me-1 edit-btn"
+                data-bs-toggle="modal"
+                data-bs-target="#editProductModal"
+                data-product-id="{{ product.product_id }}"
+                data-name="{{ product.name }}"
+                data-points="{{ product.points_cost }}"
+                data-qty="{{ product.quantity or 0 }}"
+                data-source="{{ product.source_type|default('local') }}"
+                data-ebay="{{ product.ebay_item_id|default('') }}">
+          Edit
+        </button>
+
+        <form action="{{ url_for('delete_product', product_id=product.product_id) }}"
+              method="POST" style="display:inline;">
           <button type="submit" class="btn btn-sm btn-danger">Delete</button>
         </form>
       </td>
@@ -80,7 +95,6 @@
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <!-- Give the form an ID so we can AJAX it -->
       <form id="add-local-item-form" action="{{ url_for('add_product') }}" method="POST">
         <div class="modal-header">
           <h5 class="modal-title" id="addItemModalLabel">Add Local Product</h5>
@@ -102,9 +116,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button id="btn-add-local" type="submit" class="btn btn-primary">
-            Add Product
-          </button>
+          <button id="btn-add-local" type="submit" class="btn btn-primary">Add Product</button>
         </div>
       </form>
     </div>
@@ -125,7 +137,7 @@
           <button class="btn btn-primary" type="submit">Search</button>
         </form>
         <div class="alert alert-secondary py-2 small">
-          Points auto-calculate from the item price using your ratio (<span id="ratio-inline">100</span> pts / $1). You can still edit points before adding.
+          Points auto-calculate from the item price using your ratio (<span id="ratio-inline">100</span> pts / $1).
         </div>
         <div id="ebay-results" class="row g-3"></div>
       </div>
@@ -133,8 +145,49 @@
   </div>
 </div>
 
+<!-- SINGLE Edit Modal (outside the table) -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductLabel"
+     aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog">
+    <form id="edit-form" class="modal-content" method="POST">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editProductLabel">Edit Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input id="edit-name" class="form-control" disabled>
+          <div class="form-text">Name cannot be changed here.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="edit-points">Points Cost</label>
+          <input id="edit-points" name="points_cost" type="number" min="0" step="1" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="edit-qty">Quantity</label>
+          <input id="edit-qty" name="quantity" type="number" min="0" step="1" class="form-control" required>
+        </div>
+
+        <div class="small text-muted">
+          <span id="edit-source">Source: —</span>
+          <span id="edit-ebay" class="ms-2"></span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
-/* ---------- Points Ratio: load/save ---------- */
+/* ---------- Points Ratio ---------- */
 const RATIO_KEY = 'points_per_dollar';
 const ratioInput = document.getElementById('points-per-dollar');
 const ratioInline = document.getElementById('ratio-inline');
@@ -147,22 +200,18 @@ const saveCheck = saveBtn.querySelector('.save-check');
   let ratio = serverVal > 0 ? serverVal : Number(localStorage.getItem(RATIO_KEY)) || 100;
   ratio = Math.max(1, Math.floor(ratio));
   ratioInput.value = ratio;
-  ratioInline.textContent = ratio;
+  if (ratioInline) ratioInline.textContent = ratio;
 })();
 
 saveBtn.addEventListener('click', () => {
   let ratio = Math.max(1, Math.floor(Number(ratioInput.value || 100)));
   ratioInput.value = ratio;
-  ratioInline.textContent = ratio;
+  if (ratioInline) ratioInline.textContent = ratio;
   localStorage.setItem(RATIO_KEY, String(ratio));
-
-  // Visual confirmation (green bg + white check)
   saveBtn.classList.remove('btn-outline-primary');
   saveBtn.classList.add('btn-success');
   saveText.textContent = 'Saved';
   saveCheck.classList.remove('d-none');
-
-  // Revert after 2 seconds (stay in place for adding more)
   setTimeout(() => {
     saveBtn.classList.remove('btn-success');
     saveBtn.classList.add('btn-outline-primary');
@@ -177,7 +226,7 @@ function getEffectiveRatio() {
   return Math.max(1, Math.floor(serverVal || localVal || 100));
 }
 
-/* ---------- Local Item: AJAX submit with green-check feedback ---------- */
+/* ---------- Add Local (AJAX feedback) ---------- */
 const addLocalForm = document.getElementById('add-local-item-form');
 if (addLocalForm) {
   addLocalForm.addEventListener('submit', async (e) => {
@@ -186,65 +235,54 @@ if (addLocalForm) {
     const originalHTML = submitBtn.innerHTML;
 
     const formData = new FormData(addLocalForm);
-
     try {
       const res = await fetch(addLocalForm.action, {
         method: 'POST',
-        headers: { 'X-Requested-With': 'fetch' }, // backend returns JSON for AJAX
+        headers: { 'X-Requested-With': 'fetch' },
         body: formData
       });
-
       if (!res.ok) {
         let msg = 'Server error';
         try { const data = await res.json(); if (data.error) msg = data.error; } catch (_){}
         alert('Error: ' + msg);
         return;
       }
-
-      // Success: show green with a white check, keep modal open, clear fields
       submitBtn.classList.remove('btn-primary');
       submitBtn.classList.add('btn-success');
       submitBtn.innerHTML = '<span class="check-white">✔ Saved</span>';
-
-      // Clear inputs so sponsor can add another immediately
       addLocalForm.reset();
-
       setTimeout(() => {
         submitBtn.classList.remove('btn-success');
         submitBtn.classList.add('btn-primary');
         submitBtn.innerHTML = originalHTML;
-      }, 1500);
-
-    } catch (err) {
+        location.reload(); // refresh list so new item shows
+      }, 1000);
+    } catch {
       alert('Network error');
     }
   });
 }
 
-/* ---------- eBay Search + auto points ---------- */
-document.getElementById("ebay-search-form").addEventListener("submit", async (e) => {
+/* ---------- eBay search ---------- */
+document.getElementById("ebay-search-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const q = document.getElementById("ebay-search-query").value.trim();
   if (!q) return;
-
   const container = document.getElementById("ebay-results");
   container.innerHTML = "<p class='text-muted text-center'>Searching...</p>";
 
   const res = await fetch(`/api/sponsor/ebay/search?q=${encodeURIComponent(q)}`);
   const data = await res.json();
-
   if (!data.items || !data.items.length) {
     container.innerHTML = "<p class='text-center text-muted'>No results found.</p>";
     return;
   }
 
   const ratio = getEffectiveRatio();
-
   container.innerHTML = data.items.map(item => {
     const hasPrice = item.price && item.price.value && item.price.currency;
     const isUSD = hasPrice && (String(item.price.currency).toUpperCase() === 'USD');
     const autoPoints = isUSD ? Math.ceil(Number(item.price.value) * ratio) : 100;
-
     return `
       <div class="col-md-4">
         <div class="card h-100 shadow-sm">
@@ -267,19 +305,15 @@ document.getElementById("ebay-search-form").addEventListener("submit", async (e)
             </button>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join("");
 });
 
-/* ---------- eBay add: green-check feedback, no reload ---------- */
 async function addToCatalog(btn, itemId) {
   const originalHTML = btn.innerHTML;
   btn.disabled = true;
-
   const points = document.getElementById(`points-${itemId}`).value;
   const quantity = document.getElementById(`qty-${itemId}`).value;
-
   try {
     const res = await fetch("/api/sponsor/catalog/add", {
       method: "POST",
@@ -287,23 +321,49 @@ async function addToCatalog(btn, itemId) {
       body: JSON.stringify({ item_id: itemId, points_cost: points, quantity_limit: quantity })
     });
     const data = await res.json();
-
     if (data.ok) {
-      // Green bg + white check
       btn.classList.add('btn-success');
       btn.innerHTML = '<span class="check-white">✔ Added</span>';
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
-      }, 1500);
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = originalHTML; }, 1000);
     } else {
       btn.disabled = false;
       alert("Error: " + (data.error || "unknown"));
     }
-  } catch (e) {
+  } catch {
     btn.disabled = false;
     alert("Network error");
   }
 }
+
+/* ---------- Edit Modal wiring ---------- */
+const editModalEl = document.getElementById('editProductModal');
+const editForm = document.getElementById('edit-form');
+const nameInput = document.getElementById('edit-name');
+const ptsInput = document.getElementById('edit-points');
+const qtyInput = document.getElementById('edit-qty');
+const sourceSpan = document.getElementById('edit-source');
+const ebaySpan = document.getElementById('edit-ebay');
+
+editModalEl.addEventListener('show.bs.modal', (event) => {
+  const btn = event.relatedTarget;
+  const id = btn.getAttribute('data-product-id');
+  const name = btn.getAttribute('data-name');
+  const pts = btn.getAttribute('data-points');
+  const qty = btn.getAttribute('data-qty');
+  const source = btn.getAttribute('data-source') || 'local';
+  const ebayId = btn.getAttribute('data-ebay') || '';
+
+  nameInput.value = name || '';
+  ptsInput.value = pts || 0;
+  qtyInput.value = qty || 0;
+  sourceSpan.textContent = `Source: ${source}`;
+  ebaySpan.textContent = ebayId ? `· eBay Item: ${ebayId}` : '';
+
+  editForm.setAttribute('action', `{{ url_for('edit_product', product_id=0)[:-1] }}${id}`);
+});
+
+editForm.addEventListener('submit', () => {
+  // Let normal POST happen; optionally add client-side validation here
+});
 </script>
 {% endblock %}

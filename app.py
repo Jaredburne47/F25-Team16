@@ -1378,6 +1378,51 @@ def add_product():
 
     return redirect(url_for('catalog_manager'))
 
+@app.post("/edit_product/<int:product_id>")
+def edit_product(product_id):
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor_name = session['user']
+    points_cost_raw = request.form.get('points_cost', '').strip()
+    quantity_raw = request.form.get('quantity', '').strip()
+
+    # Basic validation
+    try:
+        points_cost = int(points_cost_raw)
+        quantity = int(quantity_raw)
+        if points_cost < 0 or quantity < 0:
+            flash("Points and quantity must be non-negative integers.", "warning")
+            return redirect(url_for('catalog_manager'))
+    except ValueError:
+        flash("Please enter valid whole numbers for points and quantity.", "warning")
+        return redirect(url_for('catalog_manager'))
+
+    try:
+        db = MySQLdb.connect(**db_config)
+        cur = db.cursor()
+
+        # Only allow editing sponsor-owned products
+        cur.execute("""
+            UPDATE products
+               SET points_cost=%s,
+                   quantity=%s
+             WHERE product_id=%s
+               AND sponsor=%s
+        """, (points_cost, quantity, product_id, sponsor_name))
+        db.commit()
+
+        if cur.rowcount == 0:
+            flash("Could not update: product not found or not owned by you.", "danger")
+        else:
+            flash("Product updated successfully.", "success")
+
+        cur.close(); db.close()
+    except Exception as e:
+        flash(f"Database error while updating product: {e}", "danger")
+
+    return redirect(url_for('catalog_manager'))
+
 
 @app.route('/delete_product/<int:product_id>', methods=['POST'])
 def delete_product(product_id):
