@@ -114,9 +114,7 @@
 
         <p class="text-muted small mb-1">Sponsor: {{ item.sponsor }}</p>
         <p class="mb-1"><strong>{{ item.points_cost }} pts</strong></p>
-        {% if item.price_value %}
-          <p class="text-muted mb-1">Ref: ${{ item.price_value }} {{ item.price_currency }}</p>
-        {% endif %}
+        {# Dollar reference removed for drivers #}
         <p class="text-muted small mb-3">Quantity: {{ item.quantity }}</p>
 
         <!-- Add to Cart -->
