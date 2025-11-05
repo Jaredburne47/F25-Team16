@@ -240,7 +240,7 @@ def sponsor_add_to_catalog():
 
     try:
         db = MySQLdb.connect(**db_config)
-        cursor = db.cursor()
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute(
             """
             INSERT INTO products
@@ -252,8 +252,38 @@ def sponsor_add_to_catalog():
              d.get("itemId"), image_url, price_value, price_currency)
         )
         db.commit()
+
         cursor.execute("SELECT LAST_INSERT_ID() AS id;")
-        new_id = cursor.fetchone()[0]
+        new_id = cursor.fetchone()["id"]
+
+        # Notify accepted drivers of this sponsor (respect receive_emails)
+        try:
+            cursor.execute("""
+                SELECT d.username AS driver_username, d.email
+                FROM driverApplications da
+                JOIN drivers d ON d.username = da.driverUsername
+                WHERE da.sponsor=%s
+                  AND da.status='accepted'
+                  AND COALESCE(d.receive_emails, 1)=1
+            """, (sponsor_name,))
+            subs = cursor.fetchall() or []
+            for row in subs:
+                email = row.get("email")
+                uname = row.get("driver_username")
+                if email:
+                    try:
+                        send_new_item_email(
+                            recipient=email,
+                            driver_username=uname,
+                            sponsor_name=sponsor_name,
+                            item_name=title,
+                            points_cost=int(points_cost)
+                        )
+                    except Exception as mail_err:
+                        print(f"[newCatalogItemEmail] Failed for {uname}: {mail_err}")
+        except Exception as notif_err:
+            print(f"[newCatalogItemEmail] Lookup failure: {notif_err}")
+
         cursor.close(); db.close()
     except Exception as e:
         return jsonify({"error": f"Database error inserting product: {e}"}), 500
@@ -1447,15 +1477,47 @@ def add_product():
 
     try:
         db = MySQLdb.connect(**db_config)
-        cursor = db.cursor()
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Insert product
         cursor.execute(
-            "INSERT INTO products (name, sponsor, points_cost, quantity) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO products (name, sponsor, points_cost, quantity, source_type) VALUES (%s, %s, %s, %s, 'local')",
             (name, sponsor_name, points_cost, quantity)
         )
         db.commit()
+
+        # Notify accepted drivers of this sponsor (respect receive_emails)
+        try:
+            cursor.execute("""
+                SELECT d.username AS driver_username, d.email
+                FROM driverApplications da
+                JOIN drivers d ON d.username = da.driverUsername
+                WHERE da.sponsor=%s
+                  AND da.status='accepted'
+                  AND COALESCE(d.receive_emails, 1)=1
+            """, (sponsor_name,))
+            subs = cursor.fetchall() or []
+            for row in subs:
+                email = row.get("email")
+                uname = row.get("driver_username")
+                if email:
+                    try:
+                        send_new_item_email(
+                            recipient=email,
+                            driver_username=uname,
+                            sponsor_name=sponsor_name,
+                            item_name=name,
+                            points_cost=int(points_cost)
+                        )
+                    except Exception as mail_err:
+                        print(f"[newCatalogItemEmail] Failed for {uname}: {mail_err}")
+        except Exception as notif_err:
+            print(f"[newCatalogItemEmail] Lookup failure: {notif_err}")
+
         cursor.close()
         db.close()
     except Exception as e:
+        # If AJAX/fetch, return JSON error; otherwise page error
         if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('ajax') == '1':
             return jsonify({"ok": False, "error": str(e)}), 500
         return f"<h2>Database error:</h2><p>{e}</p>"
@@ -1464,6 +1526,7 @@ def add_product():
     if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('ajax') == '1':
         return jsonify({"ok": True})
 
+    flash("Product added and drivers notified.", "success")
     return redirect(url_for('catalog_manager'))
 
 @app.post("/edit_product/<int:product_id>")
