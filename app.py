@@ -15,6 +15,7 @@ from emailScripts.driverDroppedEmail import send_driver_dropped_email
 from emailScripts.lowBalanceEmail import send_low_balance_email
 from emailScripts.spendPointsEmail import send_spent_points_email
 from emailScripts.sponsorLockedEmail import send_sponsor_locked_email
+from emailScripts.favoriteRestockEmail import send_favorite_restock_email
 import secrets
 import os
 import csv
@@ -1471,12 +1472,12 @@ def edit_product(product_id):
 
     sponsor_name = session['user']
     points_cost_raw = request.form.get('points_cost', '').strip()
-    quantity_raw = request.form.get('quantity', '').strip()
+    quantity_raw    = request.form.get('quantity', '').strip()
 
     # Basic validation
     try:
         points_cost = int(points_cost_raw)
-        quantity = int(quantity_raw)
+        quantity    = int(quantity_raw)
         if points_cost < 0 or quantity < 0:
             flash("Points and quantity must be non-negative integers.", "warning")
             return redirect(url_for('catalog_manager'))
@@ -1485,10 +1486,27 @@ def edit_product(product_id):
         return redirect(url_for('catalog_manager'))
 
     try:
-        db = MySQLdb.connect(**db_config)
-        cur = db.cursor()
+        db  = MySQLdb.connect(**db_config)
+        cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Only allow editing sponsor-owned products
+        # ---- Load current product (to detect 0 -> >0 transition) ----
+        cur.execute("""
+            SELECT product_id, name, sponsor, points_cost AS old_points, quantity AS old_qty
+            FROM products
+            WHERE product_id=%s AND sponsor=%s
+            LIMIT 1
+        """, (product_id, sponsor_name))
+        prod = cur.fetchone()
+
+        if not prod:
+            cur.close(); db.close()
+            flash("Could not update: product not found or not owned by you.", "danger")
+            return redirect(url_for('catalog_manager'))
+
+        was_out_of_stock   = int(prod.get("old_qty") or 0) == 0
+        will_be_in_stock   = quantity > 0
+
+        # ---- Update product ----
         cur.execute("""
             UPDATE products
                SET points_cost=%s,
@@ -1499,12 +1517,49 @@ def edit_product(product_id):
         db.commit()
 
         if cur.rowcount == 0:
+            cur.close(); db.close()
             flash("Could not update: product not found or not owned by you.", "danger")
-        else:
-            flash("Product updated successfully.", "success")
+            return redirect(url_for('catalog_manager'))
+
+        # ---- If it just came back in stock, notify favoriting drivers ----
+        if was_out_of_stock and will_be_in_stock:
+            try:
+                # All drivers who favorited this product and accept emails
+                cur.execute("""
+                    SELECT f.driver_username, d.email
+                    FROM favorites f
+                    JOIN drivers d ON d.username = f.driver_username
+                    WHERE f.product_id=%s
+                      AND COALESCE(d.receive_emails, 1) = 1
+                """, (product_id,))
+                subs = cur.fetchall() or []
+
+                for row in subs:
+                    recipient = row.get("email")
+                    uname     = row.get("driver_username")
+                    if recipient:
+                        try:
+                            send_favorite_restock_email(
+                                recipient=recipient,
+                                username=uname,
+                                item_name=prod["name"],
+                                sponsor_name=sponsor_name,
+                                quantity=quantity
+                            )
+                        except Exception as mail_err:
+                            # Log but don't fail the request
+                            print(f"[favoriteRestockEmail] Failed for user={uname}: {mail_err}")
+            except Exception as lookup_err:
+                # Log but don't fail the request
+                print(f"[favoriteRestockEmail] Lookup error: {lookup_err}")
 
         cur.close(); db.close()
+        flash("Product updated successfully.", "success")
     except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
         flash(f"Database error while updating product: {e}", "danger")
 
     return redirect(url_for('catalog_manager'))
