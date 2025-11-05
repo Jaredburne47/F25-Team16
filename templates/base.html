@@ -1,49 +1,30 @@
 <!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{% block title %}Driver Incentive Program{% endblock %}</title>
+<title>{% block title %}Driver Incentive Program{% endblock %}</title>
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      .nav-link.active {
-        font-weight: 600;
-        color: #0d6efd !important;
-        border-bottom: 2px solid #0d6efd;
-      }
-      /* =================================================================== */
-      /* SPRINT 4 CHANGE: LOADING INDICATOR STYLES                           */
-      /* This CSS creates a full-screen overlay and a spinning loader icon   */
-      /* that will appear on top of your content while the page loads.       */
-      /* =================================================================== */
-      #loader-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(255, 255, 255, 0.85);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        transition: opacity 0.5s ease;
-      }
-      .spinner-border {
-        width: 3rem;
-        height: 3rem;
-      }
-    </style>
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .nav-link.active { font-weight: 600; color: #0d6efd !important; border-bottom: 2px solid #0d6efd; }
+  /* =================================================================== */
+  /* SPRINT 4 CHANGE: LOADING INDICATOR STYLES                           */
+  /* This CSS creates a full-screen overlay and a spinning loader icon   */
+  /* that will appear on top of your content while the page loads.       */
+  /* =================================================================== */
+  #loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease; }
+  .spinner-border { width: 3rem; height: 3rem; }
+</style>
+
   </head>
   <body>
     <!-- START: LOADING INDICATOR OVERLAY -->
@@ -52,259 +33,240 @@
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
-      <div class="container-fluid">
-        <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
-          <svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-inline-block align-text-top">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            <path d="m9 12 2 2 4-4"></path>
-          </svg>
-          Team16 Incentives
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
 
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold d-flex align-items-center" href="/">
+      <svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="d-inline-block align-text-top">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        <path d="m9 12 2 2 4-4"></path>
+      </svg>
+      Team16 Incentives
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
-            {% if not session.get('user') %}
-            <li class="nav-item">
-                <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
-              </li>
-            {% endif %}
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
 
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">About</a>
-            </li>
+        {% if not session.get('user') %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
+          </li>
+        {% endif %}
 
-            <!-- START: DYNAMIC "MY PROFILE" LINK -->
-            {% if session.get('user') %}
-              <li class="nav-item">
-                {% set profile_url = '#' %} <!-- Default safe link -->
-                
-                {% if session.role == 'driver' %}
-                  {% set profile_url = '/driver/profile' %}
-                {% elif session.role == 'sponsor' %}
-                  {% set profile_url = '/sponsor/profile' %}
-                {% elif session.role == 'admin' %}
-                  {% set profile_url = '/admin/profile' %}
-                {% endif %}
-                 
-                <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ profile_url }}">My Profile</a>
-              </li>
-            {% endif %}
-            <!-- END: DYNAMIC "MY PROFILE" LINK -->
+        <li class="nav-item">
+          <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">About</a>
+        </li>
+
+        <!-- START: DYNAMIC "MY PROFILE" LINK -->
+        {% if session.get('user') %}
+          <li class="nav-item">
+            {% set profile_url = '#' %}
             {% if session.get('role') == 'driver' %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>
-              </li>
+              {% set profile_url = url_for('driver_profile') %}
+            {% elif session.get('role') == 'sponsor' %}
+              {% set profile_url = url_for('sponsor_profile') %}
+            {% elif session.get('role') == 'admin' %}
+              {% set profile_url = url_for('admin_profile') %}
             {% endif %}
+            <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ profile_url }}">My Profile</a>
+          </li>
+        {% endif %}
+        <!-- END: DYNAMIC "MY PROFILE" LINK -->
 
-            {% if session.get('user') %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
-              </li>
-            {% endif %}
+        {% if session.get('role') == 'driver' %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/dashboard' %}active{% endif %}" href="/dashboard">Points Dashboard</a>
+          </li>
+        {% endif %}
 
-            <!-- Sponsor-only tabs -->
-            {% if session.get('role') == 'sponsor' %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/catalog_manager' %}active{% endif %}" href="/catalog_manager">Catalog Manager</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/sponsor/applications' %}active{% endif %}" 
-                   href="{{ url_for('sponsor_applications') }}">
-                   Driver Applications
-                </a>
-              </li>
-            {% endif %}
+        {% if session.get('user') %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
+          </li>
+        {% endif %}
 
-            <!-- Admin Logging -->
-            {% if session.get('role') == 'admin' %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('audit_logs') }}">Audit Logs</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/simulation' %}active{% endif %}" 
-                   href="{{ url_for('simulation') }}">
-                   Simulation
-                </a>
-              </li>
-            {% endif %}
-             
+        <!-- Sponsor-only: Catalog Manager -->
+        {% if session.get('role') == 'sponsor' %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('catalog_manager') %}active{% endif %}" href="{{ url_for('catalog_manager') }}">Catalog Manager</a>
+          </li>
+        {% endif %}
 
-            <!-- Driver-only tabs -->
-            {% if session.get('role') == 'driver' %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/item_catalog' %}active{% endif %}" 
-                   href="{{ url_for('item_catalog') }}">
-                   Item Catalog
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/cart' %}active{% endif %}" 
-                   href="{{ url_for('cart_page') }}">
-                   Cart
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/orders' %}active{% endif %}" 
-                   href="{{ url_for('orders_page') }}">
-                   Orders
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/sponsors/browse' %}active{% endif %}" 
-                   href="{{ url_for('sponsor_browse') }}">
-                   Browse Sponsors
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/applications' %}active{% endif %}" 
-                   href="{{ url_for('driver_applications') }}">
-                   My Applications
-                </a>
-              </li>
-            {% endif %}
-            
-            <!-- Show Add User tab only for sponsor/admin -->
-            {% if session.get('role') in ['sponsor', 'admin'] %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/add_user' %}active{% endif %}" href="/add_user">Add User</a>
-              </li>
+        <!-- Admin-only: (keep Simulation separate; not user-management) -->
+        {% if session.get('role') == 'admin' %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('simulation') %}active{% endif %}" href="{{ url_for('simulation') }}">Simulation</a>
+          </li>
+        {% endif %}
 
-              <!-- Drivers tab only for sponsor/admin -->
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/drivers' %}active{% endif %}" href="/drivers">Drivers</a>
-              </li>
-            <!-- Sponsors tab only for sponsor/admin -->
-              <li class="nav-item">
-                <a class="nav-link {% if request.path == '/sponsors' %}active{% endif %}" href="/sponsors">Sponsors</a>
-              </li>
-            {% endif %}
+        <!-- ================================ -->
+        <!-- User Management (Sponsor/Admin)  -->
+        <!-- ================================ -->
+        {% if session.get('role') in ['sponsor','admin'] %}
+          {# Build list of UM routes to set active state #}
+          {% set um_links = [] %}
+          {% set _ = um_links.append(url_for('drivers')) %}
+          {% set _ = um_links.append(url_for('sponsors')) %}
+          {% set _ = um_links.append(url_for('add_user')) %}
+          {% if session.get('role') == 'sponsor' %}
+            {% set _ = um_links.append(url_for('sponsor_applications')) %}
+          {% endif %}
+          {% if session.get('role') == 'admin' %}
+            {% set _ = um_links.append(url_for('audit_logs')) %}
+          {% endif %}
+          {% set is_um_active = request.path in um_links %}
 
-            <li class="nav-item">
-              {% if session.get('user') %}
-                <a class="nav-link" href="/logout">Logout</a>
-              {% else %}
-                <a class="nav-link {% if request.path == '/login' %}active{% endif %}" href="/login">Login</a>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {% if is_um_active %}active{% endif %}" href="#" id="userMgmtDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              User Management
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMgmtDropdown">
+              <li><a class="dropdown-item {% if request.path == url_for('drivers') %}active{% endif %}" href="{{ url_for('drivers') }}">Drivers</a></li>
+              <li><a class="dropdown-item {% if request.path == url_for('sponsors') %}active{% endif %}" href="{{ url_for('sponsors') }}">Sponsors</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item {% if request.path == url_for('add_user') %}active{% endif %}" href="{{ url_for('add_user') }}">Add User</a></li>
+              {% if session.get('role') == 'sponsor' %}
+                <li><a class="dropdown-item {% if request.path == url_for('sponsor_applications') %}active{% endif %}" href="{{ url_for('sponsor_applications') }}">Driver Applications</a></li>
               {% endif %}
-            </li>
+              {% if session.get('role') == 'admin' %}
+                <li><a class="dropdown-item {% if request.path == url_for('audit_logs') %}active{% endif %}" href="{{ url_for('audit_logs') }}">Audit Logs</a></li>
+              {% endif %}
+            </ul>
+          </li>
+        {% endif %}
 
-          </ul>
+        <!-- Driver-only tabs -->
+        {% if session.get('role') == 'driver' %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('item_catalog') %}active{% endif %}" href="{{ url_for('item_catalog') }}">Item Catalog</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('cart_page') %}active{% endif %}" href="{{ url_for('cart_page') }}">Cart</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('orders_page') %}active{% endif %}" href="{{ url_for('orders_page') }}">Orders</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('sponsor_browse') %}active{% endif %}" href="{{ url_for('sponsor_browse') }}">Browse Sponsors</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == url_for('driver_applications') %}active{% endif %}" href="{{ url_for('driver_applications') }}">My Applications</a>
+          </li>
+        {% endif %}
+
+        <li class="nav-item">
+          {% if session.get('user') %}
+            <a class="nav-link" href="/logout">Logout</a>
+          {% else %}
+            <a class="nav-link {% if request.path == '/login' %}active{% endif %}" href="/login">Login</a>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Page Content -->
+<div class="container">
+  <!-- START: SPRINT 7 ACTION FEEDBACK -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <!-- END: SPRINT 7 ACTION FEEDBACK -->
+
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- =================================================================== -->
+<!-- SPRINT 4 CHANGE: LOADING INDICATOR SCRIPT                           -->
+<!-- This script waits for the entire page to finish loading (including  -->
+<!-- database content), then fades out and hides the loader.             -->
+<!-- =================================================================== -->
+<script>
+  window.onload = function() {
+    const loaderOverlay = document.getElementById('loader-overlay');
+    if (loaderOverlay) {
+      loaderOverlay.style.opacity = '0';
+      setTimeout(() => { loaderOverlay.style.display = 'none'; }, 500);
+    }
+  };
+</script>
+
+<!-- START: SPRINT 7 FEEDBACK MODAL -->
+{% if session.get('show_feedback_modal') %}
+  <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="feedbackModalLabel">We Value Your Feedback!</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Would you like to share any anonymous feedback about your experience? Your thoughts help us improve.</p>
+          <form id="feedbackForm">
+            <div class="mb-3">
+              <textarea class="form-control" id="feedback_text" name="feedback_text" rows="4" placeholder="Enter your feedback here..." required></textarea>
+            </div>
+            <div id="feedback-alert-placeholder"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="submitFeedbackBtn">Submit Feedback</button>
         </div>
       </div>
-    </nav>
-
-    <!-- Page Content -->
-    <div class="container">
-      <!-- START: SPRINT 7 ACTION FEEDBACK -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-      <!-- END: SPRINT 7 ACTION FEEDBACK -->
-
-      {% block content %}{% endblock %}
     </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- =================================================================== -->
-    <!-- SPRINT 4 CHANGE: LOADING INDICATOR SCRIPT                           -->
-    <!-- This script waits for the entire page to finish loading (including  -->
-    <!-- database content), then fades out and hides the loader.             -->
-    <!-- =================================================================== -->
-    <script>
-      window.onload = function() {
-        const loaderOverlay = document.getElementById('loader-overlay');
-        if (loaderOverlay) {
-            loaderOverlay.style.opacity = '0';
-            setTimeout(() => {
-              loaderOverlay.style.display = 'none';
-            }, 500); // Wait for the fade-out transition to finish
-        }
-      };
-    </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+      const feedbackForm = document.getElementById('feedbackForm');
+      const submitBtn = document.getElementById('submitFeedbackBtn');
+      const alertPlaceholder = document.getElementById('feedback-alert-placeholder');
 
-    <!-- START: SPRINT 7 FEEDBACK MODAL -->
-    {% if session.get('show_feedback_modal') %}
-    <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="feedbackModalLabel">We Value Your Feedback!</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Would you like to share any anonymous feedback about your experience? Your thoughts help us improve.</p>
-                    <form id="feedbackForm">
-                        <div class="mb-3">
-                            <textarea class="form-control" id="feedback_text" name="feedback_text" rows="4" placeholder="Enter your feedback here..." required></textarea>
-                        </div>
-                        <div id="feedback-alert-placeholder"></div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="submitFeedbackBtn">Submit Feedback</button>
-                </div>
-            </div>
-        </div>
-    </div>
+      // Show the modal automatically
+      feedbackModal.show();
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const feedbackModal = new bootstrap.Modal(document.getElementById('feedbackModal'));
-            const feedbackForm = document.getElementById('feedbackForm');
-            const submitBtn = document.getElementById('submitFeedbackBtn');
-            const alertPlaceholder = document.getElementById('feedback-alert-placeholder');
-            
-            // Show the modal automatically
-            feedbackModal.show();
+      // Handle form submission with Fetch API
+      submitBtn.addEventListener('click', function () {
+        const formData = new FormData(feedbackForm);
+        fetch('{{ url_for("submit_feedback") }}', { method: 'POST', body: formData })
+          .then(response => response.json())
+          .then(data => {
+            let alertClass = data.status === 'success' ? 'alert-success' : 'alert-danger';
+            alertPlaceholder.innerHTML = `<div class="alert ${alertClass}" role="alert">${data.message}</div>`;
+            if (data.status === 'success') {
+              setTimeout(() => { feedbackModal.hide(); }, 1500);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alertPlaceholder.innerHTML = '<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>';
+          });
+      });
 
-            // Handle form submission with Fetch API
-            submitBtn.addEventListener('click', function () {
-                const formData = new FormData(feedbackForm);
-                fetch('{{ url_for("submit_feedback") }}', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    let alertClass = data.status === 'success' ? 'alert-success' : 'alert-danger';
-                    alertPlaceholder.innerHTML = `<div class="alert ${alertClass}" role="alert">${data.message}</div>`;
-                    
-                    if(data.status === 'success') {
-                        setTimeout(() => {
-                            feedbackModal.hide();
-                        }, 1500); // Hide modal after 1.5 seconds on success
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alertPlaceholder.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
-                });
-            });
+      // Handle modal dismissal (when user clicks 'x' or 'Close')
+      document.getElementById('feedbackModal').addEventListener('hidden.bs.modal', function () {
+        fetch('{{ url_for("dismiss_feedback") }}', { method: 'POST' });
+      });
+    });
+  </script>
+{% endif %}
+<!-- SPRINT 7 FEEDBACK MODAL -->
 
-            // Handle modal dismissal (when user clicks 'x' or 'Close')
-            document.getElementById('feedbackModal').addEventListener('hidden.bs.modal', function () {
-                // Tell the server not to show the modal again this session
-                fetch('{{ url_for("dismiss_feedback") }}', { method: 'POST' });
-            });
-        });
-    </script>
-    {% endif %}
-    <!-- SPRINT 7 FEEDBACK MODAL -->
-
-  
   </body>
-</html
+</html>
