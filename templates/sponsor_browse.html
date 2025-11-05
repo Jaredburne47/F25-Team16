@@ -26,11 +26,18 @@
             <td class="fw-semibold">{{ sp.username }}</td>
             <td>{{ sp.organization or '-' }}</td>
             <td class="text-end">
-              <!-- Optional quick links that are useful for drivers -->
-              <a class="btn btn-outline-primary btn-sm"
-                 href="{{ url_for('item_catalog', sponsor=sp.username) }}">
-                 View Catalog
-              </a>
+              <div class="btn-group">
+                <a class="btn btn-outline-primary btn-sm"
+                   href="{{ url_for('item_catalog', sponsor=sp.username) }}">
+                   View Catalog
+                </a>
+                <form method="POST" action="{{ url_for('drop_sponsor', sponsor=sp.username) }}" class="ms-2">
+                  <button type="submit" class="btn btn-outline-danger btn-sm"
+                          onclick="return confirm('Are you sure you want to drop this sponsor?');">
+                    Drop Sponsor
+                  </button>
+                </form>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -79,14 +86,27 @@
             {% endif %}
           </td>
           <td class="text-end">
-            {% set disable_apply = (st in ['pending', 'accepted']) %}
-            <form method="POST" action="{{ url_for('apply_to_sponsor', sponsor=sponsor.username) }}" class="m-0">
-              <button type="submit"
-                      class="btn btn-primary btn-sm"
-                      {% if disable_apply %}disabled title="You already have an active application with this sponsor."{% endif %}>
-                Apply
-              </button>
-            </form>
+            {% if st == 'accepted' %}
+              <!-- Replace Apply with Drop Sponsor -->
+              <form method="POST" action="{{ url_for('drop_sponsor', sponsor=sponsor.username) }}" class="m-0">
+                <button type="submit"
+                        class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('Are you sure you want to drop this sponsor?');">
+                  Drop Sponsor
+                </button>
+              </form>
+            {% else %}
+              <!-- Show Apply if not accepted -->
+              <form method="POST" action="{{ url_for('apply_to_sponsor', sponsor=sponsor.username) }}" class="m-0">
+                <button type="submit"
+                        class="btn btn-primary btn-sm"
+                        {% if st in ['pending'] %}
+                          disabled title="You already have an active application with this sponsor."
+                        {% endif %}>
+                  Apply
+                </button>
+              </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

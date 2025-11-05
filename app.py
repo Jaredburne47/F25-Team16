@@ -2304,6 +2304,49 @@ def apply_to_sponsor(sponsor):
     except Exception as e:
         return f"<h2>Error applying to sponsor:</h2><p>{e}</p>"
 
+@app.route('/drop_sponsor/<sponsor>', methods=['POST'])
+def drop_sponsor(sponsor):
+    if 'user' not in session or session['role'] != 'driver':
+        return redirect(url_for('login'))
+
+    username = session['user']
+
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor()
+
+    try:
+        # Update latest accepted/pending application to dropped
+        cursor.execute("""
+            UPDATE driverApplications
+            SET status='dropped', updated_at=NOW()
+            WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
+        """, (username, sponsor))
+        db.commit()
+
+        # Optional: Keep record clean by also setting points to 0
+        cursor.execute("""
+            UPDATE driver_sponsor_points
+            SET points=0
+            WHERE driver_username=%s AND sponsor=%s
+        """, (username, sponsor))
+        db.commit()
+
+        # Audit log
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("drop_sponsor",
+             f"{username} dropped sponsor {sponsor}",
+             username)
+        )
+        db.commit()
+
+        flash(f"You have dropped {sponsor}.", "info")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for('sponsor_browse'))
+
 
 @app.route('/applications')
 def driver_applications():
