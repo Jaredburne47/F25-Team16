@@ -8,6 +8,13 @@
     background-color: #0f5132; /* dark success */
     color: #fff;
   }
+  /* Keep long addresses readable without blowing up the table */
+  .addr-cell {
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 </style>
 
 <h1 class="mb-4">Your Orders</h1>
@@ -36,6 +43,7 @@
         <th>Item</th>
         <th class="text-end">Qty</th>
         <th class="text-end">Points</th>
+        <th>Delivery Address</th>
         <th>Status</th>
         <th>Placed</th>
         <th>Expected Delivery</th>
@@ -56,6 +64,15 @@
         <td>{{ o.reward_description }}</td>
         <td class="text-end">{{ o.quantity }}</td>
         <td class="text-end">{{ o.point_cost }}</td>
+
+        <!-- Delivery Address -->
+        <td class="addr-cell" title="{{ o.delivery_address or '' }}">
+          {% if o.delivery_address and o.delivery_address|length > 0 %}
+            {{ o.delivery_address }}
+          {% else %}
+            <em class="text-muted">Not provided</em>
+          {% endif %}
+        </td>
 
         <!-- Status -->
         <td>

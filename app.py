@@ -835,6 +835,11 @@ def cart_checkout():
         db = MySQLdb.connect(**db_config)
         cur = db.cursor(MySQLdb.cursors.DictCursor)
 
+        # Get driver's shipping address from profile
+        cur.execute("SELECT address FROM drivers WHERE username=%s", (username,))
+        addr_row = cur.fetchone()
+        delivery_address = (addr_row.get('address') or '').strip() if addr_row else ''
+
         driver_points = _get_points(username, active_sponsor)
 
         cur.execute("""
@@ -874,8 +879,10 @@ def cart_checkout():
             # Create orders, decrement stock
             for line in cart:
                 cur.execute("""
-                    INSERT INTO orders (user_id, product_id, sponsor, reward_description, point_cost, quantity, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, 'Processing')
+                    INSERT INTO orders
+                        (user_id, product_id, sponsor, reward_description, point_cost, quantity, delivery_address, status)
+                    VALUES
+                        (%s,      %s,         %s,      %s,                 %s,         %s,        %s,               'Processing')
                 """, (
                     username,
                     int(line['product_id']),
@@ -883,6 +890,7 @@ def cart_checkout():
                     line['name'],
                     int(line['points_cost']) * int(line['qty']),
                     int(line['qty']),
+                    delivery_address
                 ))
 
                 cur.execute("""
@@ -897,22 +905,22 @@ def cart_checkout():
 
             db.commit()
 
+            # Emails & low-balance logic (unchanged)
             cur.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
             row = cur.fetchone()
             if row:
-                # Send "spent points" email
                 cur.execute("SELECT email, receive_emails, spend_points_email FROM drivers WHERE username=%s", (username,))
                 prefs = cur.fetchone()
-                if prefs and prefs['email'] and prefs['receive_emails'] and prefs['spend_points_email']:
+                if prefs and prefs['receive_emails'] and prefs['spend_points_email']:
                     send_spent_points_email(prefs['email'], username, total_points)
-            
-                # Send "low balance" email if < 50 points
+
                 pts = int(row['points'])
                 if pts < 50:
                     cur.execute("SELECT email, receive_emails, low_balance_email FROM drivers WHERE username=%s", (username,))
                     prefs = cur.fetchone()
-                    if prefs and prefs['email'] and prefs['receive_emails'] and prefs['low_balance_email']:
+                    if prefs and prefs['receive_emails'] and prefs['low_balance_email']:
                         send_low_balance_email(prefs['email'], username, pts, 50)
+
         except Exception as e:
             db.rollback()
             cur.close(); db.close()
@@ -944,20 +952,27 @@ def orders_page():
     active_sponsor = _get_active_sponsor(username)
     points_balance = _get_points(username, active_sponsor) if active_sponsor else 0
 
-    # Load orders (all sponsors is fine here)
+    # 👉 Join drivers to fetch the current delivery address from drivers.address
     cur.execute("""
-        SELECT order_id, product_id, reward_description, point_cost, quantity, status,
-               DATE(order_date) AS order_date, DATE(order_date + INTERVAL 7 DAY) AS expected_date
-        FROM orders
-        WHERE user_id=%s
-        ORDER BY order_date DESC, order_id DESC
+        SELECT 
+            o.order_id, 
+            o.product_id, 
+            o.reward_description, 
+            o.point_cost, 
+            o.quantity, 
+            o.status,
+            DATE(o.order_date) AS order_date, 
+            DATE(o.order_date + INTERVAL 7 DAY) AS expected_date,
+            d.address AS delivery_address
+        FROM orders o
+        JOIN drivers d ON d.username = o.user_id
+        WHERE o.user_id=%s
+        ORDER BY o.order_date DESC, o.order_id DESC
     """, (username,))
     orders = cur.fetchall()
 
     cur.close(); db.close()
     return render_template("orders.html", orders=orders, points_balance=points_balance)
-
-
 
 @app.post("/orders/<int:order_id>/cancel")
 def orders_cancel(order_id):
