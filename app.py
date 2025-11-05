@@ -1652,17 +1652,30 @@ def drivers():
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
     if session.get('role') == 'sponsor':
+        # ⬇️ Pull points from driver_sponsor_points for THIS sponsor
         cur.execute("""
-            SELECT d.username, d.email, d.points, d.disabled
+            SELECT 
+                d.username, 
+                d.email, 
+                COALESCE(dsp.points, 0) AS points, 
+                d.disabled
             FROM drivers d
             JOIN driverApplications a
               ON a.driverUsername = d.username
              AND a.sponsor = %s
              AND a.status = 'accepted'
+            LEFT JOIN driver_sponsor_points dsp
+              ON dsp.driver_username = d.username
+             AND dsp.sponsor = %s
             ORDER BY d.username
-        """, (session['user'],))
+        """, (session['user'], session['user']))
     else:
-        cur.execute("SELECT username, email, points, disabled FROM drivers ORDER BY username")
+        # Admin view unchanged (or adjust if you want per-sponsor context for admins)
+        cur.execute("""
+            SELECT username, email, points, disabled
+            FROM drivers
+            ORDER BY username
+        """)
 
     drivers_list = cur.fetchall()
     cur.close(); db.close()
