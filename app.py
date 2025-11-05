@@ -1651,36 +1651,58 @@ def drivers():
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    if session.get('role') == 'sponsor':
-        # ⬇️ Pull points from driver_sponsor_points for THIS sponsor
-        cur.execute("""
-            SELECT 
-                d.username, 
-                d.email, 
-                COALESCE(dsp.points, 0) AS points, 
-                d.disabled
-            FROM drivers d
-            JOIN driverApplications a
-              ON a.driverUsername = d.username
-             AND a.sponsor = %s
-             AND a.status = 'accepted'
-            LEFT JOIN driver_sponsor_points dsp
-              ON dsp.driver_username = d.username
-             AND dsp.sponsor = %s
-            ORDER BY d.username
-        """, (session['user'], session['user']))
-    else:
-        # Admin view unchanged (or adjust if you want per-sponsor context for admins)
-        cur.execute("""
-            SELECT username, email, points, disabled
-            FROM drivers
-            ORDER BY username
-        """)
+    try:
+        if session.get('role') == 'sponsor':
+            # ✅ Sponsor view (unchanged logic from earlier fix): only their accepted drivers,
+            # and points pulled from driver_sponsor_points for THIS sponsor.
+            cur.execute("""
+                SELECT d.username,
+                       d.email,
+                       d.disabled,
+                       COALESCE(dsp.points, 0) AS points
+                FROM driverApplications a
+                JOIN drivers d
+                  ON d.username = a.driverUsername
+                LEFT JOIN driver_sponsor_points dsp
+                  ON dsp.driver_username = a.driverUsername
+                 AND dsp.sponsor = a.sponsor
+                WHERE a.sponsor=%s
+                  AND a.status='accepted'
+                ORDER BY d.username
+            """, (session['user'],))
+            drivers_list = cur.fetchall()
+            role = 'sponsor'
 
-    drivers_list = cur.fetchall()
-    cur.close(); db.close()
+        else:
+            # ✅ Admin view: every driver, with ALL accepted sponsors + per-sponsor points
+            # Build one row per driver; sponsors+points packed into a string to keep it simple in template.
+            cur.execute("""
+                SELECT
+                    d.username,
+                    d.email,
+                    d.disabled,
+                    -- Pack "sponsor::points" per sponsor; only accepted relationships
+                    GROUP_CONCAT(CONCAT(dsp.sponsor, '::', COALESCE(dsp.points,0))
+                                 ORDER BY dsp.sponsor SEPARATOR '||') AS sponsors_points
+                FROM drivers d
+                LEFT JOIN driverApplications da
+                  ON da.driverUsername = d.username
+                 AND da.status = 'accepted'
+                LEFT JOIN driver_sponsor_points dsp
+                  ON dsp.driver_username = d.username
+                 AND dsp.sponsor = da.sponsor
+                GROUP BY d.username, d.email, d.disabled
+                ORDER BY d.username
+            """)
+            drivers_list = cur.fetchall()
+            role = 'admin'
 
-    return render_template("drivers.html", drivers=drivers_list, role=session.get('role'))
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template("drivers.html", drivers=drivers_list, role=role)
+
 
 @app.route('/driver/<username>', methods=['GET', 'POST'])
 def sponsor_edit_driver(username):

@@ -1,89 +1,96 @@
 {% extends "base.html" %}
-
 {% block title %}Drivers{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>All Drivers</h2>
-    {% if drivers %}
-    <table class="table table-bordered table-hover mt-3">
-        <thead class="table-light">
-            <tr>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Points</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for driver in drivers %}
-            <tr>
-                <td>{{ driver.username }}</td>
-                <td>{{ driver.email }}</td>
-                <td>{{ driver.points }}</td>
-                <td>
-                    
-                    {% if role == 'admin' %}
-                    <!-- Remove driver -->
-                    <form action="{{ url_for('remove_driver') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-                    </form>
-                    {% endif %}
-                    
-                    {% if role == 'sponsor' %}
-                    <form action="{{ url_for('drop_driver') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <button type="submit" class="btn btn-warning btn-sm" 
-                            onclick="return confirm('Are you sure you want to drop {{ driver.username }}?')">
-                            Drop
-                        </button>
-                    </form>
-                    {% endif %}
-                    <!-- Login as driver -->
-                    <form action="{{ url_for('login_as_driver') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <button type="submit" class="btn btn-secondary btn-sm">Login</button>
-                    </form>
-                    
-                    {% if role == 'sponsor' %}
-                        <a href="{{ url_for('sponsor_edit_driver', username=driver.username) }}" class="btn btn-info btn-sm">Edit</a>
-                    {% endif %}
-                    
-                    <!-- Add points -->
-                    <form action="{{ url_for('add_points') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <input type="number" name="points_to_add" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
-                        <input type="text" name="reason" placeholder="Reason" style="width: 140px;" class="form-control d-inline-block mb-1">
-                        <button type="submit" class="btn btn-primary btn-sm">Add Points</button>
-                    </form>
+<h1 class="mb-4">
+  {% if role == 'admin' %}All Drivers{% else %}Your Drivers{% endif %}
+</h1>
 
-                    <!-- Remove points -->
-                    <form action="{{ url_for('remove_points') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="username" value="{{ driver.username }}">
-                        <input type="number" name="points_to_remove" value="1" min="1" style="width: 60px;" class="form-control d-inline-block">
-                        <input type="text" name="reason" placeholder="Reason" style="width: 140px;" class="form-control d-inline-block mb-1">
-                        <button type="submit" class="btn btn-warning btn-sm">Remove Points</button>
-                    </form>
-                    {% if role == 'admin' %}
-                    <!-- Disable / Enable Driver -->
-                    <form action="{{ url_for('toggle_account', role='driver', username=driver.username) }}" method="post" style="display:inline;">
-                        {% if driver.disabled %}
-                            <input type="hidden" name="action" value="enable">
-                            <button type="submit" class="btn btn-success btn-sm">Enable</button>
-                        {% else %}
-                            <input type="hidden" name="action" value="disable">
-                            <button type="submit" class="btn btn-dark btn-sm">Disable</button>
-    {% endif %}
-</form>
+{% if role == 'sponsor' %}
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Username</th>
+        <th>Email</th>
+        <th class="text-end">Points (with you)</th>
+        <th>Status</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in drivers %}
+      <tr>
+        <td>{{ d.username }}</td>
+        <td>{{ d.email }}</td>
+        <td class="text-end"><strong>{{ d.points or 0 }}</strong></td>
+        <td>
+          {% if d.disabled %}
+            <span class="badge bg-danger">Disabled</span>
+          {% else %}
+            <span class="badge bg-success">Active</span>
+          {% endif %}
+        </td>
+        <td class="text-end">
+          <form action="{{ url_for('login_as_driver') }}" method="POST" class="d-inline">
+            <input type="hidden" name="username" value="{{ d.username }}">
+            <button class="btn btn-outline-secondary btn-sm">Login as</button>
+          </form>
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('sponsor_edit_driver', username=d.username) }}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+{% else %} {# role == admin #}
+
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Driver</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Sponsors &amp; Points</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in drivers %}
+      <tr>
+        <td class="fw-semibold">{{ d.username }}</td>
+        <td>{{ d.email }}</td>
+        <td>
+          {% if d.disabled %}
+            <span class="badge bg-danger">Disabled</span>
+          {% else %}
+            <span class="badge bg-success">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          {% set packed = d.sponsors_points %}
+          {% if packed %}
+            {# packed looks like "sponsor1::123||sponsor2::45" #}
+            <div class="d-flex flex-wrap gap-2">
+              {% for pair in packed.split('||') %}
+                {% if pair %}
+                  {% set parts = pair.split('::') %}
+                  {% set sp = parts[0] %}
+                  {% set pts = (parts|length > 1) and parts[1] or '0' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary rounded-pill px-3 py-2">
+                    <span class="fw-semibold">{{ sp }}</span>
+                    <span class="ms-1">·</span>
+                    <span class="ms-1">{{ pts }} pts</span>
+                  </span>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% else %}
+            <span class="text-muted">No accepted sponsors</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
 {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p>No drivers found.</p>
-    {% endif %}
-</div>
 {% endblock %}
