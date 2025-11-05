@@ -16,6 +16,7 @@ from emailScripts.lowBalanceEmail import send_low_balance_email
 from emailScripts.spendPointsEmail import send_spent_points_email
 from emailScripts.sponsorLockedEmail import send_sponsor_locked_email
 from emailScripts.favoriteRestockEmail import send_favorite_restock_email
+from emailScripts.newCatalogItemEmail import send_new_item_email
 import secrets
 import os
 import csv
