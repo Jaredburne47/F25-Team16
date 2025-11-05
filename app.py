@@ -299,33 +299,33 @@ def about():
 def login():
     if request.method == 'POST':
         # ---  CAPTCHA VERIFICATION START ---
-        captcha_response = request.form.get('g-recaptcha-response')
+#        captcha_response = request.form.get('g-recaptcha-response')
         
         # Check if CAPTCHA was submitted
-        if not captcha_response:
-            flash("Please complete the CAPTCHA.", "danger")
+#        if not captcha_response:
+#          flash("Please complete the CAPTCHA.", "danger")
             # Pass site_key back to the template even on failure
-            return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
+#            return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
 
         # Verify the response with Google
-        try:
-            response_data = requests.post(
-                'https://www.google.com/recaptcha/api/siteverify',
-                data={
-                    'secret': app.config['RECAPTCHA_SECRET_KEY'],
-                    'response': captcha_response,
-                    'remoteip': request.remote_addr
-                }
-            ).json()
-        except requests.exceptions.RequestException as e:
-            print(f"reCAPTCHA request failed: {e}")
-            flash("Error connecting to CAPTCHA service. Please try again later.", "danger")
-            return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
+#        try:
+#            response_data = requests.post(
+#                'https://www.google.com/recaptcha/api/siteverify',
+#                data={
+#                    'secret': app.config['RECAPTCHA_SECRET_KEY'],
+#                    'response': captcha_response,
+#                    'remoteip': request.remote_addr
+#                }
+#            ).json()
+#        except requests.exceptions.RequestException as e:
+#            print(f"reCAPTCHA request failed: {e}")
+#            flash("Error connecting to CAPTCHA service. Please try again later.", "danger")
+#            return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
 
         # Check if Google's verification was successful
-        if not response_data.get('success'):
-            flash("CAPTCHA verification failed. Please try again.", "danger")
-            return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
+#        if not response_data.get('success'):
+#            flash("CAPTCHA verification failed. Please try again.", "danger")
+#            return render_template("login.html", site_key=app.config['RECAPTCHA_SITE_KEY'])
         # --- CAPTCHA VERIFICATION END ---
 
         username = request.form.get('username', '').strip()
