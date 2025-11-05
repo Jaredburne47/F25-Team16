@@ -2284,7 +2284,7 @@ def apply_to_sponsor(sponsor):
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        # Only block duplicate active app to the SAME sponsor
+        # Block only duplicate active app to the SAME sponsor
         cursor.execute("""
             SELECT id FROM driverApplications
             WHERE driverUsername=%s AND sponsor=%s
@@ -2292,14 +2292,17 @@ def apply_to_sponsor(sponsor):
         """, (username, sponsor))
         if cursor.fetchone():
             cursor.close(); db.close()
-            return "<h3>You already have an active application with this sponsor.</h3>"
+            flash("You already have an active application with this sponsor.", "warning")
+            return redirect(url_for('sponsor_browse'))
 
+        # Create application
         cursor.execute("""
             INSERT INTO driverApplications (driverUsername, sponsor, status, created_at, updated_at)
             VALUES (%s, %s, 'pending', NOW(), NOW())
         """, (username, sponsor))
         db.commit()
 
+        # Audit log
         cursor.execute("""
             INSERT INTO auditLogs (action, description, user_id)
             VALUES (%s, %s, %s)
@@ -2307,19 +2310,36 @@ def apply_to_sponsor(sponsor):
         db.commit()
 
         cursor.close(); db.close()
+
         flash(f'Your application to "{sponsor}" has been submitted successfully!', 'success')
 
-        sponsorEmail = get_email_by_username(sponsor)
-        if sponsorEmail:
-            cursor.execute("SELECT receive_emails, driver_app_email FROM sponsor WHERE username=%s", (sponsor_username,))
-            prefs = cursor.fetchone()
-            if prefs and prefs['receive_emails'] and prefs['driver_app_email']:
-                applicationEmail.send_application_email(sponsor_email, sponsor_username)
+        # ---- Optional: notify sponsor (safe, separate connection & variables) ----
+        try:
+            sponsor_email = get_email_by_username(sponsor)  # uses its own connection
+            if sponsor_email:
+                db2 = MySQLdb.connect(**db_config)
+                cur2 = db2.cursor(MySQLdb.cursors.DictCursor)
+                cur2.execute("""
+                    SELECT receive_emails, driver_app_email
+                    FROM sponsor
+                    WHERE username=%s
+                """, (sponsor,))
+                prefs = cur2.fetchone()
+                cur2.close(); db2.close()
+
+                if prefs and prefs.get('receive_emails') and prefs.get('driver_app_email'):
+                    # Send notification to the sponsor
+                    applicationEmail.send_application_email(sponsor_email, sponsor)
+        except Exception as notify_err:
+            # Don’t break the flow if email fails; optionally log
+            print(f"[notify] Failed to notify sponsor {sponsor}: {notify_err}")
 
         return redirect(url_for('driver_applications'))
 
     except Exception as e:
+        # If anything goes wrong earlier, show a friendly error
         return f"<h2>Error applying to sponsor:</h2><p>{e}</p>"
+
 
 @app.route('/drop_sponsor/<sponsor>', methods=['POST'])
 def drop_sponsor(sponsor):
