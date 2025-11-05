@@ -1042,7 +1042,7 @@ def orders_cancel(order_id):
 
     cur = db.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("""
-        SELECT order_id, user_id, product_id, point_cost, quantity, status
+        SELECT order_id, user_id, product_id, point_cost, quantity, status, sponsor
         FROM orders
         WHERE order_id=%s
     """, (order_id,))
@@ -1063,24 +1063,40 @@ def orders_cancel(order_id):
         # 1) Mark as Cancelled
         cur.execute("UPDATE orders SET status='Cancelled' WHERE order_id=%s", (order_id,))
 
-        # 2) Refund points to driver
-        print(f"Refunding {o['point_cost']} points to {username}")
-        print(f"Order data: {o}")
-        cur.execute("UPDATE drivers SET points = points + %s WHERE username=%s",
-                    (int(o['point_cost']), username))
-        print(f"Rows affected: {cur.rowcount}")
+        # 2) Refund points to the correct (driver, sponsor) bucket
+        #    Use upsert so we handle the case where the row might not exist yet.
+        cur.execute("""
+            INSERT INTO driver_sponsor_points (driver_username, sponsor, points)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE points = points + VALUES(points)
+        """, (username, o['sponsor'], int(o['point_cost'])))
 
-        # 3) Restock if product still exists (it may have been deleted at checkout)
+        # 3) Restock if product still exists (it may have been deleted after checkout)
         cur.execute("SELECT product_id FROM products WHERE product_id=%s", (o['product_id'],))
         exists = cur.fetchone()
         if exists:
             cur.execute("""
-                UPDATE products SET quantity = quantity + %s
+                UPDATE products
+                SET quantity = quantity + %s
                 WHERE product_id=%s
             """, (int(o['quantity']), o['product_id']))
 
+        # 4) (Optional) Audit log
+        try:
+            cur.execute("""
+                INSERT INTO auditLogs (action, description, user_id)
+                VALUES (%s, %s, %s)
+            """, (
+                "order_cancelled",
+                f"{username} cancelled order {o['order_id']} and was refunded {int(o['point_cost'])} points from sponsor {o['sponsor']}.",
+                username
+            ))
+        except Exception:
+            # Don't break cancel if audit insert fails
+            pass
+
         db.commit()
-        
+
     except Exception as e:
         db.rollback()
         cur.close(); db.close()
@@ -1088,6 +1104,7 @@ def orders_cancel(order_id):
 
     cur.close(); db.close()
 
+    # Send cancellation email (kept from your original flow)
     email = get_email_by_username(username)
     cancelledPurchase.send_cancelled_purchase_email(email, username)
 
