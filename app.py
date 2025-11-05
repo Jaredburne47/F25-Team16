@@ -1729,14 +1729,38 @@ def sponsors():
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT username, email, disabled FROM sponsor;")
+
+        if session.get('role') == 'sponsor':
+            # Look up this sponsor's organization
+            cursor.execute("SELECT organization FROM sponsor WHERE username=%s", (session['user'],))
+            row = cursor.fetchone()
+            org = row['organization'] if row else None
+
+            # Show only sponsors from the same organization (including self)
+            cursor.execute("""
+                SELECT username, email, disabled, organization
+                FROM sponsor
+                WHERE organization <=> %s
+                ORDER BY username
+            """, (org,))
+        else:
+            # Admins see all sponsors
+            cursor.execute("""
+                SELECT username, email, disabled, organization
+                FROM sponsor
+                ORDER BY organization IS NULL, organization, username
+            """)
+
         sponsors_list = cursor.fetchall()
         cursor.close()
         db.close()
+
     except Exception as e:
         flash(f"Database error loading sponsors list: {e}", "danger")
+        sponsors_list = []
 
     return render_template("sponsors.html", sponsors=sponsors_list, role=session.get('role'))
+
 
 
 @app.route('/remove_driver', methods=['POST'])
