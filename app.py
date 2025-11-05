@@ -875,6 +875,7 @@ def cart_checkout():
 
         driver_points = _get_points(username, active_sponsor)
 
+        # Load cart with product details
         cur.execute("""
             SELECT ci.product_id, ci.quantity AS qty,
                    p.name, p.points_cost, p.quantity AS stock
@@ -889,16 +890,31 @@ def cart_checkout():
             cur.close(); db.close()
             return redirect(url_for('cart_page'))
 
+        # Tally totals + build items list for email
         total_points = 0
+        email_items = []  # <- for orderPlacedEmail
         for line in cart:
-            if int(line['qty']) <= 0 or int(line['stock']) < int(line['qty']):
+            qty = int(line['qty'])
+            stock = int(line['stock'])
+            cost = int(line['points_cost'])
+            if qty <= 0 or stock < qty:
                 cur.close(); db.close()
                 return "<h3>Not enough stock for one or more items in your cart.</h3>"
-            total_points += int(line['points_cost']) * int(line['qty'])
+            line_points = cost * qty
+            total_points += line_points
+            email_items.append({
+                "name": line['name'],
+                "quantity": qty,
+                "points": line_points
+            })
 
         if driver_points < total_points:
             cur.close(); db.close()
             return "<h3>You don't have enough points with this sponsor.</h3>"
+
+        # Expected delivery is 1 week after placement (match your orders page)
+        from datetime import datetime, timedelta
+        expected_date_str = (datetime.now() + timedelta(days=7)).strftime('%b %d, %Y')
 
         db.autocommit(False)
         try:
@@ -911,6 +927,7 @@ def cart_checkout():
 
             # Create orders, decrement stock
             for line in cart:
+                qty = int(line['qty'])
                 cur.execute("""
                     INSERT INTO orders
                         (user_id, product_id, sponsor, reward_description, point_cost, quantity, delivery_address, status)
@@ -921,8 +938,8 @@ def cart_checkout():
                     int(line['product_id']),
                     active_sponsor,
                     line['name'],
-                    int(line['points_cost']) * int(line['qty']),
-                    int(line['qty']),
+                    int(line['points_cost']) * qty,
+                    qty,
                     delivery_address
                 ))
 
@@ -930,7 +947,7 @@ def cart_checkout():
                     UPDATE products
                     SET quantity = quantity - %s
                     WHERE product_id=%s
-                """, (int(line['qty']), int(line['product_id'])))
+                """, (qty, int(line['product_id'])))
 
             # Clear only this sponsor's cart lines
             cur.execute("DELETE FROM cart_items WHERE driver_username=%s AND sponsor=%s",
@@ -938,18 +955,24 @@ def cart_checkout():
 
             db.commit()
 
-            # --- Emails & low-balance logic (unchanged) ---
+            # --- Emails & low-balance logic ---
             cur.execute("SELECT email, points FROM drivers WHERE username=%s", (username,))
             row = cur.fetchone()
             if row:
-                cur.execute("SELECT email, receive_emails, spend_points_email FROM drivers WHERE username=%s", (username,))
+                # Pull email + prefs for spend_points & orderPlaced
+                cur.execute("""
+                    SELECT email, receive_emails, spend_points_email
+                    FROM drivers
+                    WHERE username=%s
+                """, (username,))
                 prefs = cur.fetchone()
+
+                # Existing: spent points email
                 if prefs and prefs['receive_emails'] and prefs['spend_points_email']:
                     send_spent_points_email(prefs['email'], username, total_points)
 
-                # --- NEW: Order placed email ---
+                # NEW: order placed email (expects items + expected_date_str)
                 try:
-                    # Only send if driver allows emails in general
                     if prefs and prefs.get('receive_emails'):
                         from emailScripts.orderPlacedEmail import send_order_placed_email
                         send_order_placed_email(
@@ -957,15 +980,21 @@ def cart_checkout():
                             username=username,
                             sponsor=active_sponsor,
                             total_points=total_points,
-                            delivery_address=delivery_address
+                            delivery_address=delivery_address,
+                            items=email_items,
+                            expected_date_str=expected_date_str
                         )
                 except Exception as mail_err:
                     print(f"[orderPlacedEmail] Failed to send: {mail_err}")
 
-                # Low balance alert uses the *overall* drivers.points column as in your existing code
+                # Low balance alert uses overall drivers.points per your existing code
                 pts = int(row['points'])
                 if pts < 50:
-                    cur.execute("SELECT email, receive_emails, low_balance_email FROM drivers WHERE username=%s", (username,))
+                    cur.execute("""
+                        SELECT email, receive_emails, low_balance_email
+                        FROM drivers
+                        WHERE username=%s
+                    """, (username,))
                     prefs_low = cur.fetchone()
                     if prefs_low and prefs_low['receive_emails'] and prefs_low['low_balance_email']:
                         send_low_balance_email(prefs_low['email'], username, pts, 50)
@@ -1890,53 +1919,78 @@ def update_notifications():
 
     username = session['user']
     role = session['role']
-    table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}.get(role)
+
+    # Correct table names by role
+    table_by_role = {'driver': 'drivers', 'sponsor': 'sponsors', 'admin': 'admins'}
+    table = table_by_role.get(role)
+    if not table:
+        flash("Unknown role.", "danger")
+        return redirect(url_for('settings'))
 
     form = request.form
+
+    # Checkbox -> 0/1 helper
+    def cb(name): 
+        return 1 if name in form else 0
 
     try:
         db = MySQLdb.connect(**db_config)
         cur = db.cursor(MySQLdb.cursors.DictCursor)
 
         if role == 'driver':
+            # Includes the three NEW prefs
             cur.execute(f"""
                 UPDATE {table}
-                SET receive_emails=%s, login_email=%s, low_balance_email=%s,
-                    points_added_email=%s, points_removed_email=%s,
-                    driver_dropped_email=%s, spend_points_email=%s
-                WHERE username=%s
+                   SET receive_emails=%s,
+                       login_email=%s,
+                       low_balance_email=%s,
+                       points_added_email=%s,
+                       points_removed_email=%s,
+                       driver_dropped_email=%s,
+                       spend_points_email=%s,
+                       favorite_back_in_stock_email=%s,
+                       new_item_email=%s,
+                       order_placed_email=%s
+                 WHERE username=%s
             """, (
-                'receive_emails' in form,
-                'login_email' in form,
-                'low_balance_email' in form,
-                'points_added_email' in form,
-                'points_removed_email' in form,
-                'driver_dropped_email' in form,
-                'spend_points_email' in form,
+                cb('receive_emails'),
+                cb('login_email'),
+                cb('low_balance_email'),
+                cb('points_added_email'),
+                cb('points_removed_email'),
+                cb('driver_dropped_email'),
+                cb('spend_points_email'),
+                cb('favorite_back_in_stock_email'),
+                cb('new_item_email'),
+                cb('order_placed_email'),
                 username
             ))
 
         elif role == 'sponsor':
             cur.execute(f"""
                 UPDATE {table}
-                SET receive_emails=%s, login_email=%s, driver_app_email=%s
-                WHERE username=%s
+                   SET receive_emails=%s,
+                       login_email=%s,
+                       driver_app_email=%s
+                 WHERE username=%s
             """, (
-                'receive_emails' in form,
-                'login_email' in form,
-                'driver_app_email' in form,
+                cb('receive_emails'),
+                cb('login_email'),
+                cb('driver_app_email'),
                 username
             ))
 
         elif role == 'admin':
             cur.execute(f"""
                 UPDATE {table}
-                SET receive_emails=%s, login_email=%s, sponsor_locked_email=%s
-                WHERE username=%s
+                   SET receive_emails=%s,
+                       login_email=%s,
+                       sponsor_locked_email=%s
+                 WHERE username=%s
             """, (
-                'receive_emails' in form,
-                'login_email' in form,
-                'sponsor_locked_email' in form,
+                cb('receive_emails'),
+                cb('login_email'),
+                cb('sponsor_locked_email'),
                 username
             ))
 
