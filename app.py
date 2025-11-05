@@ -744,31 +744,48 @@ def dashboard():
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-        active = _get_active_sponsor(username)
-        points_balance = _get_points(username, active) if active else 0
+        # Active sponsor and its balance
+        active_sponsor = _get_active_sponsor(username)
+        points_balance = _get_points(username, active_sponsor) if active_sponsor else 0
 
-        # Keep audit log history
+        # Recent point history (same as before)
         cursor.execute("""
             SELECT timestamp, action, description
             FROM auditLogs
             WHERE (action='add points' OR action='remove points')
-            AND (
-                    description LIKE %s
-                OR description LIKE %s
-            )
+              AND (description LIKE %s OR description LIKE %s)
             ORDER BY timestamp DESC
             LIMIT 50
         """, (f'% to {username}%', f'% from {username}%'))
         history = cursor.fetchall()
 
+        # All accepted sponsors + per-sponsor points (LEFT JOIN to default to 0)
+        cursor.execute("""
+            SELECT da.sponsor,
+                   COALESCE(dsp.points, 0) AS points
+            FROM driverApplications da
+            LEFT JOIN driver_sponsor_points dsp
+              ON dsp.driver_username = da.driverUsername
+             AND dsp.sponsor = da.sponsor
+            WHERE da.driverUsername = %s
+              AND da.status = 'accepted'
+            ORDER BY da.sponsor ASC
+        """, (username,))
+        sponsor_points = cursor.fetchall()  # list of dicts: {'sponsor': ..., 'points': ...}
+
         cursor.close()
         db.close()
+
     except Exception as e:
         return f"<h2>Database error:</h2><p>{e}</p>"
 
-    return render_template("dashboard.html",
-                           points_balance=points_balance,
-                           history=history)
+    return render_template(
+        "dashboard.html",
+        active_sponsor=active_sponsor,
+        points_balance=points_balance,
+        sponsor_points=sponsor_points,
+        history=history
+    )
 
 @app.get("/cart")
 def cart_page():
