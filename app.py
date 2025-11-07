@@ -2503,7 +2503,7 @@ def add_points():
         """, (target_driver, acting_sponsor, points))
         db.commit()
         cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-                       ("add points", f"{performed_by} added {points} points to {target_driver} under {acting_sponsor}. Reason: {reason}", performed_by))
+                       ("add points", f"{performed_by} added {points} points to {target_driver}. Reason: {reason}", performed_by))
         db.commit()
         flash(f'{points} points were successfully added to "{target_driver}" under {acting_sponsor}.', 'success')
 
