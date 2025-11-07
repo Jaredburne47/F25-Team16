@@ -2,183 +2,343 @@
 {% block title %}About - Driver Incentive Program{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-  <header class="text-center mb-4">
-    <h1 class="h2 fw-semibold text-dark mb-1">About Team 16</h1>
-    <p class="text-secondary mb-0">Driver Incentive Program</p>
-  </header>
+<div class="about-hero">
+  <div class="container">
 
-  <section class="position-relative mx-auto about-truck-wrap">
-    <div class="about-truck">
-      <!-- Truck SVG -->
-      <svg viewBox="0 0 1200 420" class="truck-svg" role="img" aria-labelledby="truckTitle truckDesc">
-        <title id="truckTitle">Team 16 Info Truck</title>
-        <desc id="truckDesc">Trailer contains structured team information. Headlight toggles a soft beam.</desc>
+    <!-- Page Header -->
+    <header class="page-head">
+      <h1>About Team 16</h1>
+      <p class="subtitle">We build a safer, smarter Driver Incentive Program—rewarding good driving with real perks.</p>
+    </header>
 
-        <!-- Trailer -->
-        <g id="trailer-group">
-          <rect x="140" y="80" width="820" height="240" rx="12" ry="12" class="trailer" />
-          <rect x="860" y="95" width="84" height="28" rx="6" class="brand-plate"/>
-          <text x="902" y="114" text-anchor="middle" class="brand-text">TEAM 16</text>
-        </g>
+    <!-- SCENE -->
+    <section class="scene" aria-label="Team 16 truck scene">
+      <!-- Sky bits -->
+      <div class="cloud c1" aria-hidden="true"></div>
+      <div class="cloud c2" aria-hidden="true"></div>
+      <div class="cloud c3" aria-hidden="true"></div>
 
-        <!-- Hitch & Cab -->
-        <rect x="960" y="200" width="30" height="18" class="hitch" rx="3"/>
-        <g id="cab-group">
-          <rect x="990" y="150" width="150" height="170" rx="14" class="cab"/>
-          <rect x="1010" y="170" width="80" height="44" rx="6" class="window"/>
-          <rect x="1000" y="226" width="40" height="14" rx="3" class="grille"/>
-          <rect x="990" y="306" width="150" height="10" class="step"/>
-          <g class="headlight" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle headlight">
-            <circle cx="1128" cy="246" r="10" class="lamp"/>
+      <!-- Road -->
+      <div class="road">
+        <span class="dash"></span>
+      </div>
+
+      <!-- Truck -->
+      <div class="truck-wrap">
+        <svg viewBox="0 0 1200 420" class="truck-svg" role="img" aria-labelledby="truckTitle truckDesc">
+          <title id="truckTitle">Team 16 Delivery Truck</title>
+          <desc id="truckDesc">Trailer contains a manifest of Team 16 information. Use the button to open.</desc>
+
+          <!-- Trailer -->
+          <g id="trailer">
+            <rect x="150" y="90" width="720" height="230" rx="16" class="trailer-skin"/>
+            <rect x="780" y="102" width="78" height="26" rx="6" class="badge"/>
+            <text x="819" y="120" text-anchor="middle" class="badge-text">TEAM 16</text>
+            <!-- subtle handle to hint the drawer -->
+            <rect x="860" y="200" width="12" height="50" rx="6" class="handle"/>
           </g>
-          <polygon points="1138,246 1200,226 1200,266" class="beam hidden"/>
-        </g>
 
-        <!-- Wheels -->
-        <g class="wheels">
-          <circle cx="260" cy="350" r="40" class="wheel"/>
-          <circle cx="820" cy="350" r="40" class="wheel"/>
-          <circle cx="1040" cy="350" r="38" class="wheel"/>
-          <circle cx="260" cy="350" r="10" class="hub"/>
-          <circle cx="820" cy="350" r="10" class="hub"/>
-          <circle cx="1040" cy="350" r="10" class="hub"/>
-        </g>
-      </svg>
+          <!-- Hitch -->
+          <rect x="870" y="205" width="32" height="18" rx="3" class="hitch"/>
 
-      <!-- Clipped trailer content -->
-      <div class="trailer-viewport" aria-hidden="false">
-        <div class="trailer-content">
-          {% if rows and rows|length %}
-            <ul class="list-unstyled m-0">
-              {% for row in rows %}
-                <li class="info-card">
+          <!-- Cab -->
+          <g id="cab">
+            <rect x="905" y="150" width="170" height="170" rx="18" class="cab-skin"/>
+            <rect x="930" y="168" width="90" height="52" rx="8" class="window"/>
+            <rect x="918" y="230" width="58" height="14" rx="4" class="grille"/>
+            <rect x="905" y="310" width="170" height="12" class="step"/>
+            <!-- headlight -->
+            <g class="headlight" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle headlight">
+              <circle cx="1068" cy="250" r="12" class="lamp"/>
+            </g>
+            <polygon points="1082,250 1200,222 1200,278" class="beam hidden"/>
+          </g>
+
+          <!-- Wheels -->
+          <g class="wheels">
+            <circle cx="250" cy="350" r="42" class="wheel"/>
+            <circle cx="740" cy="350" r="42" class="wheel"/>
+            <circle cx="1025" cy="350" r="40" class="wheel"/>
+            <circle cx="250" cy="350" r="10" class="hub"/>
+            <circle cx="740" cy="350" r="10" class="hub"/>
+            <circle cx="1025" cy="350" r="10" class="hub"/>
+          </g>
+        </svg>
+
+        <!-- Slide-out MANIFEST from trailer -->
+        <aside class="manifest" aria-live="polite" aria-label="Team 16 manifest panel">
+          <header class="manifest-head">
+            <div>
+              <h2 class="manifest-title">Manifest</h2>
+              <p class="manifest-sub">Build info & product details</p>
+            </div>
+            <button class="btn-close" type="button" aria-label="Close manifest">&times;</button>
+          </header>
+
+          <div class="manifest-body">
+            {% if rows and rows|length %}
+              <ul class="kv-list">
+                {% for row in rows %}
                   {% for key, value in row.items() %}
-                    <div class="kv">
-                      <div class="k">{{ key }}</div>
-                      <div class="v">{{ value }}</div>
-                    </div>
+                    <li class="kv">
+                      <span class="k">{{ key }}</span>
+                      <span class="v">{{ value }}</span>
+                    </li>
                   {% endfor %}
-                </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <div class="empty">No data found.</div>
-          {% endif %}
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="empty">No data found.</div>
+            {% endif %}
+          </div>
+        </aside>
+
+        <!-- Controls -->
+        <div class="scene-cta">
+          <button class="btn-primary" type="button" id="openManifest">
+            <span class="truck-emoji" aria-hidden="true">📦</span> Open Manifest
+          </button>
+          <button class="btn-ghost" type="button" id="flashlightBtn">
+            <span class="flash-emoji" aria-hidden="true">🔦</span> Headlight
+          </button>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <!-- About content blocks -->
+    <section class="grid mt-6">
+      <article class="card">
+        <h3>Our Mission</h3>
+        <p>
+          Encourage safer roads by aligning incentives with behavior. Drivers earn points for good habits;
+          sponsors turn those points into real rewards. Simple, transparent, effective.
+        </p>
+      </article>
+
+      <article class="card">
+        <h3>What We Ship</h3>
+        <ul class="chips">
+          <li class="chip">Point Engine</li>
+          <li class="chip">Multi-Sponsor Drivers</li>
+          <li class="chip">Auditable Orders</li>
+          <li class="chip">Catalog Management</li>
+          <li class="chip">Bulk Imports</li>
+          <li class="chip">Admin Controls</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h3>Stack</h3>
+        <ul class="stack">
+          <li><span>Flask</span></li>
+          <li><span>MySQL</span></li>
+          <li><span>AWS S3 / EC2</span></li>
+          <li><span>eBay API</span></li>
+          <li><span>Bootstrap 5</span></li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- Milestones road -->
+    <section class="mile mt-6" aria-label="Project milestones">
+      <h3>Road So Far</h3>
+      <div class="mile-road">
+        <div class="mile-stop">
+          <div class="dot"></div>
+          <p class="label">Prototype</p>
+        </div>
+        <div class="mile-stop">
+          <div class="dot"></div>
+          <p class="label">Catalog + Orders</p>
+        </div>
+        <div class="mile-stop">
+          <div class="dot"></div>
+          <p class="label">Multi-Sponsor</p>
+        </div>
+        <div class="mile-stop">
+          <div class="dot"></div>
+          <p class="label">Audit & Reviews</p>
+        </div>
+        <div class="mile-stop">
+          <div class="dot"></div>
+          <p class="label">Release</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- (Optional) Partner logos -->
+    <section class="logos mt-6" aria-label="Ecosystem">
+      <div class="logo-pill">AWS</div>
+      <div class="logo-pill">MySQL</div>
+      <div class="logo-pill">eBay</div>
+      <div class="logo-pill">Flask</div>
+      <div class="logo-pill">Bootstrap</div>
+    </section>
+  </div>
 </div>
 
 <style>
-.about-truck-wrap { max-width: 1100px; }
-.about-truck { position: relative; }
-.truck-svg   { width: 100%; height: auto; display: block; position: relative; z-index: 1; }
+/* --------- Layout & Base --------- */
+.about-hero { background: radial-gradient(1200px 600px at 50% -200px, #f3f7ff, #ffffff 60%); }
+.container { max-width: 1100px; margin: 0 auto; padding: 3rem 1rem 4rem; }
+.page-head h1 { margin: 0; font-weight: 700; letter-spacing: .2px; text-align:center; }
+.page-head .subtitle { color: #64748b; text-align:center; margin:.5rem 0 2rem; }
 
-/* Palette */
-:root {
-  --surface: #fff; --line:#E5E9F0; --ink:#0F172A; --ink-2:#334155;
-  --primary:#0d6efd; --steel:#2F3B47;
-}
-.trailer { fill: var(--surface); stroke: var(--line); stroke-width: 3; }
-.cab{ fill: var(--primary);} .window{fill:#EAF3FF;} .grille{fill:#DDE5EE;}
-.step,.hitch{fill:var(--steel);} .wheel{fill:#1F2937;} .hub{fill:#C9D2DC;}
-.brand-plate{fill:var(--primary);} .brand-text{fill:#fff;font:700 14px/1 "Inter",system-ui;letter-spacing:.5px;}
-.lamp{fill:#FFD76B;stroke:#B69539;stroke-width:1.5;} .beam{fill:url(#beamGradient);opacity:0;transition:opacity .2s}
-.hidden{opacity:0}
+/* --------- Scene --------- */
+.scene { position: relative; border-radius: 16px; padding: 2.25rem 1rem 3.25rem; overflow: hidden; background: linear-gradient(#eaf2ff, #f8fbff 40%, #fff); box-shadow: 0 1px 2px rgba(16,24,40,.06); }
+.road { position: absolute; left: 0; right: 0; bottom: 54px; height: 6px; background: #e6ebf3; }
+.road .dash { position: absolute; left: -100%; right: 0; top: 0; height: 6px; background: repeating-linear-gradient(90deg, transparent 0 30px, #cad1dc 30px 60px); animation: dash 10s linear infinite; }
+@keyframes dash { to { left: 100%; } }
 
-/* Clipped viewport matches trailer rect */
-.trailer-viewport{
-  position:absolute; z-index:2;
-  left: calc(140 / 1200 * 100%);
-  top:  calc(80 / 420 * 100%);
-  width: calc(820 / 1200 * 100%);
-  height:calc(240 / 420 * 100%);
-  overflow:hidden;
-  border-radius:12px;
-  box-shadow: inset 0 0 0 1px rgba(229,233,240,.7);
-  pointer-events:none;
-}
+.cloud { position: absolute; top: 16px; width: 180px; height: 60px; background: #fff; border-radius: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.05)); opacity:.95; }
+.cloud:before, .cloud:after { content:""; position:absolute; background:#fff; width:100px; height:100px; border-radius: 50%; top:-30px; }
+.cloud:before { left:20px; }
+.cloud:after { right:20px; }
+.c1 { left: 6%; animation: float 23s linear infinite; }
+.c2 { left: 40%; animation: float 27s linear infinite reverse; top:28px }
+.c3 { left: 76%; animation: float 25s linear infinite; top:22px }
+@keyframes float { 0%{transform: translateX(0)} 100%{transform: translateX(120px)} }
 
-/* Scrollable info */
-.trailer-content{
-  position:absolute; inset:0;
-  padding: clamp(.6rem, 1.2vw, 1rem);
-  overflow:auto;
-  scrollbar-gutter: stable both-edges;
-  pointer-events:auto;
-}
+.truck-wrap { position: relative; }
+.truck-svg { width: 100%; height: auto; display:block; }
 
-/* Card + Key/Value styling */
-.info-card{
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: .85rem;
-  margin-bottom: .65rem;
-  box-shadow: 0 1px 2px rgba(16,24,40,.04);
-}
-.kv{
-  display:grid;
-  grid-template-columns:minmax(140px,1fr) 2fr;
-  gap:.25rem .75rem;
-  padding:.35rem 0;
-  border-bottom:1px dashed #EEF2F7;
-}
-.kv:last-child{ border-bottom:0; }
-.k{font-weight:600;color:var(--ink);white-space:nowrap;}
-.v{color:var(--ink-2);word-break:break-word;}
-.empty{
-  height:100%;display:grid;place-items:center;
-  color:#94A3B8;border:1px dashed var(--line);border-radius:10px;
-}
+.trailer-skin { fill: #ffffff; stroke: #dbe2ee; stroke-width: 3; }
+.badge { fill: #0d6efd; }
+.badge-text { fill: #fff; font: 700 14px/1 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial; letter-spacing: .4px; }
+.handle { fill: #e8edf6; }
 
-/* Ensure cab always on top */
-#cab-group{ position: relative; z-index: 3; }
+.hitch { fill: #2f3b47; }
+.cab-skin { fill: #0d6efd; }
+.window { fill: #E9F4FF; }
+.grille { fill: #dfe5ec; }
+.step { fill: #2f3b47; }
+.wheel { fill: #1f2937; }
+.hub { fill: #c9d2dc; }
 
-/* Responsive tweaks */
-@media (max-width: 768px){
-  .kv{ grid-template-columns:1fr; }
-  .info-card{ padding:.75rem }
+.lamp { fill: #ffd76b; stroke:#b69539; stroke-width: 1.5; }
+.beam { fill: url(#beamGradient); opacity: 0; transition: opacity .2s ease; }
+.hidden { opacity: 0; }
+
+/* --------- Manifest Drawer --------- */
+.manifest {
+  position: absolute;
+  z-index: 3;
+  /* map to trailer (x=150,y=90,w=720,h=230) */
+  left: calc(150 / 1200 * 100%);
+  top:  calc( 90 /  420 * 100%);
+  width: calc(720 / 1200 * 100%);
+  height:calc(230 /  420 * 100%);
+  background: #ffffff;
+  border: 1px solid #e6ebf3;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(20, 35, 60, .08);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+
+  /* off-screen to the left; uses transform so it slides out of the trailer */
+  transform: translateX(-104%);
+  transition: transform .45s cubic-bezier(.2,.8,.2,1);
 }
+.manifest.open { transform: translateX(0); }
 
-/* Thin scrollbars */
-.trailer-content::-webkit-scrollbar { width: 10px; }
-.trailer-content::-webkit-scrollbar-thumb {
-  background: #E7ECF2;
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+.manifest-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: .85rem 1rem; border-bottom: 1px solid #eef2f7; background: linear-gradient(#fbfcff, #ffffff);
+}
+.manifest-title { margin:0; font-size: 1rem; font-weight: 700; letter-spacing:.2px; }
+.manifest-sub { margin:0; color:#64748b; font-size:.875rem; }
+.btn-close { border:0; background:transparent; font-size:1.5rem; line-height:1; cursor:pointer; color:#475569; padding:.25rem .5rem; border-radius:8px; }
+.btn-close:hover { background:#f1f5f9; }
+
+.manifest-body { overflow:auto; padding: .5rem .75rem 1rem; }
+.kv-list { list-style:none; margin:0; padding:0; }
+.kv {
+  display:grid; grid-template-columns: 1fr 2fr; gap:.5rem 1rem;
+  padding:.6rem .5rem; border-bottom:1px dashed #e6ebf3;
+}
+.kv .k { font-weight: 600; color:#0f172a; white-space:nowrap; }
+.kv .v { color:#334155; word-break: break-word; }
+.empty { height:100%; display:grid; place-items:center; color:#94a3b8; font-style:italic; border:1px dashed #e6ebf3; border-radius:12px; }
+
+/* Controls */
+.scene-cta { display:flex; gap:.75rem; position:absolute; left: calc(160 / 1200 * 100%); bottom: 10px; }
+.btn-primary, .btn-ghost {
+  border-radius: 999px; padding:.55rem .9rem; font-weight:600; letter-spacing:.2px; cursor:pointer;
+}
+.btn-primary { background:#0d6efd; color:#fff; border:1px solid #0d6efd; box-shadow: 0 6px 20px rgba(13,110,253,.25); }
+.btn-primary:hover { filter: brightness(.95); }
+.btn-ghost { background:#ffffff; color:#0f172a; border:1px solid #e5e9f0; }
+.btn-ghost:hover { background:#f8fafc; }
+.truck-emoji, .flash-emoji { margin-right:.4rem }
+
+/* Content cards & sections */
+.grid { display:grid; gap:1rem; grid-template-columns: 2fr 2fr 1fr; }
+.card { background:#fff; border:1px solid #e6ebf3; border-radius:16px; padding:1rem 1rem 1.1rem; box-shadow:0 1px 2px rgba(16,24,40,.05); }
+.card h3 { margin-top:0; margin-bottom:.4rem; }
+.card p { margin:0; color:#334155; }
+
+.chips { display:flex; flex-wrap:wrap; gap:.5rem; padding:0; margin:.25rem 0 0; list-style:none; }
+.chip { padding:.35rem .6rem; border-radius:12px; background:#f1f5ff; border:1px solid #dbe4ff; color:#334155; font-weight:600; font-size:.92rem; }
+
+.stack { display:flex; flex-wrap:wrap; gap:.5rem; list-style:none; padding:0; margin:.25rem 0 0; }
+.stack li { background:#f8fafc; border:1px solid #e6ebf3; border-radius:10px; padding:.4rem .6rem; }
+
+.mile h3 { margin-bottom:.5rem; }
+.mile-road { position:relative; display:flex; justify-content:space-between; align-items:center; background: repeating-linear-gradient(90deg, #e6ebf3 0 8px, transparent 8px 24px); padding:1.25rem 1rem; border-radius:12px; border:1px solid #e6ebf3; }
+.mile-stop { display:grid; place-items:center; text-align:center; gap:.4rem; }
+.mile-stop .dot { width:12px; height:12px; background:#0d6efd; border-radius:50%; box-shadow:0 0 0 4px rgba(13,110,253,.15); }
+.mile-stop .label { margin:0; font-size:.9rem; color:#475569; }
+
+.logos { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center; }
+.logo-pill { padding:.5rem .8rem; border-radius:999px; background:#fff; border:1px solid #e6ebf3; box-shadow:0 1px 2px rgba(16,24,40,.05); }
+
+/* Responsive */
+@media (max-width: 992px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .grid { grid-template-columns: 1fr; }
+  .kv { grid-template-columns: 1fr; }
+  .scene-cta { position: static; margin-top:.75rem; }
+  .manifest { left: 1rem; right: 1rem; width: auto; height: 260px; }
 }
 </style>
 
 <script>
+/* one tiny helper: add the beam gradient so it works everywhere */
 (function(){
   const svg=document.querySelector('.truck-svg'); if(!svg) return;
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  const g=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
-  g.id='beamGradient'; g.setAttribute('x1','0%'); g.setAttribute('y1','0%');
-  g.setAttribute('x2','100%'); g.setAttribute('y2','0%');
-  const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
-  s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#FFF8D1'); s1.setAttribute('stop-opacity','0.65');
-  const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
-  s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#FFF8D1'); s2.setAttribute('stop-opacity','0');
-  g.appendChild(s1); g.appendChild(s2); defs.appendChild(g); svg.insertBefore(defs, svg.firstChild);
+  const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+  grad.id='beamGradient'; grad.setAttribute('x1','0%'); grad.setAttribute('y1','0%'); grad.setAttribute('x2','100%'); grad.setAttribute('y2','0%');
+  const s1=document.createElementNS('http://www.w3.org/2000/svg','stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#FFF8D1'); s1.setAttribute('stop-opacity','0.7');
+  const s2=document.createElementNS('http://www.w3.org/2000/svg','stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#FFF8D1'); s2.setAttribute('stop-opacity','0');
+  grad.appendChild(s1); grad.appendChild(s2); defs.appendChild(grad); svg.insertBefore(defs, svg.firstChild);
 
-  const headlight=svg.querySelector('.headlight');
-  const beam=svg.querySelector('.beam');
-  if(!headlight||!beam) return;
-  beam.classList.add('hidden');
-  function toggle(){
-    const off=beam.classList.toggle('hidden');
-    beam.style.opacity=off?0:.85;
-    headlight.setAttribute('aria-pressed',off?'false':'true');
+  const manifest = document.querySelector('.manifest');
+  const openBtn  = document.getElementById('openManifest');
+  const closeBtn = document.querySelector('.btn-close');
+
+  function openManifest(){ manifest.classList.add('open'); }
+  function closeManifest(){ manifest.classList.remove('open'); }
+
+  openBtn?.addEventListener('click', openManifest);
+  closeBtn?.addEventListener('click', closeManifest);
+
+  // Headlight toggle button (both UI button and SVG)
+  const headlight = svg.querySelector('.headlight');
+  const beam = svg.querySelector('.beam');
+  const flashBtn = document.getElementById('flashlightBtn');
+
+  function toggleLight() {
+    const hidden = beam.classList.toggle('hidden');
+    beam.style.opacity = hidden ? 0 : 0.85;
+    headlight?.setAttribute('aria-pressed', hidden ? 'false' : 'true');
   }
-  headlight.addEventListener('click',toggle);
-  headlight.addEventListener('keydown',e=>{
-    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggle(); }
-  });
+  headlight?.addEventListener('click', toggleLight);
+  headlight?.addEventListener('keydown', e => { if (e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleLight(); }});
+  flashBtn?.addEventListener('click', toggleLight);
 })();
 </script>
 {% endblock %}
