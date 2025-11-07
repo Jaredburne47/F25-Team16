@@ -14,12 +14,12 @@
     <!-- SCENE -->
     <section class="scene" aria-label="Team 16 truck scene">
       <!-- Sky bits -->
-      <div class="cloud c1"></div>
-      <div class="cloud c2"></div>
-      <div class="cloud c3"></div>
+      <div class="cloud c1" aria-hidden="true"></div>
+      <div class="cloud c2" aria-hidden="true"></div>
+      <div class="cloud c3" aria-hidden="true"></div>
 
       <!-- Road -->
-      <div class="road">
+      <div class="road" aria-hidden="true">
         <span class="dash"></span>
       </div>
 
@@ -27,7 +27,7 @@
       <div class="truck-wrap">
         <svg viewBox="0 0 1200 420" class="truck-svg" role="img" aria-labelledby="truckTitle truckDesc">
           <title id="truckTitle">Team 16 Delivery Truck</title>
-          <desc id="truckDesc">Trailer contains manifest information. Toggle the headlight or open the manifest for details.</desc>
+          <desc id="truckDesc">Trailer displays a manifest of Team 16 information.</desc>
 
           <!-- Trailer -->
           <g id="trailer">
@@ -46,14 +46,14 @@
             <rect x="930" y="168" width="90" height="52" rx="8" class="window"/>
             <rect x="918" y="230" width="58" height="14" rx="4" class="grille"/>
             <rect x="905" y="310" width="170" height="12" class="step"/>
-            <g class="headlight" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle headlight">
+            <!-- Headlight (visual only) -->
+            <g class="headlight" aria-hidden="true">
               <circle cx="1068" cy="250" r="12" class="lamp"/>
             </g>
-            <polygon points="1082,250 1200,222 1200,278" class="beam hidden"/>
           </g>
 
           <!-- Wheels -->
-          <g class="wheels">
+          <g class="wheels" aria-hidden="true">
             <circle cx="250" cy="350" r="42" class="wheel"/>
             <circle cx="740" cy="350" r="42" class="wheel"/>
             <circle cx="1025" cy="350" r="40" class="wheel"/>
@@ -63,14 +63,11 @@
           </g>
         </svg>
 
-        <!-- Slide-out Manifest -->
+        <!-- Static Manifest inside the trailer -->
         <aside class="manifest" aria-label="Team 16 manifest">
           <header class="manifest-head">
-            <div>
-              <h2 class="manifest-title">Manifest</h2>
-              <p class="manifest-sub">Build info & details</p>
-            </div>
-            <button class="btn-close" type="button" aria-label="Close manifest">&times;</button>
+            <h2 class="manifest-title">Manifest</h2>
+            <p class="manifest-sub">Build info & details</p>
           </header>
 
           <div class="manifest-body">
@@ -90,16 +87,6 @@
             {% endif %}
           </div>
         </aside>
-
-        <!-- Scene Controls -->
-        <div class="scene-cta">
-          <button class="btn-primary" type="button" id="openManifest">
-            📦 Open Manifest
-          </button>
-          <button class="btn-ghost" type="button" id="flashlightBtn">
-            🔦 Headlight
-          </button>
-        </div>
       </div>
     </section>
   </div>
@@ -109,28 +96,33 @@
 /* ---------- Base Layout ---------- */
 .about-hero { background: radial-gradient(1200px 600px at 50% -200px, #f3f7ff, #ffffff 60%); }
 .container { max-width: 1100px; margin: 0 auto; padding: 3rem 1rem 4rem; }
-.page-head h1 { text-align:center; font-weight:700; margin:0; }
+.page-head h1 { text-align:center; font-weight:700; margin:0; letter-spacing:.2px; }
 .page-head .subtitle { text-align:center; color:#64748b; margin:.5rem 0 2rem; }
 
 /* ---------- Scene ---------- */
-.scene { position:relative; border-radius:16px; padding:2.25rem 1rem 3.25rem; overflow:hidden; background:linear-gradient(#eaf2ff, #f8fbff 40%, #fff); box-shadow:0 1px 2px rgba(16,24,40,.06); }
+.scene { position:relative; border-radius:16px; padding:2.25rem 1rem 3.25rem; overflow:hidden;
+         background:linear-gradient(#eaf2ff, #f8fbff 40%, #fff); box-shadow:0 1px 2px rgba(16,24,40,.06); }
+
 .road { position:absolute; left:0; right:0; bottom:54px; height:6px; background:#e6ebf3; }
-.road .dash { position:absolute; left:-100%; right:0; top:0; height:6px; background:repeating-linear-gradient(90deg,transparent 0 30px,#cad1dc 30px 60px); animation:dash 10s linear infinite; }
+.road .dash { position:absolute; left:-100%; right:0; top:0; height:6px;
+              background:repeating-linear-gradient(90deg,transparent 0 30px,#cad1dc 30px 60px);
+              animation:dash 10s linear infinite; }
 @keyframes dash { to { left:100%; } }
 
-.cloud { position:absolute; top:16px; width:180px; height:60px; background:#fff; border-radius:30px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.05)); opacity:.95; }
+.cloud { position:absolute; top:16px; width:180px; height:60px; background:#fff; border-radius:30px;
+         filter:drop-shadow(0 2px 4px rgba(0,0,0,.05)); opacity:.95; }
 .cloud:before, .cloud:after { content:""; position:absolute; background:#fff; width:100px; height:100px; border-radius:50%; top:-30px; }
 .cloud:before { left:20px; } .cloud:after { right:20px; }
-.c1 { left:6%; animation:float 23s linear infinite; }
-.c2 { left:40%; animation:float 27s linear infinite reverse; top:28px }
-.c3 { left:76%; animation:float 25s linear infinite; top:22px }
+.c1 { left:6%;  animation:float 23s linear infinite; }
+.c2 { left:40%; animation:float 27s linear infinite reverse; top:28px; }
+.c3 { left:76%; animation:float 25s linear infinite; top:22px; }
 @keyframes float { 0%{transform:translateX(0)}100%{transform:translateX(120px)} }
 
 .truck-wrap { position:relative; }
 .truck-svg { width:100%; height:auto; display:block; }
 .trailer-skin { fill:#fff; stroke:#dbe2ee; stroke-width:3; }
 .badge { fill:#0d6efd; }
-.badge-text { fill:#fff; font:700 14px/1 "Inter",system-ui; letter-spacing:.4px; }
+.badge-text { fill:#fff; font:700 14px/1 "Inter",system-ui, -apple-system, "Segoe UI", Roboto, Arial; letter-spacing:.4px; }
 .handle { fill:#e8edf6; }
 .hitch { fill:#2f3b47; }
 .cab-skin { fill:#0d6efd; }
@@ -140,10 +132,8 @@
 .wheel { fill:#1f2937; }
 .hub { fill:#c9d2dc; }
 .lamp { fill:#ffd76b; stroke:#b69539; stroke-width:1.5; }
-.beam { fill:url(#beamGradient); opacity:0; transition:opacity .2s ease; }
-.hidden { opacity:0; }
 
-/* ---------- Manifest Drawer ---------- */
+/* ---------- Static Manifest (mapped to trailer rect) ---------- */
 .manifest {
   position:absolute; z-index:3;
   left:calc(150 / 1200 * 100%);
@@ -153,23 +143,15 @@
   background:#fff;
   border:1px solid #e6ebf3;
   border-radius:16px;
-  box-shadow:0 20px 40px rgba(20,35,60,.08);
+  box-shadow: 0 20px 40px rgba(20,35,60,.08);
   display:grid;
   grid-template-rows:auto 1fr;
-  overflow:hidden;
-  transform:translateX(-104%);
-  transition:transform .45s cubic-bezier(.2,.8,.2,1);
+  overflow:hidden;               /* stays clipped inside the rounded box */
 }
-.manifest.open { transform:translateX(0); }
 
-.manifest-head {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:.85rem 1rem; border-bottom:1px solid #eef2f7; background:linear-gradient(#fbfcff,#fff);
-}
-.manifest-title { margin:0; font-size:1rem; font-weight:700; }
-.manifest-sub { margin:0; color:#64748b; font-size:.875rem; }
-.btn-close { border:0; background:transparent; font-size:1.5rem; cursor:pointer; color:#475569; padding:.25rem .5rem; border-radius:8px; }
-.btn-close:hover { background:#f1f5f9; }
+.manifest-head { padding:.85rem 1rem; border-bottom:1px solid #eef2f7; background:linear-gradient(#fbfcff,#fff); }
+.manifest-title { margin:0; font-size:1rem; font-weight:700; letter-spacing:.2px; }
+.manifest-sub { margin:.25rem 0 0; color:#64748b; font-size:.875rem; }
 
 .manifest-body { overflow:auto; padding:.5rem .75rem 1rem; }
 .kv-list { list-style:none; margin:0; padding:0; }
@@ -178,56 +160,12 @@
 .kv .v { color:#334155; word-break:break-word; }
 .empty { height:100%; display:grid; place-items:center; color:#94a3b8; font-style:italic; }
 
-/* ---------- Buttons ---------- */
-.scene-cta { display:flex; gap:.75rem; position:absolute; left:calc(160 / 1200 * 100%); bottom:10px; }
-.btn-primary, .btn-ghost { border-radius:999px; padding:.55rem .9rem; font-weight:600; cursor:pointer; }
-.btn-primary { background:#0d6efd; color:#fff; border:1px solid #0d6efd; box-shadow:0 6px 20px rgba(13,110,253,.25); }
-.btn-primary:hover { filter:brightness(.95); }
-.btn-ghost { background:#fff; color:#0f172a; border:1px solid #e5e9f0; }
-.btn-ghost:hover { background:#f8fafc; }
-
 /* ---------- Responsive ---------- */
 @media (max-width:768px){
   .kv { grid-template-columns:1fr; }
-  .scene-cta { position:static; margin-top:.75rem; }
   .manifest { left:1rem; right:1rem; width:auto; height:260px; }
 }
 </style>
 
-<script>
-(function(){
-  const svg=document.querySelector('.truck-svg'); if(!svg) return;
-  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
-  const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
-  grad.id='beamGradient'; grad.setAttribute('x1','0%'); grad.setAttribute('y1','0%'); grad.setAttribute('x2','100%'); grad.setAttribute('y2','0%');
-  const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
-  s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#FFF8D1'); s1.setAttribute('stop-opacity','0.7');
-  const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
-  s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#FFF8D1'); s2.setAttribute('stop-opacity','0');
-  grad.appendChild(s1); grad.appendChild(s2); defs.appendChild(grad); svg.insertBefore(defs, svg.firstChild);
-
-  const manifest=document.querySelector('.manifest');
-  const openBtn=document.getElementById('openManifest');
-  const closeBtn=document.querySelector('.btn-close');
-
-  function openManifest(){ manifest.classList.add('open'); }
-  function closeManifest(){ manifest.classList.remove('open'); }
-  openBtn?.addEventListener('click', openManifest);
-  closeBtn?.addEventListener('click', closeManifest);
-
-  const headlight=svg.querySelector('.headlight');
-  const beam=svg.querySelector('.beam');
-  const flashBtn=document.getElementById('flashlightBtn');
-  function toggleLight(){
-    const hidden=beam.classList.toggle('hidden');
-    beam.style.opacity=hidden?0:.85;
-    headlight?.setAttribute('aria-pressed', hidden?'false':'true');
-  }
-  headlight?.addEventListener('click', toggleLight);
-  headlight?.addEventListener('keydown', e=>{
-    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleLight(); }
-  });
-  flashBtn?.addEventListener('click', toggleLight);
-})();
-</script>
+<!-- No JavaScript needed; the manifest is always visible -->
 {% endblock %}
