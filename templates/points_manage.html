@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Point Management{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h1 class="mb-0">Point Management</h1>
+  <a href="{{ url_for('drivers') }}" class="btn btn-link">Back to Drivers</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <div class="alert alert-{{ 'warning' if category == 'danger' else category }} alert-dismissible fade show" role="alert">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% if role == 'sponsor' %}
+  <!-- SPONSOR VIEW -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Your Drivers</h5>
+      <div class="table-responsive">
+        <table class="table table-striped align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Driver</th>
+              <th>Email</th>
+              <th class="text-end">Current Points</th>
+              <th style="width: 520px;">Adjust</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in sponsor_rows %}
+            <tr>
+              <td class="fw-semibold">{{ r.driver_username }}</td>
+              <td>{{ r.driver_email }}</td>
+              <td class="text-end"><strong>{{ r.points or 0 }}</strong></td>
+              <td>
+                <form action="{{ url_for('add_points') }}" method="POST" class="row g-2">
+                  <input type="hidden" name="username" value="{{ r.driver_username }}">
+                  <div class="col-auto" style="max-width: 130px;">
+                    <input type="number" name="points_to_add" min="1" step="1" class="form-control form-control-sm" placeholder="Amount" required>
+                  </div>
+                  <div class="col">
+                    <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason (required)" required>
+                  </div>
+                  <div class="col-auto">
+                    <button class="btn btn-primary btn-sm">Add</button>
+                  </div>
+                </form>
+
+                <form action="{{ url_for('remove_points') }}" method="POST" class="row g-2 mt-2">
+                  <input type="hidden" name="username" value="{{ r.driver_username }}">
+                  <div class="col-auto" style="max-width: 130px;">
+                    <input type="number" name="points_to_remove" min="1" step="1" class="form-control form-control-sm" placeholder="Amount" required>
+                  </div>
+                  <div class="col">
+                    <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason (required)" required>
+                  </div>
+                  <div class="col-auto">
+                    <button class="btn btn-outline-danger btn-sm">Remove</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-muted">No accepted drivers yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  <!-- ADMIN VIEW -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h5 class="card-title mb-3">All Drivers & Sponsors</h5>
+
+      {% for row in admin_rows %}
+        <div class="mb-4">
+          <div class="d-flex align-items-baseline gap-3 mb-2">
+            <h6 class="mb-0">{{ row.driver_username }}</h6>
+            <span class="text-muted small">{{ row.driver_email }}</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Sponsor</th>
+                  <th class="text-end" style="width: 150px;">Current Points</th>
+                  <th style="width: 560px;">Adjust</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for sp in row.sponsors %}
+                <tr>
+                  <td class="fw-semibold">{{ sp.sponsor }}</td>
+                  <td class="text-end"><strong>{{ sp.points or 0 }}</strong></td>
+                  <td>
+                    <!-- Admin uses the same routes, but passes an 'as_sponsor' to act in that sponsor context -->
+                    <form action="{{ url_for('add_points') }}" method="POST" class="row g-2">
+                      <input type="hidden" name="username" value="{{ row.driver_username }}">
+                      <input type="hidden" name="as_sponsor" value="{{ sp.sponsor }}">
+                      <div class="col-auto" style="max-width: 130px;">
+                        <input type="number" name="points_to_add" min="1" step="1" class="form-control form-control-sm" placeholder="Amount" required>
+                      </div>
+                      <div class="col">
+                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason (required)" required>
+                      </div>
+                      <div class="col-auto">
+                        <button class="btn btn-primary btn-sm">Add</button>
+                      </div>
+                    </form>
+
+                    <form action="{{ url_for('remove_points') }}" method="POST" class="row g-2 mt-2">
+                      <input type="hidden" name="username" value="{{ row.driver_username }}">
+                      <input type="hidden" name="as_sponsor" value="{{ sp.sponsor }}">
+                      <div class="col-auto" style="max-width: 130px;">
+                        <input type="number" name="points_to_remove" min="1" step="1" class="form-control form-control-sm" placeholder="Amount" required>
+                      </div>
+                      <div class="col">
+                        <input type="text" name="reason" class="form-control form-control-sm" placeholder="Reason (required)" required>
+                      </div>
+                      <div class="col-auto">
+                        <button class="btn btn-outline-danger btn-sm">Remove</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-muted">No accepted sponsors for this driver.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% if not loop.last %}<hr class="my-3">{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

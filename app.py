@@ -2386,149 +2386,189 @@ def login_as_sponsor():
     flash(f"You are now logged in as sponsor '{username}'.", 'info')
     return redirect(url_for('sponsor_profile'))
 
+@app.route('/points', methods=['GET'])
+def points_page():
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
+        return redirect(url_for('login'))
+
+    role = session.get('role')
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        if role == 'sponsor':
+            # This sponsor's accepted drivers + current points
+            cur.execute("""
+                SELECT d.username AS driver_username,
+                       d.email AS driver_email,
+                       COALESCE(p.points, 0) AS points
+                  FROM driverApplications a
+                  JOIN drivers d
+                    ON d.username = a.driverUsername
+             LEFT JOIN driver_sponsor_points p
+                    ON p.driver_username = a.driverUsername
+                   AND p.sponsor = a.sponsor
+                 WHERE a.sponsor = %s
+                   AND a.status = 'accepted'
+                 ORDER BY d.username
+            """, (session['user'],))
+            sponsor_rows = cur.fetchall()
+            return render_template('points_manage.html', role='sponsor', sponsor_rows=sponsor_rows, admin_rows=None)
+
+        # Admin: all accepted pairs
+        cur.execute("""
+            SELECT d.username AS driver_username,
+                   d.email    AS driver_email,
+                   a.sponsor  AS sponsor,
+                   COALESCE(p.points, 0) AS points
+              FROM driverApplications a
+              JOIN drivers d
+                ON d.username = a.driverUsername
+         LEFT JOIN driver_sponsor_points p
+                ON p.driver_username = a.driverUsername
+               AND p.sponsor = a.sponsor
+             WHERE a.status='accepted'
+             ORDER BY d.username, a.sponsor
+        """)
+        pairs = cur.fetchall()
+
+        # Group by driver
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for r in pairs:
+            grouped[(r['driver_username'], r['driver_email'])].append({'sponsor': r['sponsor'], 'points': r['points']})
+
+        admin_rows = []
+        for (du, de), sponsor_list in grouped.items():
+            admin_rows.append({'driver_username': du, 'driver_email': de, 'sponsors': sponsor_list})
+
+        return render_template('points_manage.html', role='admin', sponsor_rows=None, admin_rows=admin_rows)
+    finally:
+        cur.close()
+        db.close()
+
+
 @app.route('/add_points', methods=['POST'])
 def add_points():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
+    role = session.get('role')
     target_driver = request.form['username']
     points = int(request.form['points_to_add'])
-    reason = request.form.get('reason', '(no reason provided)')
-    performed_by = session['user']  # sponsor giving points
+    reason = request.form.get('reason', '(no reason provided)').strip()
+
+    performed_by = session['user']
+    acting_sponsor = performed_by
+
+    # Allow admins to act in a sponsor context from the form
+    if role == 'admin':
+        acting_sponsor = request.form.get('as_sponsor', '').strip() or acting_sponsor
 
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (performed_by,))
+    # Ensure driver-sponsor relationship exists and is accepted (especially important for admin)
+    cursor.execute("""
+        SELECT 1 FROM driverApplications
+         WHERE driverUsername=%s AND sponsor=%s AND status='accepted' LIMIT 1
+    """, (target_driver, acting_sponsor))
+    if not cursor.fetchone():
+        flash("No accepted relationship for that driver and sponsor.", "danger")
+        cursor.close(); db.close()
+        return redirect(url_for('points_page'))
+
+    cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (acting_sponsor,))
     sp = cursor.fetchone()
     if not sp:
-        flash("Sponsor not found.", "danger");  return redirect(url_for('drivers'))
+        flash("Sponsor not found.", "danger");  
+        cursor.close(); db.close()
+        return redirect(url_for('points_page'))
 
     cursor.execute("""
         SELECT points FROM driver_sponsor_points
         WHERE driver_username=%s AND sponsor=%s
-    """, (target_driver, performed_by))
+    """, (target_driver, acting_sponsor))
     row = cursor.fetchone()
     current = int(row['points']) if row and row['points'] is not None else 0
     new_total = current + points
 
     if new_total > sp['max_points']:
-        flash(f"Cannot add points — this would exceed your max of {sp['max_points']} points.", "warning")
+        flash(f"Cannot add points — this would exceed the max of {sp['max_points']} points for {acting_sponsor}.", "warning")
     else:
         cursor.execute("""
             INSERT INTO driver_sponsor_points (driver_username, sponsor, points)
             VALUES (%s,%s,%s)
             ON DUPLICATE KEY UPDATE points = points + VALUES(points)
-        """, (target_driver, performed_by, points))
+        """, (target_driver, acting_sponsor, points))
         db.commit()
         cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-                       ("add points", f"{performed_by} added {points} points to {target_driver}. Reason: {reason}", performed_by))
+                       ("add points", f"{performed_by} added {points} points to {target_driver} under {acting_sponsor}. Reason: {reason}", performed_by))
         db.commit()
-        flash(f'{points} points were successfully added to "{target_driver}".', 'success')
+        flash(f'{points} points were successfully added to "{target_driver}" under {acting_sponsor}.', 'success')
 
     cursor.close(); db.close()
-    
-    driverEmail = get_email_by_username(target_driver)
-    if driverEmail:
-            db2 = MySQLdb.connect(**db_config)
-            cur2 = db2.cursor(MySQLdb.cursors.DictCursor)
-            cur2.execute("""
-                SELECT receive_emails, points_added_email
-                FROM drivers
-                WHERE username=%s
-            """, (target_driver,))
-            prefs = cur2.fetchone()
-            cur2.close(); db2.close()
-
-            if prefs and prefs.get('receive_emails') and prefs.get('points_added_email'):
-                driverAddPointsEmail.send_points_added_email(driverEmail, target_driver, int(points))
-    
-    return redirect(url_for('drivers'))
-
+    return redirect(url_for('points_page'))
 
 @app.route('/remove_points', methods=['POST'])
 def remove_points():
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
+    role = session.get('role')
     target_driver = request.form['username']
     points = int(request.form['points_to_remove'])
-    reason = request.form.get('reason', '(no reason provided)')
+    reason = request.form.get('reason', '(no reason provided)').strip()
+
     performed_by = session['user']
+    acting_sponsor = performed_by
+    if role == 'admin':
+        acting_sponsor = request.form.get('as_sponsor', '').strip() or acting_sponsor
 
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (performed_by,))
+    # Ensure accepted relationship
+    cursor.execute("""
+        SELECT 1 FROM driverApplications
+         WHERE driverUsername=%s AND sponsor=%s AND status='accepted' LIMIT 1
+    """, (target_driver, acting_sponsor))
+    if not cursor.fetchone():
+        flash("No accepted relationship for that driver and sponsor.", "danger")
+        cursor.close(); db.close()
+        return redirect(url_for('points_page'))
+
+    cursor.execute("SELECT min_points, max_points FROM sponsor WHERE username=%s", (acting_sponsor,))
     sp = cursor.fetchone()
     if not sp:
-        flash("Sponsor not found.", "danger");  return redirect(url_for('drivers'))
+        flash("Sponsor not found.", "danger");  
+        cursor.close(); db.close()
+        return redirect(url_for('points_page'))
 
     cursor.execute("""
         SELECT points FROM driver_sponsor_points
         WHERE driver_username=%s AND sponsor=%s
-    """, (target_driver, performed_by))
+    """, (target_driver, acting_sponsor))
     row = cursor.fetchone()
     current = int(row['points']) if row and row['points'] is not None else 0
     new_total = current - points
 
     if new_total < sp['min_points']:
-        flash(f"Cannot remove points — this would go below your min of {sp['min_points']} points.", "warning")
+        flash(f"Cannot remove points — this would go below the min of {sp['min_points']} points for {acting_sponsor}.", "warning")
     else:
         cursor.execute("""
             UPDATE driver_sponsor_points
-            SET points = GREATEST(0, points - %s)
-            WHERE driver_username=%s AND sponsor=%s
-        """, (points, target_driver, performed_by))
+               SET points = GREATEST(0, points - %s)
+             WHERE driver_username=%s AND sponsor=%s
+        """, (points, target_driver, acting_sponsor))
         db.commit()
         cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-                       ("remove points", f"{performed_by} removed {points} points from {target_driver}. Reason: {reason}", performed_by))
+                       ("remove points", f"{performed_by} removed {points} points from {target_driver} under {acting_sponsor}. Reason: {reason}", performed_by))
         db.commit()
-        flash(f'{points} points were successfully removed from "{target_driver}".')
+        flash(f'{points} points were successfully removed from "{target_driver}" under {acting_sponsor}.', 'success')
 
     cursor.close(); db.close()
-
-    # Get the driver's email and notification preferences
-    driverEmail = get_email_by_username(target_driver)
-    
-    if driverEmail:
-        # Open a new connection for preference lookup (since main db might be closed)
-        db2 = MySQLdb.connect(**db_config)
-        cur = db2.cursor(MySQLdb.cursors.DictCursor)
-        cur.execute("""
-            SELECT receive_emails, points_removed_email, low_balance_email
-            FROM drivers
-            WHERE username=%s
-        """, (target_driver,))
-        prefs = cur.fetchone()
-        cur.close(); db2.close()
-    
-        # --- Send points removed email ---
-        if prefs and prefs['receive_emails'] and prefs['points_removed_email']:
-            send_points_removed_email(driverEmail, target_driver, points)
-    
-        # --- Optional: low balance alert (per sponsor) ---
-        db3 = MySQLdb.connect(**db_config)
-        cur = db3.cursor(MySQLdb.cursors.DictCursor)
-        cur.execute("""
-            SELECT points
-            FROM driver_sponsor_points
-            WHERE driver_username=%s AND sponsor=%s
-        """, (target_driver, performed_by))
-        r = cur.fetchone()
-        cur.close(); db3.close()
-    
-        if (
-            r
-            and int(r['points'] or 0) < 50
-            and prefs
-            and prefs['receive_emails']
-            and prefs['low_balance_email']
-        ):
-            send_low_balance_email(driverEmail, target_driver, int(r['points'] or 0), 50)
-        
-    return redirect(url_for('drivers'))
-
+    return redirect(url_for('points_page'))
 
 
 @app.route('/reset_password', methods=['GET', 'POST'])

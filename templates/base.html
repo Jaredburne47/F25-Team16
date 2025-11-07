@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -107,10 +106,10 @@
         <!-- User Management (Sponsor/Admin)  -->
         <!-- ================================ -->
         {% if session.get('role') in ['sponsor','admin'] %}
-          {# Build list of UM routes to set active state #}
           {% set um_links = [] %}
           {% set _ = um_links.append(url_for('drivers')) %}
           {% set _ = um_links.append(url_for('sponsors')) %}
+          {% set _ = um_links.append(url_for('points_page')) %}
           {% set _ = um_links.append(url_for('add_user')) %}
           {% if session.get('role') == 'sponsor' %}
             {% set _ = um_links.append(url_for('sponsor_applications')) %}
@@ -128,14 +127,19 @@
               <li><a class="dropdown-item {% if request.path == url_for('drivers') %}active{% endif %}" href="{{ url_for('drivers') }}">Drivers</a></li>
               <li><a class="dropdown-item {% if request.path == url_for('sponsors') %}active{% endif %}" href="{{ url_for('sponsors') }}">Sponsors</a></li>
               <li><hr class="dropdown-divider"></li>
+
+              <!-- NEW TAB: Point Management -->
+              <li><a class="dropdown-item {% if request.path == url_for('points_page') %}active{% endif %}" href="{{ url_for('points_page') }}">Point Management</a></li>
+
               <li><a class="dropdown-item {% if request.path == url_for('add_user') %}active{% endif %}" href="{{ url_for('add_user') }}">Add User</a></li>
+
               {% if session.get('role') == 'sponsor' %}
                 <li><a class="dropdown-item {% if request.path == url_for('sponsor_applications') %}active{% endif %}" href="{{ url_for('sponsor_applications') }}">Driver Applications</a></li>
               {% endif %}
               {% if session.get('role') == 'admin' %}
                 <li><a class="dropdown-item {% if request.path == url_for('audit_logs') %}active{% endif %}" href="{{ url_for('audit_logs') }}">Audit Logs</a></li>
                 <li><a class="dropdown-item {% if request.path == '/admin/assign' %}active{% endif %}" href="{{ url_for('admin_assign') }}">Assign Driver to Sponsor</a></li>
-                {% endif %}
+              {% endif %}
             </ul>
           </li>
         {% endif %}
@@ -173,7 +177,6 @@
 
 <!-- Page Content -->
 <div class="container">
-  <!-- START: SPRINT 7 ACTION FEEDBACK -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -184,18 +187,12 @@
       {% endfor %}
     {% endif %}
   {% endwith %}
-  <!-- END: SPRINT 7 ACTION FEEDBACK -->
 
   {% block content %}{% endblock %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- =================================================================== -->
-<!-- SPRINT 4 CHANGE: LOADING INDICATOR SCRIPT                           -->
-<!-- This script waits for the entire page to finish loading (including  -->
-<!-- database content), then fades out and hides the loader.             -->
-<!-- =================================================================== -->
 <script>
   window.onload = function() {
     const loaderOverlay = document.getElementById('loader-overlay');
@@ -206,7 +203,6 @@
   };
 </script>
 
-<!-- START: SPRINT 7 FEEDBACK MODAL -->
 {% if session.get('show_feedback_modal') %}
   <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -239,10 +235,8 @@
       const submitBtn = document.getElementById('submitFeedbackBtn');
       const alertPlaceholder = document.getElementById('feedback-alert-placeholder');
 
-      // Show the modal automatically
       feedbackModal.show();
 
-      // Handle form submission with Fetch API
       submitBtn.addEventListener('click', function () {
         const formData = new FormData(feedbackForm);
         fetch('{{ url_for("submit_feedback") }}', { method: 'POST', body: formData })
@@ -260,14 +254,11 @@
           });
       });
 
-      // Handle modal dismissal (when user clicks 'x' or 'Close')
       document.getElementById('feedbackModal').addEventListener('hidden.bs.modal', function () {
         fetch('{{ url_for("dismiss_feedback") }}', { method: 'POST' });
       });
     });
   </script>
 {% endif %}
-<!-- SPRINT 7 FEEDBACK MODAL -->
-
   </body>
 </html>
