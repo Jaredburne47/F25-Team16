@@ -2,7 +2,6 @@
 {% block title %}Settings{% endblock %}
 
 {% block content %}
-
 {% set cancel_url =
     (url_for('admin_profile')   if session.get('role') == 'admin'   else
      url_for('driver_profile')  if session.get('role') == 'driver'  else
@@ -10,264 +9,326 @@
      url_for('dashboard')) %}
 
 <div class="container mt-4">
-  <h1>Edit Profile</h1>
-  <hr>
+  <!-- ========================= -->
+  <!-- Page Header               -->
+  <!-- ========================= -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">Edit Profile</h2>
+  </div>
 
   <!-- ========================= -->
-  <!-- Profile + Password (Form) -->
+  <!-- Profile + Password (Card) -->
   <!-- ========================= -->
-  <form method="POST" enctype="multipart/form-data">
-    <!-- Profile Picture -->
-    <div class="mb-3 text-center">
-      <img id="profilePreview"
-           src="{{ url_for('static', filename='uploads/profile_pics/' ~ (user.profile_picture if user.profile_picture else 'Default.jpg')) }}"
-           alt="Profile Picture"
-           class="img-thumbnail rounded-circle mb-2"
-           width="150" height="150"><br>
-      <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" onchange="previewImage(event)">
-    </div>
-
-    <!-- Username (read-only) -->
-    <div class="mb-3">
-      <label for="username" class="form-label">Username</label>
-      <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" readonly>
-    </div>
-
-    <!-- Names -->
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label for="first_name" class="form-label">First Name</label>
-        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
-      </div>
-      <div class="col-md-6 mb-3">
-        <label for="last_name" class="form-label">Last Name</label>
-        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
-      </div>
-    </div>
-
-    <!-- Contact -->
-    <div class="mb-3">
-      <label for="address" class="form-label">Address</label>
-      <input type="text" class="form-control" id="address" name="address" value="{{ user.address }}">
-    </div>
-    <div class="mb-3">
-      <label for="phone" class="form-label">Phone Number</label>
-      <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone }}">
-    </div>
-
-    {% if session.get('role') in ['sponsor', 'driver'] %}
-      <!-- Socials -->
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label for="twitter" class="form-label">Twitter</label>
-          <input type="text" class="form-control" id="twitter" name="twitter" value="{{ user.twitter }}">
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data" class="m-0">
+        <!-- Profile Picture -->
+        <div class="text-center mb-4">
+          <img id="profilePreview"
+               src="{{ url_for('static', filename='uploads/profile_pics/' ~ (user.profile_picture if user.profile_picture else 'Default.jpg')) }}"
+               alt="Profile Picture"
+               class="img-thumbnail rounded-circle mb-2"
+               width="150" height="150">
+          <div class="mx-auto" style="max-width: 360px;">
+            <input type="file" class="form-control form-control-sm" id="profile_picture" name="profile_picture" accept="image/*" onchange="previewImage(event)">
+          </div>
         </div>
-        <div class="col-md-4 mb-3">
-          <label for="facebook" class="form-label">Facebook</label>
-          <input type="text" class="form-control" id="facebook" name="facebook" value="{{ user.facebook }}">
-        </div>
-        <div class="col-md-4 mb-3">
-          <label for="instagram" class="form-label">Instagram</label>
-          <input type="text" class="form-control" id="instagram" name="instagram" value="{{ user.instagram }}">
-        </div>
-      </div>
-    {% endif %}
 
-    {% if session.get('role') == 'driver' %}
-      <!-- Vehicle -->
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label for="vehicle_make" class="form-label">Vehicle Make</label>
-          <input type="text" class="form-control" id="vehicle_make" name="vehicle_make" value="{{ user.vehicle_make }}">
+        <!-- Identity -->
+        <div class="row g-3">
+          <div class="col-12">
+            <label for="username" class="form-label mb-1">Username</label>
+            <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" readonly>
+          </div>
+          <div class="col-md-6">
+            <label for="first_name" class="form-label mb-1">First Name</label>
+            <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+          </div>
+          <div class="col-md-6">
+            <label for="last_name" class="form-label mb-1">Last Name</label>
+            <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+          </div>
         </div>
-        <div class="col-md-4 mb-3">
-          <label for="vehicle_model" class="form-label">Vehicle Model</label>
-          <input type="text" class="form-control" id="vehicle_model" name="vehicle_model" value="{{ user.vehicle_model }}">
+
+        <!-- Contact -->
+        <div class="row g-3 mt-1">
+          <div class="col-12">
+            <label for="address" class="form-label mb-1">Address</label>
+            <input type="text" class="form-control" id="address" name="address" value="{{ user.address }}">
+          </div>
+          <div class="col-md-6">
+            <label for="phone" class="form-label mb-1">Phone Number</label>
+            <input type="text" class="form-control" id="phone" name="phone" value="{{ user.phone }}">
+          </div>
         </div>
-        <div class="col-md-4 mb-3">
-          <label for="vehicle_year" class="form-label">Vehicle Year</label>
-          <input type="text" class="form-control" id="vehicle_year" name="vehicle_year" value="{{ user.vehicle_year }}">
+
+        {% if session.get('role') in ['sponsor', 'driver'] %}
+        <!-- Socials -->
+        <hr class="my-4">
+        <h6 class="text-muted mb-3">Social Profiles</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="twitter" class="form-label mb-1">Twitter</label>
+            <input type="text" class="form-control" id="twitter" name="twitter" value="{{ user.twitter }}">
+          </div>
+          <div class="col-md-4">
+            <label for="facebook" class="form-label mb-1">Facebook</label>
+            <input type="text" class="form-control" id="facebook" name="facebook" value="{{ user.facebook }}">
+          </div>
+          <div class="col-md-4">
+            <label for="instagram" class="form-label mb-1">Instagram</label>
+            <input type="text" class="form-control" id="instagram" name="instagram" value="{{ user.instagram }}">
+          </div>
         </div>
-      </div>
-    {% endif %}
+        {% endif %}
 
-    {% if session.get('role') == 'sponsor' %}
-      <!-- Sponsor org -->
-      <div class="mb-3">
-        <label for="organization" class="form-label">Organization</label>
-        <input type="text" class="form-control" id="organization" name="organization" value="{{ user.organization }}">
-      </div>
-      <div class="mb-3">
-        <label for="company_link" class="form-label">Company Link</label>
-        <input type="text" class="form-control" id="company_link" name="company_link" value="{{ user.company_link }}">
-      </div>
+        {% if session.get('role') == 'driver' %}
+        <!-- Vehicle -->
+        <hr class="my-4">
+        <h6 class="text-muted mb-3">Vehicle</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="vehicle_make" class="form-label mb-1">Make</label>
+            <input type="text" class="form-control" id="vehicle_make" name="vehicle_make" value="{{ user.vehicle_make }}">
+          </div>
+          <div class="col-md-4">
+            <label for="vehicle_model" class="form-label mb-1">Model</label>
+            <input type="text" class="form-control" id="vehicle_model" name="vehicle_model" value="{{ user.vehicle_model }}">
+          </div>
+          <div class="col-md-4">
+            <label for="vehicle_year" class="form-label mb-1">Year</label>
+            <input type="text" class="form-control" id="vehicle_year" name="vehicle_year" value="{{ user.vehicle_year }}">
+          </div>
+        </div>
+        {% endif %}
 
-      <!-- Company Logo -->
-      <div class="mb-3">
-        <label for="company_logo" class="form-label">Company Logo</label><br>
-        <img id="logoPreview"
-             src="{{ url_for('static', filename='uploads/company_logos/' ~ (user.company_logo if user.company_logo else 'Default_Logo.png')) }}"
-             alt="Company Logo Preview"
-             class="img-thumbnail mb-2"
-             style="max-width: 200px; max-height: 150px;"><br>
-        <input type="file" class="form-control" id="company_logo" name="company_logo" accept="image/*" onchange="previewLogo(event)">
-      </div>
-      <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" name="remove_logo" id="removeLogoCheck">
-        <label class="form-check-label" for="removeLogoCheck">Remove current logo</label>
-      </div>
-    {% endif %}
+        {% if session.get('role') == 'sponsor' %}
+        <!-- Sponsor org -->
+        <hr class="my-4">
+        <h6 class="text-muted mb-3">Organization</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="organization" class="form-label mb-1">Organization</label>
+            <input type="text" class="form-control" id="organization" name="organization" value="{{ user.organization }}">
+          </div>
+          <div class="col-md-6">
+            <label for="company_link" class="form-label mb-1">Company Link</label>
+            <input type="text" class="form-control" id="company_link" name="company_link" value="{{ user.company_link }}">
+          </div>
+        </div>
 
-    <!-- Password Settings -->
-    <hr class="my-4">
-    <h4 class="text-danger">⚠️ Password Settings</h4>
-    <p class="text-muted"><small>Your password is hidden by default. Use the 👁 button to toggle visibility.</small></p>
+        <!-- Company Logo -->
+        <div class="row g-3 mt-1">
+          <div class="col-lg-6">
+            <label class="form-label mb-2">Company Logo</label><br>
+            <img id="logoPreview"
+                 src="{{ url_for('static', filename='uploads/company_logos/' ~ (user.company_logo if user.company_logo else 'Default_Logo.png')) }}"
+                 alt="Company Logo Preview"
+                 class="img-thumbnail mb-2"
+                 style="max-width: 200px; max-height: 150px;">
+            <input type="file" class="form-control form-control-sm" id="company_logo" name="company_logo" accept="image/*" onchange="previewLogo(event)">
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="checkbox" name="remove_logo" id="removeLogoCheck">
+              <label class="form-check-label" for="removeLogoCheck">Remove current logo</label>
+            </div>
+          </div>
+        </div>
+        {% endif %}
 
-    <div class="input-group mb-3">
-      <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current password">
-      <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">👁</button>
+        <!-- Password Settings -->
+        <hr class="my-4">
+        <h6 class="text-danger mb-1">Password</h6>
+        <p class="text-muted"><small>Your password is hidden by default. Use the 👁 button to toggle visibility.</small></p>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="input-group">
+              <input type="password" class="form-control" id="password" name="password" placeholder="Leave blank to keep current password">
+              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">👁</button>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="input-group">
+              <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-enter new password">
+              <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">👁</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-4">
+          <button type="submit" class="btn btn-success btn-sm px-3">Save Changes</button>
+          <a href="{{ cancel_url }}" class="btn btn-outline-secondary btn-sm px-3">Cancel</a>
+        </div>
+      </form>
     </div>
-    <div class="input-group mb-4">
-      <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-enter new password">
-      <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password')">👁</button>
+  </div>
+
+  <!-- ================================ -->
+  <!-- Email Notification Preferences  -->
+  <!-- ================================ -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h5 class="card-title mb-3">Email Notification Preferences</h5>
+
+      <form action="{{ url_for('update_notifications') }}" method="post" class="m-0">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="receive_emails" id="receive_emails" {% if user.receive_emails %}checked{% endif %}>
+              <label class="form-check-label" for="receive_emails">Receive any emails</label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="login_email" id="login_email" {% if user.login_email %}checked{% endif %}>
+              <label class="form-check-label" for="login_email">Login alerts</label>
+            </div>
+          </div>
+
+          {% if session.get('role') == 'driver' %}
+          <div class="col-12"><hr class="my-2"></div>
+          <div class="col-12"><h6 class="text-muted">Driver Notifications</h6></div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="low_balance_email" id="low_balance_email" {% if user.low_balance_email %}checked{% endif %}>
+              <label class="form-check-label" for="low_balance_email">Low balance alerts</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="points_added_email" id="points_added_email" {% if user.points_added_email %}checked{% endif %}>
+              <label class="form-check-label" for="points_added_email">Points added notifications</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="points_removed_email" id="points_removed_email" {% if user.points_removed_email %}checked{% endif %}>
+              <label class="form-check-label" for="points_removed_email">Points removed notifications</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="driver_dropped_email" id="driver_dropped_email" {% if user.driver_dropped_email %}checked{% endif %}>
+              <label class="form-check-label" for="driver_dropped_email">Sponsor dropped me alerts</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="spend_points_email" id="spend_points_email" {% if user.spend_points_email %}checked{% endif %}>
+              <label class="form-check-label" for="spend_points_email">Purchase confirmation (Spend points)</label>
+            </div>
+          </div>
+
+          <!-- NEW DRIVER PREFS -->
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="favorite_back_in_stock_email" id="favorite_back_in_stock_email" {% if user.favorite_back_in_stock_email %}checked{% endif %}>
+              <label class="form-check-label" for="favorite_back_in_stock_email">Favorites back in stock</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="new_item_email" id="new_item_email" {% if user.new_item_email %}checked{% endif %}>
+              <label class="form-check-label" for="new_item_email">New items from my sponsors</label>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="order_placed_email" id="order_placed_email" {% if user.order_placed_email %}checked{% endif %}>
+              <label class="form-check-label" for="order_placed_email">Order placed confirmation</label>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if session.get('role') == 'sponsor' %}
+          <div class="col-12"><hr class="my-2"></div>
+          <div class="col-12"><h6 class="text-muted">Sponsor Notifications</h6></div>
+
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="driver_app_email" id="driver_app_email" {% if user.driver_app_email %}checked{% endif %}>
+              <label class="form-check-label" for="driver_app_email">New driver application notifications</label>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if session.get('role') == 'admin' %}
+          <div class="col-12"><hr class="my-2"></div>
+          <div class="col-12"><h6 class="text-muted">Admin Notifications</h6></div>
+
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="sponsor_locked_email" id="sponsor_locked_email" {% if user.sponsor_locked_email %}checked{% endif %}>
+              <label class="form-check-label" for="sponsor_locked_email">Sponsor locked alerts</label>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-sm mt-3 px-3">Save Preferences</button>
+      </form>
     </div>
+  </div>
 
-    <div class="d-flex align-items-center gap-2 mt-2">
-      <button type="submit" class="btn btn-success btn-sm py-1 px-3">Save Changes</button>
-      <a href="{{ cancel_url }}" class="btn btn-danger btn-sm py-1 px-3">Cancel</a>
-    </div>
-  </form>
-
-  <hr>
-  <h3>Email Notification Preferences</h3>
-
-  <form action="{{ url_for('update_notifications') }}" method="post" class="mt-3">
-    <label>
-      <input type="checkbox" name="receive_emails" {% if user.receive_emails %}checked{% endif %}>
-      Receive any emails
-    </label><br>
-
-    <label>
-      <input type="checkbox" name="login_email" {% if user.login_email %}checked{% endif %}>
-      Login alerts
-    </label><br>
-
-    {% if session.get('role') == 'driver' %}
-      <hr class="my-3">
-      <h6>Driver Notifications</h6>
-
-      <label>
-        <input type="checkbox" name="low_balance_email" {% if user.low_balance_email %}checked{% endif %}>
-        Low balance alerts
-      </label><br>
-
-      <label>
-        <input type="checkbox" name="points_added_email" {% if user.points_added_email %}checked{% endif %}>
-        Points added notifications
-      </label><br>
-
-      <label>
-        <input type="checkbox" name="points_removed_email" {% if user.points_removed_email %}checked{% endif %}>
-        Points removed notifications
-      </label><br>
-
-      <label>
-        <input type="checkbox" name="driver_dropped_email" {% if user.driver_dropped_email %}checked{% endif %}>
-        Sponsor dropped me alerts
-      </label><br>
-
-      <label>
-        <input type="checkbox" name="spend_points_email" {% if user.spend_points_email %}checked{% endif %}>
-        Purchase confirmation (Spend points)
-      </label><br>
-
-      <!-- NEW DRIVER PREFS -->
-      <label>
-        <input type="checkbox" name="favorite_back_in_stock_email" {% if user.favorite_back_in_stock_email %}checked{% endif %}>
-        Favorites back in stock
-      </label><br>
-
-      <label>
-        <input type="checkbox" name="new_item_email" {% if user.new_item_email %}checked{% endif %}>
-        New items from my sponsors
-      </label><br>
-
-      <label>
-        <input type="checkbox" name="order_placed_email" {% if user.order_placed_email %}checked{% endif %}>
-        Order placed confirmation
-      </label><br>
-    {% endif %}
-
-    {% if session.get('role') == 'sponsor' %}
-      <hr class="my-3">
-      <h6>Sponsor Notifications</h6>
-      <label>
-        <input type="checkbox" name="driver_app_email" {% if user.driver_app_email %}checked{% endif %}>
-        New driver application notifications
-      </label><br>
-    {% endif %}
-
-    {% if session.get('role') == 'admin' %}
-      <hr class="my-3">
-      <h6>Admin Notifications</h6>
-      <label>
-        <input type="checkbox" name="sponsor_locked_email" {% if user.sponsor_locked_email %}checked{% endif %}>
-        Sponsor locked alerts
-      </label><br>
-    {% endif %}
-
-    <button type="submit" class="btn btn-primary mt-3">Save Preferences</button>
-  </form>
-
-  <!--Disable Account-->
+  <!-- ========================= -->
+  <!-- Disable Account (Card)   -->
+  <!-- ========================= -->
   {% if session.get('role') in ['driver', 'sponsor'] %}
-  <hr class="my-4">
-  <div class="text-center">
-    <form action="{{ url_for('disable_self') }}" method="POST" 
-          onsubmit="return confirm('Are you sure you want to disable your account? You can reactivate it later.')">
-      <button type="submit" class="btn btn-dark">Disable My Account</button>
-    </form>
-    <small class="text-muted d-block mt-2">
-      Once disabled, you’ll only be able to log in to reactivate your account or log out.
-    </small>
+  <div class="card shadow-sm mb-4">
+    <div class="card-body text-center">
+      <h5 class="card-title mb-2">Disable Account</h5>
+      <p class="text-muted mb-3"><small>You can reactivate your account by logging back in.</small></p>
+      <form action="{{ url_for('disable_self') }}" method="POST"
+            onsubmit="return confirm('Are you sure you want to disable your account? You can reactivate it later.')">
+        <button type="submit" class="btn btn-dark btn-sm px-3">Disable My Account</button>
+      </form>
+    </div>
   </div>
   {% endif %}
 
-  <!-- =========================== -->
-  <!-- Point Limits (Separate Card) -->
-  <!-- =========================== -->
+  <!-- ========================= -->
+  <!-- Point Limits (Card)      -->
+  <!-- ========================= -->
   {% if session.get('role') == 'sponsor' %}
-  <div class="card shadow-sm mt-5 mb-5">
-    <div class="card-header bg-primary text-white">
+  <div class="card shadow-sm mb-5">
+    <div class="card-header bg-primary text-white py-3">
       <h5 class="mb-0">Point Limits</h5>
     </div>
     <div class="card-body">
-      <form method="POST" action="{{ url_for('settings') }}">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="min_points" class="form-label fw-semibold">Minimum Points</label>
-            <input type="number" class="form-control" id="min_points" name="min_points"
-                   value="{{ user.min_points or 0 }}" required>
+      <form method="POST" action="{{ url_for('settings') }}" class="m-0">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="min_points" class="form-label fw-semibold mb-1">Minimum Points</label>
+            <input type="number" class="form-control" id="min_points" name="min_points" value="{{ user.min_points or 0 }}" required>
           </div>
-          <div class="col-md-6 mb-3">
-            <label for="max_points" class="form-label fw-semibold">Maximum Points</label>
-            <input type="number" class="form-control" id="max_points" name="max_points"
-                   value="{{ user.max_points or 0 }}" required>
+          <div class="col-md-6">
+            <label for="max_points" class="form-label fw-semibold mb-1">Maximum Points</label>
+            <input type="number" class="form-control" id="max_points" name="max_points" value="{{ user.max_points or 0 }}" required>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary mt-2">Save Limits</button>
+        <button type="submit" class="btn btn-primary btn-sm mt-3 px-3">Save Limits</button>
       </form>
     </div>
   </div>
   {% endif %}
 </div>
 
+<!-- ========================= -->
+<!-- Inline Helpers            -->
+<!-- ========================= -->
 <script>
 function togglePassword(id) {
   const field = document.getElementById(id);
   field.type = (field.type === "password") ? "text" : "password";
 }
-
 function previewImage(event) {
   const input = event.target;
   if (input.files && input.files[0]) {
@@ -278,7 +339,6 @@ function previewImage(event) {
     reader.readAsDataURL(input.files[0]);
   }
 }
-
 function previewLogo(event) {
   const input = event.target;
   if (input.files && input.files[0]) {
