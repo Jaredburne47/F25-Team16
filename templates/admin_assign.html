@@ -2,67 +2,87 @@
 {% block title %}Assign Driver to Sponsor{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Assign Driver to Sponsor</h1>
-
-<form method="POST" class="row gy-3 gx-3 align-items-end">
-  <div class="col-md-5">
-    <label class="form-label">Driver</label>
-    <select name="driver_username" class="form-select" required>
-      <option value="" selected disabled>Choose a driver…</option>
-      {% for d in drivers %}
-        <option value="{{ d.username }}">{{ d.username }}</option>
-      {% endfor %}
-    </select>
+<div class="container mt-4">
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">Assign Driver to Sponsor</h2>
   </div>
 
-  <div class="col-md-5">
-    <label class="form-label">Sponsor</label>
-    <select name="sponsor_username" class="form-select" required>
-      <option value="" selected disabled>Choose a sponsor…</option>
-      {% for s in sponsors %}
-        <option value="{{ s.username }}">
-          {{ s.username }}{% if s.organization %} — {{ s.organization }}{% endif %}
-        </option>
-      {% endfor %}
-    </select>
+  <!-- Assign Form -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="POST" class="m-0">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label fw-semibold">Driver</label>
+            <select name="driver_username" class="form-select" required>
+              <option value="" selected disabled>Choose a driver…</option>
+              {% for d in drivers %}
+                <option value="{{ d.username }}">{{ d.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-5">
+            <label class="form-label fw-semibold">Sponsor</label>
+            <select name="sponsor_username" class="form-select" required>
+              <option value="" selected disabled>Choose a sponsor…</option>
+              {% for s in sponsors %}
+                <option value="{{ s.username }}">
+                  {{ s.username }}{% if s.organization %} — {{ s.organization }}{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary btn-sm px-3">Assign</button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <div class="col-md-2 d-grid">
-    <button type="submit" class="btn btn-primary">Assign</button>
+  <!-- Recent Assignments -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h5 class="mb-0">Recent Accepted Sponsorships</h5>
   </div>
-</form>
 
-<hr class="my-4">
-
-<h5 class="mb-3">Recent Accepted Sponsorships</h5>
-<div class="table-responsive">
-  <table class="table table-sm table-striped align-middle">
-    <thead class="table-light">
-      <tr>
-        <th>Driver</th>
-        <th>Sponsor</th>
-        <th>Status</th>
-        <th>Updated</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in recent %}
-      <tr>
-        <td class="fw-semibold">{{ r.driver }}</td>
-        <td>{{ r.sponsor }}</td>
-        <td>
-          {% if r.status == 'accepted' %}
-            <span class="badge bg-success">accepted</span>
-          {% else %}
-            <span class="badge bg-secondary">{{ r.status }}</span>
-          {% endif %}
-        </td>
-        <td class="text-muted">{{ r.updated_at }}</td>
-      </tr>
-      {% else %}
-      <tr><td colspan="4" class="text-muted">No recent assignments.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-responsive">
+    <table class="table table-striped table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Driver</th>
+          <th>Sponsor</th>
+          <th>Status</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recent %}
+        <tr>
+          <td class="fw-semibold">{{ r.driver }}</td>
+          <td>{{ r.sponsor }}</td>
+          <td>
+            {% if r.status == 'accepted' %}
+              <span class="badge bg-success">accepted</span>
+            {% elif r.status == 'pending' %}
+              <span class="badge bg-warning text-dark">pending</span>
+            {% elif r.status == 'rejected' %}
+              <span class="badge bg-danger">rejected</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ r.status }}</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ r.updated_at }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="text-muted">No recent assignments.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
