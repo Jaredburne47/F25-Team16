@@ -14,9 +14,9 @@
     <!-- SCENE -->
     <section class="scene" aria-label="Team 16 truck scene">
       <!-- Sky bits -->
-      <div class="cloud c1" aria-hidden="true"></div>
-      <div class="cloud c2" aria-hidden="true"></div>
-      <div class="cloud c3" aria-hidden="true"></div>
+      <div class="cloud c1"></div>
+      <div class="cloud c2"></div>
+      <div class="cloud c3"></div>
 
       <!-- Road -->
       <div class="road">
@@ -27,14 +27,13 @@
       <div class="truck-wrap">
         <svg viewBox="0 0 1200 420" class="truck-svg" role="img" aria-labelledby="truckTitle truckDesc">
           <title id="truckTitle">Team 16 Delivery Truck</title>
-          <desc id="truckDesc">Trailer contains a manifest of Team 16 information. Use the button to open.</desc>
+          <desc id="truckDesc">Trailer contains manifest information. Toggle the headlight or open the manifest for details.</desc>
 
           <!-- Trailer -->
           <g id="trailer">
             <rect x="150" y="90" width="720" height="230" rx="16" class="trailer-skin"/>
             <rect x="780" y="102" width="78" height="26" rx="6" class="badge"/>
             <text x="819" y="120" text-anchor="middle" class="badge-text">TEAM 16</text>
-            <!-- subtle handle to hint the drawer -->
             <rect x="860" y="200" width="12" height="50" rx="6" class="handle"/>
           </g>
 
@@ -47,7 +46,6 @@
             <rect x="930" y="168" width="90" height="52" rx="8" class="window"/>
             <rect x="918" y="230" width="58" height="14" rx="4" class="grille"/>
             <rect x="905" y="310" width="170" height="12" class="step"/>
-            <!-- headlight -->
             <g class="headlight" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle headlight">
               <circle cx="1068" cy="250" r="12" class="lamp"/>
             </g>
@@ -65,12 +63,12 @@
           </g>
         </svg>
 
-        <!-- Slide-out MANIFEST from trailer -->
-        <aside class="manifest" aria-live="polite" aria-label="Team 16 manifest panel">
+        <!-- Slide-out Manifest -->
+        <aside class="manifest" aria-label="Team 16 manifest">
           <header class="manifest-head">
             <div>
               <h2 class="manifest-title">Manifest</h2>
-              <p class="manifest-sub">Build info & product details</p>
+              <p class="manifest-sub">Build info & details</p>
             </div>
             <button class="btn-close" type="button" aria-label="Close manifest">&times;</button>
           </header>
@@ -93,251 +91,142 @@
           </div>
         </aside>
 
-        <!-- Controls -->
+        <!-- Scene Controls -->
         <div class="scene-cta">
           <button class="btn-primary" type="button" id="openManifest">
-            <span class="truck-emoji" aria-hidden="true">📦</span> Open Manifest
+            📦 Open Manifest
           </button>
           <button class="btn-ghost" type="button" id="flashlightBtn">
-            <span class="flash-emoji" aria-hidden="true">🔦</span> Headlight
+            🔦 Headlight
           </button>
         </div>
       </div>
-    </section>
-
-    <!-- About content blocks -->
-    <section class="grid mt-6">
-      <article class="card">
-        <h3>Our Mission</h3>
-        <p>
-          Encourage safer roads by aligning incentives with behavior. Drivers earn points for good habits;
-          sponsors turn those points into real rewards. Simple, transparent, effective.
-        </p>
-      </article>
-
-      <article class="card">
-        <h3>What We Ship</h3>
-        <ul class="chips">
-          <li class="chip">Point Engine</li>
-          <li class="chip">Multi-Sponsor Drivers</li>
-          <li class="chip">Auditable Orders</li>
-          <li class="chip">Catalog Management</li>
-          <li class="chip">Bulk Imports</li>
-          <li class="chip">Admin Controls</li>
-        </ul>
-      </article>
-
-      <article class="card">
-        <h3>Stack</h3>
-        <ul class="stack">
-          <li><span>Flask</span></li>
-          <li><span>MySQL</span></li>
-          <li><span>AWS S3 / EC2</span></li>
-          <li><span>eBay API</span></li>
-          <li><span>Bootstrap 5</span></li>
-        </ul>
-      </article>
-    </section>
-
-    <!-- Milestones road -->
-    <section class="mile mt-6" aria-label="Project milestones">
-      <h3>Road So Far</h3>
-      <div class="mile-road">
-        <div class="mile-stop">
-          <div class="dot"></div>
-          <p class="label">Prototype</p>
-        </div>
-        <div class="mile-stop">
-          <div class="dot"></div>
-          <p class="label">Catalog + Orders</p>
-        </div>
-        <div class="mile-stop">
-          <div class="dot"></div>
-          <p class="label">Multi-Sponsor</p>
-        </div>
-        <div class="mile-stop">
-          <div class="dot"></div>
-          <p class="label">Audit & Reviews</p>
-        </div>
-        <div class="mile-stop">
-          <div class="dot"></div>
-          <p class="label">Release</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- (Optional) Partner logos -->
-    <section class="logos mt-6" aria-label="Ecosystem">
-      <div class="logo-pill">AWS</div>
-      <div class="logo-pill">MySQL</div>
-      <div class="logo-pill">eBay</div>
-      <div class="logo-pill">Flask</div>
-      <div class="logo-pill">Bootstrap</div>
     </section>
   </div>
 </div>
 
 <style>
-/* --------- Layout & Base --------- */
+/* ---------- Base Layout ---------- */
 .about-hero { background: radial-gradient(1200px 600px at 50% -200px, #f3f7ff, #ffffff 60%); }
 .container { max-width: 1100px; margin: 0 auto; padding: 3rem 1rem 4rem; }
-.page-head h1 { margin: 0; font-weight: 700; letter-spacing: .2px; text-align:center; }
-.page-head .subtitle { color: #64748b; text-align:center; margin:.5rem 0 2rem; }
+.page-head h1 { text-align:center; font-weight:700; margin:0; }
+.page-head .subtitle { text-align:center; color:#64748b; margin:.5rem 0 2rem; }
 
-/* --------- Scene --------- */
-.scene { position: relative; border-radius: 16px; padding: 2.25rem 1rem 3.25rem; overflow: hidden; background: linear-gradient(#eaf2ff, #f8fbff 40%, #fff); box-shadow: 0 1px 2px rgba(16,24,40,.06); }
-.road { position: absolute; left: 0; right: 0; bottom: 54px; height: 6px; background: #e6ebf3; }
-.road .dash { position: absolute; left: -100%; right: 0; top: 0; height: 6px; background: repeating-linear-gradient(90deg, transparent 0 30px, #cad1dc 30px 60px); animation: dash 10s linear infinite; }
-@keyframes dash { to { left: 100%; } }
+/* ---------- Scene ---------- */
+.scene { position:relative; border-radius:16px; padding:2.25rem 1rem 3.25rem; overflow:hidden; background:linear-gradient(#eaf2ff, #f8fbff 40%, #fff); box-shadow:0 1px 2px rgba(16,24,40,.06); }
+.road { position:absolute; left:0; right:0; bottom:54px; height:6px; background:#e6ebf3; }
+.road .dash { position:absolute; left:-100%; right:0; top:0; height:6px; background:repeating-linear-gradient(90deg,transparent 0 30px,#cad1dc 30px 60px); animation:dash 10s linear infinite; }
+@keyframes dash { to { left:100%; } }
 
-.cloud { position: absolute; top: 16px; width: 180px; height: 60px; background: #fff; border-radius: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.05)); opacity:.95; }
-.cloud:before, .cloud:after { content:""; position:absolute; background:#fff; width:100px; height:100px; border-radius: 50%; top:-30px; }
-.cloud:before { left:20px; }
-.cloud:after { right:20px; }
-.c1 { left: 6%; animation: float 23s linear infinite; }
-.c2 { left: 40%; animation: float 27s linear infinite reverse; top:28px }
-.c3 { left: 76%; animation: float 25s linear infinite; top:22px }
-@keyframes float { 0%{transform: translateX(0)} 100%{transform: translateX(120px)} }
+.cloud { position:absolute; top:16px; width:180px; height:60px; background:#fff; border-radius:30px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.05)); opacity:.95; }
+.cloud:before, .cloud:after { content:""; position:absolute; background:#fff; width:100px; height:100px; border-radius:50%; top:-30px; }
+.cloud:before { left:20px; } .cloud:after { right:20px; }
+.c1 { left:6%; animation:float 23s linear infinite; }
+.c2 { left:40%; animation:float 27s linear infinite reverse; top:28px }
+.c3 { left:76%; animation:float 25s linear infinite; top:22px }
+@keyframes float { 0%{transform:translateX(0)}100%{transform:translateX(120px)} }
 
-.truck-wrap { position: relative; }
-.truck-svg { width: 100%; height: auto; display:block; }
+.truck-wrap { position:relative; }
+.truck-svg { width:100%; height:auto; display:block; }
+.trailer-skin { fill:#fff; stroke:#dbe2ee; stroke-width:3; }
+.badge { fill:#0d6efd; }
+.badge-text { fill:#fff; font:700 14px/1 "Inter",system-ui; letter-spacing:.4px; }
+.handle { fill:#e8edf6; }
+.hitch { fill:#2f3b47; }
+.cab-skin { fill:#0d6efd; }
+.window { fill:#E9F4FF; }
+.grille { fill:#dfe5ec; }
+.step { fill:#2f3b47; }
+.wheel { fill:#1f2937; }
+.hub { fill:#c9d2dc; }
+.lamp { fill:#ffd76b; stroke:#b69539; stroke-width:1.5; }
+.beam { fill:url(#beamGradient); opacity:0; transition:opacity .2s ease; }
+.hidden { opacity:0; }
 
-.trailer-skin { fill: #ffffff; stroke: #dbe2ee; stroke-width: 3; }
-.badge { fill: #0d6efd; }
-.badge-text { fill: #fff; font: 700 14px/1 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial; letter-spacing: .4px; }
-.handle { fill: #e8edf6; }
-
-.hitch { fill: #2f3b47; }
-.cab-skin { fill: #0d6efd; }
-.window { fill: #E9F4FF; }
-.grille { fill: #dfe5ec; }
-.step { fill: #2f3b47; }
-.wheel { fill: #1f2937; }
-.hub { fill: #c9d2dc; }
-
-.lamp { fill: #ffd76b; stroke:#b69539; stroke-width: 1.5; }
-.beam { fill: url(#beamGradient); opacity: 0; transition: opacity .2s ease; }
-.hidden { opacity: 0; }
-
-/* --------- Manifest Drawer --------- */
+/* ---------- Manifest Drawer ---------- */
 .manifest {
-  position: absolute;
-  z-index: 3;
-  /* map to trailer (x=150,y=90,w=720,h=230) */
-  left: calc(150 / 1200 * 100%);
-  top:  calc( 90 /  420 * 100%);
-  width: calc(720 / 1200 * 100%);
-  height:calc(230 /  420 * 100%);
-  background: #ffffff;
-  border: 1px solid #e6ebf3;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(20, 35, 60, .08);
-  display: grid;
-  grid-template-rows: auto 1fr;
-  overflow: hidden;
-
-  /* off-screen to the left; uses transform so it slides out of the trailer */
-  transform: translateX(-104%);
-  transition: transform .45s cubic-bezier(.2,.8,.2,1);
+  position:absolute; z-index:3;
+  left:calc(150 / 1200 * 100%);
+  top:calc(90 / 420 * 100%);
+  width:calc(720 / 1200 * 100%);
+  height:calc(230 / 420 * 100%);
+  background:#fff;
+  border:1px solid #e6ebf3;
+  border-radius:16px;
+  box-shadow:0 20px 40px rgba(20,35,60,.08);
+  display:grid;
+  grid-template-rows:auto 1fr;
+  overflow:hidden;
+  transform:translateX(-104%);
+  transition:transform .45s cubic-bezier(.2,.8,.2,1);
 }
-.manifest.open { transform: translateX(0); }
+.manifest.open { transform:translateX(0); }
 
 .manifest-head {
   display:flex; align-items:center; justify-content:space-between;
-  padding: .85rem 1rem; border-bottom: 1px solid #eef2f7; background: linear-gradient(#fbfcff, #ffffff);
+  padding:.85rem 1rem; border-bottom:1px solid #eef2f7; background:linear-gradient(#fbfcff,#fff);
 }
-.manifest-title { margin:0; font-size: 1rem; font-weight: 700; letter-spacing:.2px; }
+.manifest-title { margin:0; font-size:1rem; font-weight:700; }
 .manifest-sub { margin:0; color:#64748b; font-size:.875rem; }
-.btn-close { border:0; background:transparent; font-size:1.5rem; line-height:1; cursor:pointer; color:#475569; padding:.25rem .5rem; border-radius:8px; }
+.btn-close { border:0; background:transparent; font-size:1.5rem; cursor:pointer; color:#475569; padding:.25rem .5rem; border-radius:8px; }
 .btn-close:hover { background:#f1f5f9; }
 
-.manifest-body { overflow:auto; padding: .5rem .75rem 1rem; }
+.manifest-body { overflow:auto; padding:.5rem .75rem 1rem; }
 .kv-list { list-style:none; margin:0; padding:0; }
-.kv {
-  display:grid; grid-template-columns: 1fr 2fr; gap:.5rem 1rem;
-  padding:.6rem .5rem; border-bottom:1px dashed #e6ebf3;
-}
-.kv .k { font-weight: 600; color:#0f172a; white-space:nowrap; }
-.kv .v { color:#334155; word-break: break-word; }
-.empty { height:100%; display:grid; place-items:center; color:#94a3b8; font-style:italic; border:1px dashed #e6ebf3; border-radius:12px; }
+.kv { display:grid; grid-template-columns:1fr 2fr; gap:.5rem 1rem; padding:.6rem .5rem; border-bottom:1px dashed #e6ebf3; }
+.kv .k { font-weight:600; color:#0f172a; white-space:nowrap; }
+.kv .v { color:#334155; word-break:break-word; }
+.empty { height:100%; display:grid; place-items:center; color:#94a3b8; font-style:italic; }
 
-/* Controls */
-.scene-cta { display:flex; gap:.75rem; position:absolute; left: calc(160 / 1200 * 100%); bottom: 10px; }
-.btn-primary, .btn-ghost {
-  border-radius: 999px; padding:.55rem .9rem; font-weight:600; letter-spacing:.2px; cursor:pointer;
-}
-.btn-primary { background:#0d6efd; color:#fff; border:1px solid #0d6efd; box-shadow: 0 6px 20px rgba(13,110,253,.25); }
-.btn-primary:hover { filter: brightness(.95); }
-.btn-ghost { background:#ffffff; color:#0f172a; border:1px solid #e5e9f0; }
+/* ---------- Buttons ---------- */
+.scene-cta { display:flex; gap:.75rem; position:absolute; left:calc(160 / 1200 * 100%); bottom:10px; }
+.btn-primary, .btn-ghost { border-radius:999px; padding:.55rem .9rem; font-weight:600; cursor:pointer; }
+.btn-primary { background:#0d6efd; color:#fff; border:1px solid #0d6efd; box-shadow:0 6px 20px rgba(13,110,253,.25); }
+.btn-primary:hover { filter:brightness(.95); }
+.btn-ghost { background:#fff; color:#0f172a; border:1px solid #e5e9f0; }
 .btn-ghost:hover { background:#f8fafc; }
-.truck-emoji, .flash-emoji { margin-right:.4rem }
 
-/* Content cards & sections */
-.grid { display:grid; gap:1rem; grid-template-columns: 2fr 2fr 1fr; }
-.card { background:#fff; border:1px solid #e6ebf3; border-radius:16px; padding:1rem 1rem 1.1rem; box-shadow:0 1px 2px rgba(16,24,40,.05); }
-.card h3 { margin-top:0; margin-bottom:.4rem; }
-.card p { margin:0; color:#334155; }
-
-.chips { display:flex; flex-wrap:wrap; gap:.5rem; padding:0; margin:.25rem 0 0; list-style:none; }
-.chip { padding:.35rem .6rem; border-radius:12px; background:#f1f5ff; border:1px solid #dbe4ff; color:#334155; font-weight:600; font-size:.92rem; }
-
-.stack { display:flex; flex-wrap:wrap; gap:.5rem; list-style:none; padding:0; margin:.25rem 0 0; }
-.stack li { background:#f8fafc; border:1px solid #e6ebf3; border-radius:10px; padding:.4rem .6rem; }
-
-.mile h3 { margin-bottom:.5rem; }
-.mile-road { position:relative; display:flex; justify-content:space-between; align-items:center; background: repeating-linear-gradient(90deg, #e6ebf3 0 8px, transparent 8px 24px); padding:1.25rem 1rem; border-radius:12px; border:1px solid #e6ebf3; }
-.mile-stop { display:grid; place-items:center; text-align:center; gap:.4rem; }
-.mile-stop .dot { width:12px; height:12px; background:#0d6efd; border-radius:50%; box-shadow:0 0 0 4px rgba(13,110,253,.15); }
-.mile-stop .label { margin:0; font-size:.9rem; color:#475569; }
-
-.logos { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center; }
-.logo-pill { padding:.5rem .8rem; border-radius:999px; background:#fff; border:1px solid #e6ebf3; box-shadow:0 1px 2px rgba(16,24,40,.05); }
-
-/* Responsive */
-@media (max-width: 992px) {
-  .grid { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 768px) {
-  .grid { grid-template-columns: 1fr; }
-  .kv { grid-template-columns: 1fr; }
-  .scene-cta { position: static; margin-top:.75rem; }
-  .manifest { left: 1rem; right: 1rem; width: auto; height: 260px; }
+/* ---------- Responsive ---------- */
+@media (max-width:768px){
+  .kv { grid-template-columns:1fr; }
+  .scene-cta { position:static; margin-top:.75rem; }
+  .manifest { left:1rem; right:1rem; width:auto; height:260px; }
 }
 </style>
 
 <script>
-/* one tiny helper: add the beam gradient so it works everywhere */
 (function(){
   const svg=document.querySelector('.truck-svg'); if(!svg) return;
   const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
   const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
   grad.id='beamGradient'; grad.setAttribute('x1','0%'); grad.setAttribute('y1','0%'); grad.setAttribute('x2','100%'); grad.setAttribute('y2','0%');
-  const s1=document.createElementNS('http://www.w3.org/2000/svg','stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#FFF8D1'); s1.setAttribute('stop-opacity','0.7');
-  const s2=document.createElementNS('http://www.w3.org/2000/svg','stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#FFF8D1'); s2.setAttribute('stop-opacity','0');
+  const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+  s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#FFF8D1'); s1.setAttribute('stop-opacity','0.7');
+  const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+  s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#FFF8D1'); s2.setAttribute('stop-opacity','0');
   grad.appendChild(s1); grad.appendChild(s2); defs.appendChild(grad); svg.insertBefore(defs, svg.firstChild);
 
-  const manifest = document.querySelector('.manifest');
-  const openBtn  = document.getElementById('openManifest');
-  const closeBtn = document.querySelector('.btn-close');
+  const manifest=document.querySelector('.manifest');
+  const openBtn=document.getElementById('openManifest');
+  const closeBtn=document.querySelector('.btn-close');
 
   function openManifest(){ manifest.classList.add('open'); }
   function closeManifest(){ manifest.classList.remove('open'); }
-
   openBtn?.addEventListener('click', openManifest);
   closeBtn?.addEventListener('click', closeManifest);
 
-  // Headlight toggle button (both UI button and SVG)
-  const headlight = svg.querySelector('.headlight');
-  const beam = svg.querySelector('.beam');
-  const flashBtn = document.getElementById('flashlightBtn');
-
-  function toggleLight() {
-    const hidden = beam.classList.toggle('hidden');
-    beam.style.opacity = hidden ? 0 : 0.85;
-    headlight?.setAttribute('aria-pressed', hidden ? 'false' : 'true');
+  const headlight=svg.querySelector('.headlight');
+  const beam=svg.querySelector('.beam');
+  const flashBtn=document.getElementById('flashlightBtn');
+  function toggleLight(){
+    const hidden=beam.classList.toggle('hidden');
+    beam.style.opacity=hidden?0:.85;
+    headlight?.setAttribute('aria-pressed', hidden?'false':'true');
   }
   headlight?.addEventListener('click', toggleLight);
-  headlight?.addEventListener('keydown', e => { if (e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleLight(); }});
+  headlight?.addEventListener('keydown', e=>{
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleLight(); }
+  });
   flashBtn?.addEventListener('click', toggleLight);
 })();
 </script>
