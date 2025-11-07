@@ -2240,6 +2240,40 @@ def sponsors():
 
     return render_template("sponsors.html", sponsors=sponsors_list, role=session.get('role'))
 
+@app.route('/admin/driver/toggle', methods=['POST'])
+def admin_toggle_driver():
+    if 'user' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+
+    username = request.form.get('username')
+    action = request.form.get('action')  # 'disable' or 'enable'
+
+    if not username or action not in ('disable', 'enable'):
+        flash("Invalid request.", "danger")
+        return redirect(url_for('drivers'))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        cur.execute("SELECT username FROM drivers WHERE username=%s LIMIT 1", (username,))
+        if not cur.fetchone():
+            flash("Driver not found.", "danger")
+            return redirect(url_for('drivers'))
+
+        new_disabled = 1 if action == 'disable' else 0
+        cur.execute("UPDATE drivers SET disabled=%s WHERE username=%s", (new_disabled, username))
+        db.commit()
+
+        flash(f"Driver '{username}' has been {'disabled' if new_disabled else 'enabled'}.", "success")
+    except Exception:
+        db.rollback()
+        flash("An error occurred while updating the driver status.", "danger")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for('drivers'))
 
 
 @app.route('/remove_driver', methods=['POST'])
