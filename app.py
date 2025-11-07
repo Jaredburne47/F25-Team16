@@ -2144,6 +2144,61 @@ def sponsor_edit_driver(username):
 
     return render_template("sponsor_edit_driver.html", driver=driver)
 
+@app.route('/sponsor/drop_driver', methods=['POST'])
+def sponsor_drop_driver():
+    # Must be logged in as sponsor
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    username = request.form.get('username')
+
+    if not username:
+        flash("Invalid request.", "danger")
+        return redirect(url_for('drivers'))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        # Ensure this sponsor–driver relationship exists and is currently accepted
+        cur.execute("""
+            SELECT 1
+            FROM driverApplications
+            WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
+            LIMIT 1
+        """, (username, sponsor))
+        row = cur.fetchone()
+        if not row:
+            flash("You are not authorized to drop this driver or they are not currently accepted.", "danger")
+            return redirect(url_for('drivers'))
+
+        # Soft drop the relationship (preserve history)
+        cur.execute("""
+            UPDATE driverApplications
+            SET status='dropped'
+            WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
+        """, (username, sponsor))
+
+        # Remove per-sponsor points so they cannot be used after the drop
+        cur.execute("""
+            DELETE FROM driver_sponsor_points
+            WHERE driver_username=%s AND sponsor=%s
+        """, (username, sponsor))
+
+        db.commit()
+        flash(f"Driver '{username}' has been dropped.", "success")
+
+    except Exception as e:
+        db.rollback()
+        flash("An error occurred while dropping the driver.", "danger")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for('drivers'))
+
+
 @app.route('/sponsors')
 def sponsors():
     # Only sponsors/admins can access
