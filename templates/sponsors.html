@@ -1,56 +1,74 @@
 {% extends "base.html" %}
-
 {% block title %}Sponsors{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2>All Sponsors</h2>
-    {% if sponsors %}
-    <table class="table table-bordered table-hover mt-3">
-        <thead class="table-light">
-            <tr>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for sponsor in sponsors %}
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">
+      {% if role == 'admin' %}All Sponsors{% else %}Sponsors (My Organization){% endif %}
+    </h2>
+  </div>
+
+  {% if sponsors %}
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead class="table-light">
         <tr>
-            <td>{{ sponsor.username }}</td>
-            <td>{{ sponsor.email }}</td>
-            <td>
-                <!-- Remove sponsor -->
-                <form action="{{ url_for('remove_sponsor') }}" method="post" style="display:inline;">
-                    <input type="hidden" name="username" value="{{ sponsor.username }}">
-                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-                </form>
-                
-                <!-- Login as sponsor -->
-                <form action="{{ url_for('login_as_sponsor') }}" method="post" style="display:inline;">
-                    <input type="hidden" name="username" value="{{ sponsor.username }}">
-                    <button type="submit" class="btn btn-secondary btn-sm">Login</button>
-                </form>
-        
-                {% if role == 'admin' %}
-                <!-- Disable / Enable Sponsor -->
-                <form action="{{ url_for('toggle_account', role='sponsor', username=sponsor.username) }}" method="post" style="display:inline;">
-                    {% if sponsor.disabled %}
-                        <input type="hidden" name="action" value="enable">
-                        <button type="submit" class="btn btn-success btn-sm">Enable</button>
-                    {% else %}
-                        <input type="hidden" name="action" value="disable">
-                        <button type="submit" class="btn btn-dark btn-sm">Disable</button>
-                    {% endif %}
-                </form>
-                {% endif %}
-            </td>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Organization</th>
+          <th>Status</th>
+          <th class="text-end" style="width: 260px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sponsors %}
+        <tr>
+          <td class="fw-semibold">{{ s.username }}</td>
+          <td>{{ s.email }}</td>
+          <td>{{ s.organization or '-' }}</td>
+          <td>
+            {% if s.disabled %}
+              <span class="badge bg-danger">Disabled</span>
+            {% else %}
+              <span class="badge bg-success">Active</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <!-- Remove sponsor -->
+            <form action="{{ url_for('remove_sponsor') }}" method="post" class="d-inline m-0"
+                  onsubmit="return confirm('Are you sure you want to remove {{ s.username }}?');">
+              <input type="hidden" name="username" value="{{ s.username }}">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+            </form>
+
+            <!-- Login as sponsor -->
+            <form action="{{ url_for('login_as_sponsor') }}" method="post" class="d-inline m-0">
+              <input type="hidden" name="username" value="{{ s.username }}">
+              <button type="submit" class="btn btn-outline-secondary btn-sm">Login</button>
+            </form>
+
+            {% if role == 'admin' %}
+            <!-- Disable / Enable Sponsor -->
+            <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}" method="post" class="d-inline m-0"
+                  onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} this sponsor?');">
+              {% if s.disabled %}
+                <input type="hidden" name="action" value="enable">
+                <button type="submit" class="btn btn-success btn-sm">Enable</button>
+              {% else %}
+                <input type="hidden" name="action" value="disable">
+                <button type="submit" class="btn btn-outline-dark btn-sm">Disable</button>
+              {% endif %}
+            </form>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
-        </tbody>
+      </tbody>
     </table>
-    {% else %}
-    <p>No sponsor found.</p>
-    {% endif %}
+  </div>
+  {% else %}
+  <p class="text-muted mt-3">No sponsors found.</p>
+  {% endif %}
 </div>
 {% endblock %}
