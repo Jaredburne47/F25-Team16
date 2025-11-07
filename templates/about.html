@@ -2,92 +2,183 @@
 {% block title %}About - Driver Incentive Program{% endblock %}
 
 {% block content %}
-<h1 style="text-align:center; font-family:sans-serif; color:#333;">About Team 16</h1>
+<div class="container py-5">
+  <header class="text-center mb-4">
+    <h1 class="h2 fw-semibold text-dark mb-1">About Team 16</h1>
+    <p class="text-secondary mb-0">Driver Incentive Program</p>
+  </header>
 
-<div class="truck">
-  <!-- cab -->
-  <div class="cab"></div>
+  <section class="position-relative mx-auto about-truck-wrap">
+    <div class="about-truck">
+      <!-- Truck SVG -->
+      <svg viewBox="0 0 1200 420" class="truck-svg" role="img" aria-labelledby="truckTitle truckDesc">
+        <title id="truckTitle">Team 16 Info Truck</title>
+        <desc id="truckDesc">Trailer contains structured team information. Headlight toggles a soft beam.</desc>
 
-  <ul class="truck-body">
-    {% for row in rows %}
-      <li>
-        {% for key, value in row.items() %}
-          <p>
-            <strong>{{ key }}:</strong> <span>{{ value }}</span>
-          </p>
-        {% endfor %}
-      </li>
-    {% else %}
-      <li class="empty">No data found.</li>
-    {% endfor %}
-  </ul>
+        <!-- Trailer -->
+        <g id="trailer-group">
+          <rect x="140" y="80" width="820" height="240" rx="12" ry="12" class="trailer" />
+          <rect x="860" y="95" width="84" height="28" rx="6" class="brand-plate"/>
+          <text x="902" y="114" text-anchor="middle" class="brand-text">TEAM 16</text>
+        </g>
 
-  <!-- wheels -->
-  <div class="wheel wheel-front"></div>
-  <div class="wheel wheel-back"></div>
+        <!-- Hitch & Cab -->
+        <rect x="960" y="200" width="30" height="18" class="hitch" rx="3"/>
+        <g id="cab-group">
+          <rect x="990" y="150" width="150" height="170" rx="14" class="cab"/>
+          <rect x="1010" y="170" width="80" height="44" rx="6" class="window"/>
+          <rect x="1000" y="226" width="40" height="14" rx="3" class="grille"/>
+          <rect x="990" y="306" width="150" height="10" class="step"/>
+          <g class="headlight" tabindex="0" role="button" aria-pressed="false" aria-label="Toggle headlight">
+            <circle cx="1128" cy="246" r="10" class="lamp"/>
+          </g>
+          <polygon points="1138,246 1200,226 1200,266" class="beam hidden"/>
+        </g>
+
+        <!-- Wheels -->
+        <g class="wheels">
+          <circle cx="260" cy="350" r="40" class="wheel"/>
+          <circle cx="820" cy="350" r="40" class="wheel"/>
+          <circle cx="1040" cy="350" r="38" class="wheel"/>
+          <circle cx="260" cy="350" r="10" class="hub"/>
+          <circle cx="820" cy="350" r="10" class="hub"/>
+          <circle cx="1040" cy="350" r="10" class="hub"/>
+        </g>
+      </svg>
+
+      <!-- Clipped trailer content -->
+      <div class="trailer-viewport" aria-hidden="false">
+        <div class="trailer-content">
+          {% if rows and rows|length %}
+            <ul class="list-unstyled m-0">
+              {% for row in rows %}
+                <li class="info-card">
+                  {% for key, value in row.items() %}
+                    <div class="kv">
+                      <div class="k">{{ key }}</div>
+                      <div class="v">{{ value }}</div>
+                    </div>
+                  {% endfor %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="empty">No data found.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <style>
-.truck {
-  display: inline-block;
-  position: relative;
-  width: 650px;
-  margin: 2rem auto;
+.about-truck-wrap { max-width: 1100px; }
+.about-truck { position: relative; }
+.truck-svg   { width: 100%; height: auto; display: block; position: relative; z-index: 1; }
+
+/* Palette */
+:root {
+  --surface: #fff; --line:#E5E9F0; --ink:#0F172A; --ink-2:#334155;
+  --primary:#0d6efd; --steel:#2F3B47;
+}
+.trailer { fill: var(--surface); stroke: var(--line); stroke-width: 3; }
+.cab{ fill: var(--primary);} .window{fill:#EAF3FF;} .grille{fill:#DDE5EE;}
+.step,.hitch{fill:var(--steel);} .wheel{fill:#1F2937;} .hub{fill:#C9D2DC;}
+.brand-plate{fill:var(--primary);} .brand-text{fill:#fff;font:700 14px/1 "Inter",system-ui;letter-spacing:.5px;}
+.lamp{fill:#FFD76B;stroke:#B69539;stroke-width:1.5;} .beam{fill:url(#beamGradient);opacity:0;transition:opacity .2s}
+.hidden{opacity:0}
+
+/* Clipped viewport matches trailer rect */
+.trailer-viewport{
+  position:absolute; z-index:2;
+  left: calc(140 / 1200 * 100%);
+  top:  calc(80 / 420 * 100%);
+  width: calc(820 / 1200 * 100%);
+  height:calc(240 / 420 * 100%);
+  overflow:hidden;
+  border-radius:12px;
+  box-shadow: inset 0 0 0 1px rgba(229,233,240,.7);
+  pointer-events:none;
 }
 
-/* cab in front of truck */
-.cab {
-  position: absolute;
-  bottom: 0;
-  right: -120px; /* stick out in front */
-  width: 120px;
-  height: 150px;
-  background: #f9f9f9;
-  border: 2px solid #555;
-  border-radius: 10px 30px 10px 10px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+/* Scrollable info */
+.trailer-content{
+  position:absolute; inset:0;
+  padding: clamp(.6rem, 1.2vw, 1rem);
+  overflow:auto;
+  scrollbar-gutter: stable both-edges;
+  pointer-events:auto;
 }
 
-.truck-body {
-  list-style: none;
-  padding: 1rem;
-  margin: 0;
-  background: #f9f9f9;
-  border: 2px solid #555;
+/* Card + Key/Value styling */
+.info-card{
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  font-family: sans-serif;
+  padding: .85rem;
+  margin-bottom: .65rem;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04);
+}
+.kv{
+  display:grid;
+  grid-template-columns:minmax(140px,1fr) 2fr;
+  gap:.25rem .75rem;
+  padding:.35rem 0;
+  border-bottom:1px dashed #EEF2F7;
+}
+.kv:last-child{ border-bottom:0; }
+.k{font-weight:600;color:var(--ink);white-space:nowrap;}
+.v{color:var(--ink-2);word-break:break-word;}
+.empty{
+  height:100%;display:grid;place-items:center;
+  color:#94A3B8;border:1px dashed var(--line);border-radius:10px;
 }
 
-/* items inside */
-.truck-body li {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  margin-bottom: 0.5rem;
-  padding: 0.25rem;
+/* Ensure cab always on top */
+#cab-group{ position: relative; z-index: 3; }
+
+/* Responsive tweaks */
+@media (max-width: 768px){
+  .kv{ grid-template-columns:1fr; }
+  .info-card{ padding:.75rem }
 }
 
-/* empty message */
-.truck-body .empty {
-  text-align: center;
-  color: #777;
-  font-style: italic;
+/* Thin scrollbars */
+.trailer-content::-webkit-scrollbar { width: 10px; }
+.trailer-content::-webkit-scrollbar-thumb {
+  background: #E7ECF2;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-
-/* wheels */
-.wheel {
-  position: absolute;
-  bottom: -25px;
-  width: 50px;
-  height: 50px;
-  background: #333;
-  border-radius: 50%;
-  border: 4px solid #555;
-}
-
-.wheel-front { left: 20px; }
-.wheel-back { right: 40px; }
 </style>
-{% endblock %}
 
+<script>
+(function(){
+  const svg=document.querySelector('.truck-svg'); if(!svg) return;
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const g=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+  g.id='beamGradient'; g.setAttribute('x1','0%'); g.setAttribute('y1','0%');
+  g.setAttribute('x2','100%'); g.setAttribute('y2','0%');
+  const s1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+  s1.setAttribute('offset','0%'); s1.setAttribute('stop-color','#FFF8D1'); s1.setAttribute('stop-opacity','0.65');
+  const s2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+  s2.setAttribute('offset','100%'); s2.setAttribute('stop-color','#FFF8D1'); s2.setAttribute('stop-opacity','0');
+  g.appendChild(s1); g.appendChild(s2); defs.appendChild(g); svg.insertBefore(defs, svg.firstChild);
+
+  const headlight=svg.querySelector('.headlight');
+  const beam=svg.querySelector('.beam');
+  if(!headlight||!beam) return;
+  beam.classList.add('hidden');
+  function toggle(){
+    const off=beam.classList.toggle('hidden');
+    beam.style.opacity=off?0:.85;
+    headlight.setAttribute('aria-pressed',off?'false':'true');
+  }
+  headlight.addEventListener('click',toggle);
+  headlight.addEventListener('keydown',e=>{
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggle(); }
+  });
+})();
+</script>
+{% endblock %}
