@@ -2563,7 +2563,7 @@ def remove_points():
         """, (points, target_driver, acting_sponsor))
         db.commit()
         cursor.execute("INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-                       ("remove points", f"{performed_by} removed {points} points from {target_driver} under {acting_sponsor}. Reason: {reason}", performed_by))
+                       ("remove points", f"{performed_by} removed {points} points from {target_driver}. Reason: {reason}", performed_by))
         db.commit()
         flash(f'{points} points were successfully removed from "{target_driver}" under {acting_sponsor}.', 'success')
 
