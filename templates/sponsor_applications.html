@@ -3,47 +3,80 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Driver Applications</h2>
-    <form method="POST" action="{{ url_for('bulk_update_applications') }}">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="selectAll"></th>
-                    <th>Driver</th>
-                    <th>Status</th>
-                    <th>Applied On</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for app in applications %}
-                <tr>
-                    <td>
-                        {% if app.status == "pending" %}
-                            <input type="checkbox" name="selected_apps" value="{{ app.id }}">
-                        {% endif %}
-                    </td>
-                    <td>{{ app.driverUsername }}</td>
-                    <td>{{ app.status }}</td>
-                    <td>{{ app.created_at }}</td>
-                    <td>
-                        <a href="{{ url_for('sponsor_application_detail', app_id=app.id) }}" 
-                           class="btn btn-info btn-sm">View</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">Driver Applications</h2>
+  </div>
 
-        <button type="submit" name="action" value="accept" class="btn btn-success">Accept Selected</button>
-        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject Selected</button>
-    </form>
+  {% if applications and applications|length > 0 %}
+  <form method="POST" action="{{ url_for('bulk_update_applications') }}">
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 5%;">
+              <input type="checkbox" id="selectAll">
+            </th>
+            <th style="width: 25%;">Driver</th>
+            <th style="width: 20%;">Status</th>
+            <th style="width: 25%;">Applied On</th>
+            <th style="width: 25%;" class="text-end">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          <tr>
+            <td>
+              {% if app.status == "pending" %}
+                <input type="checkbox" name="selected_apps" value="{{ app.id }}">
+              {% endif %}
+            </td>
+            <td class="fw-semibold">{{ app.driverUsername }}</td>
+            <td>
+              {% if app.status == "pending" %}
+                <span class="badge bg-warning text-dark">Pending</span>
+              {% elif app.status == "accepted" %}
+                <span class="badge bg-success">Accepted</span>
+              {% elif app.status == "rejected" %}
+                <span class="badge bg-danger">Rejected</span>
+              {% elif app.status == "withdrawn" %}
+                <span class="badge bg-secondary">Withdrawn</span>
+              {% else %}
+                <span class="badge bg-light text-dark">{{ app.status|capitalize }}</span>
+              {% endif %}
+            </td>
+            <td>{{ app.created_at or '-' }}</td>
+            <td class="text-end">
+              <a href="{{ url_for('sponsor_application_detail', app_id=app.id) }}" 
+                 class="btn btn-outline-primary btn-sm">
+                View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" name="action" value="accept" class="btn btn-success btn-sm">
+        Accept Selected
+      </button>
+      <button type="submit" name="action" value="reject" class="btn btn-outline-danger btn-sm">
+        Reject Selected
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <div class="alert alert-secondary mt-3" role="alert">
+    No driver applications found.
+  </div>
+  {% endif %}
 </div>
 
 <script>
 document.getElementById('selectAll').onclick = function() {
-    let checkboxes = document.querySelectorAll('input[name="selected_apps"]');
-    for (let cb of checkboxes) cb.checked = this.checked;
+  const boxes = document.querySelectorAll('input[name="selected_apps"]');
+  for (let box of boxes) box.checked = this.checked;
 };
 </script>
 {% endblock %}
