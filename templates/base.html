@@ -111,6 +111,7 @@
           {% set _ = um_links.append(url_for('sponsors')) %}
           {% set _ = um_links.append(url_for('points_page')) %}
           {% set _ = um_links.append(url_for('add_user')) %}
+          {% set _ = um_links.append(url_for('bulk_load')) %}
           {% if session.get('role') == 'sponsor' %}
             {% set _ = um_links.append(url_for('sponsor_applications')) %}
           {% endif %}
@@ -132,7 +133,12 @@
               <li><a class="dropdown-item {% if request.path == url_for('points_page') %}active{% endif %}" href="{{ url_for('points_page') }}">Point Management</a></li>
 
               <li><a class="dropdown-item {% if request.path == url_for('add_user') %}active{% endif %}" href="{{ url_for('add_user') }}">Add User</a></li>
-
+              <li>
+                <a class="dropdown-item {% if request.path == url_for('bulk_load') %}active{% endif %}"
+                href="{{ url_for('bulk_load') }}">
+                 Bulk Load
+                </a>
+              </li>
               {% if session.get('role') == 'sponsor' %}
                 <li><a class="dropdown-item {% if request.path == url_for('sponsor_applications') %}active{% endif %}" href="{{ url_for('sponsor_applications') }}">Driver Applications</a></li>
               {% endif %}
