@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Bulk Load | Driver Incentive Program{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Bulk Load Users (RC#1)</h2>
+
+<p class="text-muted">
+  Upload a <strong>pipe-delimited (|)</strong> text file to add multiple users or organizations.
+</p>
+
+<div class="card shadow-sm p-4">
+  <form action="{{ url_for('bulk_load') }}" method="post" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="file" class="form-label">Select File:</label>
+      <input class="form-control" type="file" name="file" id="file" accept=".txt" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Upload & Process</button>
+  </form>
+
+  {% if errors %}
+    <div class="alert alert-danger mt-4">
+      <h5>Errors Found:</h5>
+      <ul>
+        {% for err in errors %}
+          <li>{{ err }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if success_count %}
+    <div class="alert alert-success mt-4">
+      {{ success_count }} record(s) processed successfully!
+    </div>
+  {% endif %}
+</div>
+
+<hr>
+
+<h5 class="mt-4">Sample File Format:</h5>
+<pre class="bg-light p-3 rounded small">
+<code>
+O|New Organization
+D|New Organization|Joe|Driver|joe@email.com
+S|New Organization|Jill|Sponsor|jill@mail.com
+</code>
+</pre>
+
+{% endblock %}
