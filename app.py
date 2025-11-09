@@ -599,6 +599,12 @@ def disable_self():
     return redirect('/disabled_account?reason=self')
 
 
+#PlaceHolder rn for bulk upload
+@app.route("/bulk_load", methods=["GET", "POST"])
+def bulk_load():
+    # Temporary placeholder so templates can render
+    return render_template("bulk_load.html")
+
 @app.route('/toggle_account/<role>/<username>', methods=['POST'])
 def toggle_account(role, username):
     action = request.form.get('action')  # 'disable' or 'enable'
