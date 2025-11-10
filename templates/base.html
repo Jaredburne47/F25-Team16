@@ -169,6 +169,13 @@
           </li>
         {% endif %}
 
+        {% if session.get('original_user') %}
+        <li class="nav-item me-2">
+          <a href="{{ url_for('stop_impersonation') }}" class="btn btn-warning btn-sm">
+            Stop Impersonation
+          </a>
+        </li>
+        {% endif %}
         <li class="nav-item">
           {% if session.get('user') %}
             <a class="nav-link" href="/logout">Logout</a>
