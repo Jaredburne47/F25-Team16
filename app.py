@@ -618,7 +618,7 @@ def bulk_load():
             return redirect(request.url)
 
         lines = file.read().decode("utf-8").splitlines()
-        db = get_db()
+        db = MySQLdb.connect(**db_config)
         cursor = db.cursor()
 
         inserted, skipped = 0, 0
