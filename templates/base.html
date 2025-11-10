@@ -171,7 +171,7 @@
 
         {% if session.get('original_user') %}
         <li class="nav-item">
-          <a href="{{ url_for('stop_impersonation') }}" class="btn btn-warning btn-sm">
+          <a class = "nav-link" href="{{ url_for('stop_impersonation') }}">
             Stop Impersonation
           </a>
         </li>
