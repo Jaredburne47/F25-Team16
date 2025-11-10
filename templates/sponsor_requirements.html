@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Driver Field Requirements{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h3>Driver Profile Field Requirements</h3>
+  <p class="text-muted">Select which fields your drivers must complete before saving their profiles.</p>
+  <form method="POST">
+    <div class="row g-3">
+      {% for f in fields %}
+      <div class="col-md-4">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="{{ f }}" name="{{ f }}"
+                 {% if f in required_fields %}checked{% endif %}>
+          <label for="{{ f }}" class="form-check-label">
+            {{ f.replace('_', ' ').title() }}
+          </label>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm mt-3">Save Requirements</button>
+  </form>
+</div>
+{% endblock %}
