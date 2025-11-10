@@ -641,7 +641,8 @@ def bulk_load():
                 # ---------- ORGANIZATION (Admins only) ----------
                 if line_type == "O":
                     if role != "admin":
-                        raise ValueError("Sponsors cannot create organizations.")
+                        skipped += 1
+                        error_messages.append(f"Line {i}: Sponsors cannot create organizations → {line}")
                     if len(parts) < 2:
                         raise ValueError("Missing organization name.")
                     org_name = parts[1]
