@@ -42,6 +42,15 @@
           {% endif %}
         </td>
         <td class="text-end">
+          <!-- Message driver (goes to compose page) -->
+          <form action="{{ url_for('sponsor_message_driver_page') }}" method="GET" class="d-inline">
+            <input type="hidden" name="username" value="{{ d.username }}">
+            <button class="btn btn-outline-dark btn-sm"
+                    {% if is_disabled %}disabled title="Driver disabled"{% endif %}>
+              Message
+            </button>
+          </form>
+          
           <!-- Login as driver -->
           <form action="{{ url_for('login_as_driver') }}" method="POST" class="d-inline">
             <input type="hidden" name="username" value="{{ d.username }}">
