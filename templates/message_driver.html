@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Message Driver{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 720px;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4 class="mb-0">Message {{ driver.username }}</h4>
+        <a href="{{ url_for('drivers') }}" class="btn btn-outline-secondary btn-sm">Back to Drivers</a>
+      </div>
+      <p class="text-muted mb-4">Sending to <strong>{{ driver.email }}</strong></p>
+
+      <form method="POST" action="{{ url_for('sponsor_message_driver_send') }}">
+        <input type="hidden" name="driver_username" value="{{ driver.username }}">
+
+        <div class="mb-3">
+          <label class="form-label">Subject</label>
+          <input type="text" name="subject" class="form-control" placeholder="Subject" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Message</label>
+          <textarea name="message" rows="8" class="form-control" placeholder="Type your message..." required></textarea>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{{ url_for('drivers') }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Send Message</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
