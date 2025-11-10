@@ -645,9 +645,6 @@ def bulk_load():
                     if len(parts) < 2:
                         raise ValueError("Missing organization name.")
                     org_name = parts[1]
-
-                    if cursor.fetchone():
-                        continue  # already exists
                     inserted += 1
 
                 # ---------- DRIVER or SPONSOR ----------
@@ -661,16 +658,10 @@ def bulk_load():
                         if len(parts) < 5:
                             raise ValueError("Not enough fields (expected 5).")
                         _, _, first_name, last_name, email = parts
-                        org_name = session.get("organization_name")  # assume sponsor org stored in session
 
                     if not first_name or not last_name or not email:
                         raise ValueError("Missing user details.")
 
-                    # Organization check for Admin
-                    if role == "admin":
-                        org_row = cursor.fetchone()
-                        if not org_row:
-                            raise ValueError(f"Organization '{org_name}' does not exist.")
 
                     # Create password automatically (or randomize)
                     password_hash = sha256_of_string("1234")
