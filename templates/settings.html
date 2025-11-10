@@ -50,15 +50,16 @@
           </div>
         </div>
 
-       <!-- Contact -->
+       
+    <!-- Contact -->
     <div class="row g-3 mt-1">
       <div class="col-12">
         <label for="address" class="form-label mb-1">Address</label>
         <div class="input-group">
-          <input type="text" class="form-control" id="address" name="address"
+          <input type="password" class="form-control" id="address" name="address"
                  value="{{ user.address }}" autocomplete="off">
           <button type="button" class="btn btn-outline-secondary"
-                  onclick="toggleMask('address', this)" aria-pressed="false"
+                  onclick="toggleMask('address', this)" aria-pressed="true"
                   aria-label="Toggle address visibility">👁</button>
         </div>
       </div>
@@ -66,10 +67,10 @@
       <div class="col-md-6">
         <label for="phone" class="form-label mb-1">Phone Number</label>
         <div class="input-group">
-          <input type="text" class="form-control" id="phone" name="phone"
+          <input type="password" class="form-control" id="phone" name="phone"
                  value="{{ user.phone }}" autocomplete="off">
           <button type="button" class="btn btn-outline-secondary"
-                  onclick="toggleMask('phone', this)" aria-pressed="false"
+                  onclick="toggleMask('phone', this)" aria-pressed="true"
                   aria-label="Toggle phone visibility">👁</button>
         </div>
       </div>
@@ -345,9 +346,9 @@ function togglePassword(id) {
 function toggleMask(id, btn){
   const el = document.getElementById(id);
   if (!el) return;
-  // flip between visible text and masked
-  el.type = (el.type === 'password') ? 'text' : 'password';
-  if (btn) btn.setAttribute('aria-pressed', String(el.type === 'password'));
+  const nowMasked = el.type === 'password';
+  el.type = nowMasked ? 'text' : 'password';
+  if (btn) btn.setAttribute('aria-pressed', String(!nowMasked));
 }
 function previewImage(event) {
   const input = event.target;
