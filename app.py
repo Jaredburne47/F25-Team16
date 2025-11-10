@@ -1947,6 +1947,34 @@ def settings():
                     update_query += f"{f}=%s, "
                     update_fields.append(request.form.get(f))
 
+            # --- Driver required fields enforcement ---
+            if role == 'driver':
+                # Find the driver's sponsor
+                cursor.execute("""
+                    SELECT sponsor FROM driver_sponsor_points WHERE driver_username=%s
+                """, (username,))
+                sponsor_row = cursor.fetchone()
+            
+                if sponsor_row:
+                    sponsor = sponsor_row['sponsor']
+            
+                    # Check what fields are required for this sponsor
+                    cursor.execute("""
+                        SELECT field_name FROM sponsor_field_requirements
+                        WHERE sponsor_username=%s AND is_required=1
+                    """, (sponsor,))
+                    required_fields = [r['field_name'] for r in cursor.fetchall()]
+            
+                    missing = []
+                    for f in required_fields:
+                        val = request.form.get(f)
+                        if not val or val.strip() == "":
+                            missing.append(f.replace("_", " ").title())
+            
+                    if missing:
+                        flash(f"Your sponsor requires: {', '.join(missing)}", "warning")
+                        cursor.close(); db.close()
+                        return redirect(url_for('settings'))
             # --- Remove trailing comma and add WHERE ---
             update_query = update_query.rstrip(', ') + " WHERE username=%s"
             update_fields.append(username)
@@ -2107,7 +2135,41 @@ def update_notifications():
 
     return redirect(url_for('settings'))
 
+@app.route('/sponsor_requirements', methods=['GET', 'POST'])
+def sponsor_requirements():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
 
+    sponsor = session['user']
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Default fields to control
+    fields = ['address', 'phone', 'twitter', 'facebook', 'instagram', 'vehicle_make', 'vehicle_model', 'vehicle_year']
+
+    if request.method == 'POST':
+        # Clear old requirements
+        cur.execute("DELETE FROM sponsor_field_requirements WHERE sponsor_username=%s", (sponsor,))
+        # Insert updated requirements
+        for f in fields:
+            if request.form.get(f):  # checkbox selected
+                cur.execute("""
+                    INSERT INTO sponsor_field_requirements (sponsor_username, field_name, is_required)
+                    VALUES (%s, %s, 1)
+                """, (sponsor, f))
+        db.commit()
+        flash("Field requirements updated successfully.", "success")
+
+    # Load current settings
+    cur.execute("""
+        SELECT field_name FROM sponsor_field_requirements
+        WHERE sponsor_username=%s AND is_required=1
+    """, (sponsor,))
+    required_fields = {row['field_name'] for row in cur.fetchall()}
+    cur.close(); db.close()
+
+    return render_template('sponsor_requirements.html',
+                           fields=fields, required_fields=required_fields)
 @app.route('/add_user', methods=['GET', 'POST'])
 def add_user():
     # Only allow sponsors and admins
