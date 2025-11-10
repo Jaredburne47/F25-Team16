@@ -2530,15 +2530,78 @@ def remove_sponsor():
 
 @app.route('/login_as_driver', methods=['POST'])
 def login_as_driver():
+    # Ensure only sponsors or admins can impersonate
     if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
-        flash('You do not have permission to perform this action.', 'danger')
+        flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
-    username = request.form['username']
-    session['user'] = username
+    sponsor = session['user']
+    target_driver = request.form['username']
+
+    # Check that driver exists and isn't disabled
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("SELECT disabled FROM drivers WHERE username=%s", (target_driver,))
+    driver = cur.fetchone()
+    if not driver:
+        cur.close(); db.close()
+        flash("Driver not found.", "warning")
+        return redirect(url_for('drivers'))
+
+    if driver['disabled']:
+        cur.close(); db.close()
+        flash("Cannot impersonate a disabled driver.", "warning")
+        return redirect(url_for('drivers'))
+
+    # Log impersonation in auditLogs
+    cur.execute("""
+        INSERT INTO auditLogs (action, description, user_id)
+        VALUES (%s, %s, %s)
+    """, (
+        "impersonation",
+        f"Sponsor '{sponsor}' impersonated driver '{target_driver}'.",
+        sponsor
+    ))
+    db.commit()
+    cur.close(); db.close()
+
+    # Impersonate by setting session
+    session['impersonated_user'] = target_driver
+    session['original_user'] = sponsor
     session['role'] = 'driver'
-    flash(f"You are now logged in as driver '{username}'.", 'info')
+
+    flash(f"You are now logged in as {target_driver}.", "info")
     return redirect(url_for('driver_profile'))
+
+@app.route('/stop_impersonation')
+def stop_impersonation():
+    if 'original_user' not in session:
+        flash("No active impersonation session.", "warning")
+        return redirect(url_for('dashboard'))
+
+    original_user = session['original_user']
+
+    # Log that impersonation ended
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor()
+    cur.execute("""
+        INSERT INTO auditLogs (action, description, user_id)
+        VALUES (%s, %s, %s)
+    """, (
+        "stop_impersonation",
+        f"User '{original_user}' ended impersonation session.",
+        original_user
+    ))
+    db.commit()
+    cur.close(); db.close()
+
+    # Restore session
+    session['user'] = original_user
+    session.pop('impersonated_user', None)
+    session.pop('original_user', None)
+    session['role'] = 'sponsor'
+    flash("You have returned to your sponsor account.", "success")
+    return redirect(url_for('drivers'))
 
 @app.route('/login_as_sponsor', methods=['POST'])
 def login_as_sponsor():
