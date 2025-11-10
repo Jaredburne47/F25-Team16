@@ -599,10 +599,115 @@ def disable_self():
     return redirect('/disabled_account?reason=self')
 
 
-#PlaceHolder rn for bulk upload
 @app.route("/bulk_load", methods=["GET", "POST"])
 def bulk_load():
-    # Temporary placeholder so templates can render
+    role = session.get("role")
+
+    if role not in ["sponsor", "admin"]:
+        flash("Access denied: only sponsors and admins can use bulk load.", "danger")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        if 'file' not in request.files:
+            flash("No file uploaded.", "danger")
+            return redirect(request.url)
+
+        file = request.files['file']
+        if not file.filename.endswith(".txt"):
+            flash("Please upload a .txt file.", "danger")
+            return redirect(request.url)
+
+        lines = file.read().decode("utf-8").splitlines()
+        db = get_db()
+        cursor = db.cursor()
+
+        inserted, skipped = 0, 0
+        error_messages = []
+
+        for i, line in enumerate(lines, start=1):
+            if not line.strip():
+                continue
+
+            parts = [p.strip() for p in line.split("|")]
+
+            # Admin lines: O|org, D|org|fname|lname|email, S|org|fname|lname|email
+            # Sponsor lines: D||fname|lname|email, S||fname|lname|email
+            line_type = parts[0].upper() if len(parts) > 0 else None
+
+            try:
+                if line_type not in ["O", "D", "S"]:
+                    raise ValueError(f"Invalid record type '{line_type}' (must be O, D, or S).")
+
+                # ---------- ORGANIZATION (Admins only) ----------
+                if line_type == "O":
+                    if role != "admin":
+                        raise ValueError("Sponsors cannot create organizations.")
+                    if len(parts) < 2:
+                        raise ValueError("Missing organization name.")
+                    org_name = parts[1]
+
+                    if cursor.fetchone():
+                        continue  # already exists
+                    inserted += 1
+
+                # ---------- DRIVER or SPONSOR ----------
+                elif line_type in ["D", "S"]:
+                    # Organization name only used for admins
+                    if role == "admin":
+                        if len(parts) < 5:
+                            raise ValueError("Not enough fields (expected 5).")
+                        _, org_name, first_name, last_name, email = parts
+                    else:
+                        if len(parts) < 5:
+                            raise ValueError("Not enough fields (expected 5).")
+                        _, _, first_name, last_name, email = parts
+                        org_name = session.get("organization_name")  # assume sponsor org stored in session
+
+                    if not first_name or not last_name or not email:
+                        raise ValueError("Missing user details.")
+
+                    # Organization check for Admin
+                    if role == "admin":
+                        org_row = cursor.fetchone()
+                        if not org_row:
+                            raise ValueError(f"Organization '{org_name}' does not exist.")
+
+                    # Create password automatically (or randomize)
+                    password_hash = sha256_of_string("1234")
+
+                    if line_type == "D":
+                        cursor.execute("""
+                            INSERT INTO drivers (username, first_name, last_name, email, password_hash)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (
+                            email.split("@")[0], first_name, last_name, email, password_hash
+                        ))
+
+                    elif line_type == "S":
+                        cursor.execute("""
+                            INSERT INTO sponsor (username, first_name, last_name, email, password_hash)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (
+                            email.split("@")[0], first_name, last_name, email, password_hash
+                        ))
+
+                    inserted += 1
+
+            except Exception as e:
+                db.rollback()
+                skipped += 1
+                error_messages.append(f"Line {i}: {str(e)} → {line}")
+                continue
+
+        db.commit()
+        cursor.close()
+
+        flash(f"Bulk load complete — {inserted} inserted, {skipped} skipped.", "success")
+        if error_messages:
+            flash("Errors:\n" + "\n".join(error_messages), "warning")
+
+        return redirect(url_for("bulk_load"))
+
     return render_template("bulk_load.html")
 
 @app.route('/toggle_account/<role>/<username>', methods=['POST'])
