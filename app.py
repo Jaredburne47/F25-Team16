@@ -682,6 +682,7 @@ def bulk_load():
                             email.split("@")[0], first_name, last_name, email, password_hash
                         ))
 
+                    db.commit()
                     inserted += 1
 
             except Exception as e:
