@@ -18,6 +18,7 @@ from emailScripts.sponsorLockedEmail import send_sponsor_locked_email
 from emailScripts.favoriteRestockEmail import send_favorite_restock_email
 from emailScripts.newCatalogItemEmail import send_new_item_email
 from emailScripts.orderPlacedEmail import send_order_placed_email
+from sponsor_message_email import send_sponsor_message_email
 import secrets
 import os
 import csv
@@ -2676,6 +2677,107 @@ def points_page():
         cur.close()
         db.close()
 
+@app.route('/sponsor/message_driver', methods=['GET'])
+def sponsor_message_driver_page():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    username = request.args.get('username', '').strip()
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # verify relationship + get email/flags
+    cur.execute("""
+        SELECT d.username, d.email, d.disabled, COALESCE(d.receive_emails, 1) AS receive_emails
+        FROM drivers d
+        JOIN driver_sponsor_points dsp
+          ON dsp.driver_username = d.username AND dsp.status='accepted'
+        WHERE d.username=%s AND dsp.sponsor=%s
+        LIMIT 1
+    """, (username, sponsor))
+    driver = cur.fetchone()
+    cur.close(); db.close()
+
+    if not driver:
+        flash("You can only message drivers you currently sponsor.", "danger")
+        return redirect(url_for('drivers'))
+    if driver['disabled']:
+        flash("Cannot message a disabled driver.", "warning")
+        return redirect(url_for('drivers'))
+
+    return render_template('message_driver.html', driver=driver)
+
+
+@app.route('/sponsor/message_driver/send', methods=['POST'])
+def sponsor_message_driver_send():
+    if 'user' not in session or session.get('role') != 'sponsor':
+        return redirect(url_for('login'))
+
+    sponsor = session['user']
+    driver_username = request.form.get('driver_username', '').strip()
+    subject = request.form.get('subject', '').strip()
+    message = request.form.get('message', '').strip()
+
+    if not driver_username or not subject or not message:
+        flash("All fields are required.", "warning")
+        return redirect(url_for('drivers'))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # re-verify + pull email
+    cur.execute("""
+        SELECT d.email, d.disabled, COALESCE(d.receive_emails,1) AS receive_emails
+        FROM drivers d
+        JOIN driver_sponsor_points dsp
+          ON dsp.driver_username = d.username AND dsp.status='accepted'
+        WHERE d.username=%s AND dsp.sponsor=%s
+        LIMIT 1
+    """, (driver_username, sponsor))
+    row = cur.fetchone()
+
+    if not row:
+        cur.close(); db.close()
+        flash("You can only message drivers you currently sponsor.", "danger")
+        return redirect(url_for('drivers'))
+    if row['disabled']:
+        cur.close(); db.close()
+        flash("Cannot message a disabled driver.", "warning")
+        return redirect(url_for('drivers'))
+    if not row['receive_emails']:
+        cur.close(); db.close()
+        flash("This driver has opted out of emails.", "warning")
+        return redirect(url_for('drivers'))
+
+    try:
+        send_sponsor_message_email(
+            to_email=row['email'],
+            driver_username=driver_username,
+            sponsor_username=sponsor,
+            subject=subject,
+            message=message
+        )
+        # audit
+        cur = db.cursor()
+        cur.execute("""
+            INSERT INTO auditLogs (action, description, user_id)
+            VALUES (%s, %s, %s)
+        """, (
+            "sponsor_message",
+            f"Sponsor '{sponsor}' emailed driver '{driver_username}' (subject: {subject})",
+            sponsor
+        ))
+        db.commit()
+        flash("Message sent successfully!", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Email failed: {e}", "danger")
+    finally:
+        cur.close(); db.close()
+
+    return redirect(url_for('drivers'))
 
 @app.route('/add_points', methods=['POST'])
 def add_points():
