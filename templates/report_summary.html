@@ -41,17 +41,17 @@
             {% endfor %}
           </tbody>
 
-          {# Calculate grand total for first numeric "points" or "total" column #}
-          {% set total = 0 %}
+          {# Find the first column whose header contains 'points' or 'total' (no break used) #}
           {% set total_col = None %}
           {% for col in columns %}
-            {% if 'points' in col|lower or 'total' in col|lower %}
+            {% if total_col is none and ('points' in col|lower or 'total' in col|lower) %}
               {% set total_col = col %}
-              {% break %}
             {% endif %}
           {% endfor %}
 
           {% if total_col %}
+            {# Sum that column #}
+            {% set total = 0 %}
             {% for row in data %}
               {% set total = total + (row[total_col] or 0) %}
             {% endfor %}
