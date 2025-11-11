@@ -2252,6 +2252,13 @@ def add_user():
             flash("Only admins can create other admins.", "danger")
             return redirect(url_for('add_user'))
         
+        # --- Password Validation ---
+        is_valid, message = check_password_strength(new_password)
+        if not is_valid:
+            flash(message, 'danger')
+            return redirect(url_for('add_user'))
+        # --- END OF validation ---
+
         #Hashing Password
         password_hash = new_password;
         password_hash = sha256_of_string(password_hash)
