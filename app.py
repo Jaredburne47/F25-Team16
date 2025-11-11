@@ -791,7 +791,7 @@ def driver_profile():
     cursor.close()
     db.close()
 
-    return render_template("driver_profile.html", user=user_info)
+    return render_template("driver_profile.html", user=user_info, activity_logs=activity_logs)
 
 
 @app.route('/sponsor/profile', methods=['GET', 'POST'])
