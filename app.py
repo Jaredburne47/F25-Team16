@@ -39,6 +39,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 import io
 from flask import send_file
+import re
 
 
 app = Flask(__name__)
