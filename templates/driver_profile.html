@@ -76,5 +76,31 @@
             <p><strong>Year:</strong> {{ user.vehicle_year }}</p>
         </div>
     </div>
+    <!-- START OF Driver Activity Log -->
+    <div class="mt-4 no-print">
+        <h2>Recent Activity</h2>
+        <hr>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                {% if activity_logs %}
+                    <ul class="list-group list-group-flush">
+                        {% for log in activity_logs %}
+                            <li class="list-group-item">
+                                <!-- 'title()' capitalizes the action, e.g., "add points" -> "Add Points" -->
+                                <strong class="text-primary">{{ log.action | title }}</strong>
+                                <p class="mb-1">{{ log.description }}</p>
+                                <small class="text-muted">
+                                    <!-- Format the timestamp to be more readable -->
+                                    {{ log.timestamp.strftime('%B %d, %Y at %I:%M %p') }}
+                                </small>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-center text-muted mb-0">No recent activity found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
