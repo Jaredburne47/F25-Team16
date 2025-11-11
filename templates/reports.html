@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-3">Reports Dashboard</h1>
+  <div class="card shadow-sm p-4">
+    <form method="get" action="{{ url_for('generate_report') }}">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label">Select Report Type</label>
+          <select class="form-select" name="report_type" required>
+            <option value="">-- Choose --</option>
+            <option value="driver_summary">Driver Purchase Summary</option>
+            <option value="driver_detail">Driver Purchase Detail</option>
+            <option value="sponsor_summary">Sponsor Summary</option>
+          </select>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Filter by Driver (optional)</label>
+          <input type="text" class="form-control" name="driver" placeholder="Enter driver username">
+        </div>
+        <div class="col-md-2 d-grid">
+          <button class="btn btn-primary">Generate</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
