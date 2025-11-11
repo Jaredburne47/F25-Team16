@@ -142,6 +142,14 @@
               {% if session.get('role') == 'sponsor' %}
                 <li><a class="dropdown-item {% if request.path == url_for('sponsor_applications') %}active{% endif %}" href="{{ url_for('sponsor_applications') }}">Driver Applications</a></li>
               {% endif %}
+              {% if session.get('role') in ['sponsor', 'admin'] %}
+                <li>
+                  <a class="dropdown-item {% if request.path == url_for('reports_page') %}active{% endif %}" 
+                     href="{{ url_for('reports_page') }}">
+                    Reports
+                  </a>
+                </li>
+              {% endif %}
               {% if session.get('role') == 'admin' %}
                 <li><a class="dropdown-item {% if request.path == url_for('audit_logs') %}active{% endif %}" href="{{ url_for('audit_logs') }}">Audit Logs</a></li>
                 <li><a class="dropdown-item {% if request.path == '/admin/assign' %}active{% endif %}" href="{{ url_for('admin_assign') }}">Assign Driver to Sponsor</a></li>
