@@ -3728,116 +3728,210 @@ def generate_report():
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # === Driver Purchase Summary ===
+    # --- Driver Purchase Summary ---
     if report_type == 'driver_summary':
         cur.execute("""
             SELECT 
                 d.username AS Driver,
-                COUNT(o.orderID) AS TotalOrders,
-                COALESCE(SUM(o.totalPoints), 0) AS TotalPointsUsed
+                CONCAT(d.first_name,' ',d.last_name) AS DriverName,
+                COUNT(o.order_id) AS TotalOrders,
+                COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
             FROM orders o
-            JOIN drivers d ON o.driver_username = d.username
+            JOIN drivers d ON o.user_id = d.username
             GROUP BY d.username
-            ORDER BY TotalPointsUsed DESC
+            ORDER BY TotalPointsUsed DESC;
         """)
         data = cur.fetchall()
         cur.close(); db.close()
-        columns = ["Driver", "TotalOrders", "TotalPointsUsed"]
-        return render_template('report_summary.html', title="Driver Purchase Summary", data=data, columns=columns)
+        return render_template(
+            'report_summary.html',
+            title="Driver Purchase Summary",
+            columns=["Driver", "Driver Name", "Total Orders", "Total Points Used"],
+            data=data
+        )
 
-    # === Driver Purchase Detail ===
-    elif report_type == 'driver_detail':
+    # --- Driver Purchase Detail (requires driver username) ---
+    if report_type == 'driver_detail':
         if not driver:
-            flash("Please enter a driver username for detail reports.", "warning")
+            flash("Please enter a driver username for the detail report.", "warning")
+            cur.close(); db.close()
             return redirect(url_for('reports_dashboard'))
 
         cur.execute("""
             SELECT 
-                o.orderID AS OrderID,
-                o.datePlaced AS OrderDate,
-                p.product_name AS Product,
-                ci.quantity AS Quantity,
-                p.point_cost AS PointsEach,
-                (ci.quantity * p.point_cost) AS TotalPoints
+                o.order_id   AS OrderID,
+                o.order_date AS OrderDate,
+                p.name       AS ProductName,
+                o.sponsor    AS Sponsor,
+                o.quantity   AS Quantity,
+                o.point_cost AS PointsEach,
+                (o.quantity * o.point_cost) AS TotalPoints,
+                o.status     AS Status
             FROM orders o
-            JOIN cart_items ci ON ci.order_id = o.orderID
-            JOIN products p ON ci.product_id = p.product_id
-            WHERE o.driver_username = %s
-            ORDER BY o.datePlaced DESC
+            JOIN products p ON o.product_id = p.product_id
+            WHERE o.user_id = %s
+            ORDER BY o.order_date DESC;
         """, (driver,))
         rows = cur.fetchall()
-        total_points = sum(r['TotalPoints'] for r in rows) if rows else 0
         cur.close(); db.close()
 
-        return render_template('report_detail.html', data=rows, driver=driver, total_points=total_points)
+        total_points = sum(r['TotalPoints'] for r in rows) if rows else 0
+        return render_template(
+            'report_detail.html',
+            driver=driver,
+            data=rows,
+            total_points=total_points
+        )
 
-    # === Sponsor Purchase Summary ===
+    # --- Sponsor Purchase Summary ---
+    if report_type == 'sponsor_summary':
+        cur.execute("""
+            SELECT 
+                s.username AS Sponsor,
+                s.organization AS Organization,
+                COUNT(o.order_id) AS TotalOrders,
+                COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
+            FROM orders o
+            JOIN sponsor s ON o.sponsor = s.username
+            GROUP BY s.username
+            ORDER BY TotalPointsUsed DESC;
+        """)
+        data = cur.fetchall()
+        cur.close(); db.close()
+        return render_template(
+            'report_summary.html',
+            title="Sponsor Purchase Summary",
+            columns=["Sponsor", "Organization", "Total Orders", "Total Points Used"],
+            data=data
+        )
+
+    # fallthrough
+    cur.close(); db.close()
+    flash("Invalid report type.", "danger")
+    return redirect(url_for('reports_dashboard'))
+
+
+@app.route('/download_report')
+def download_report():
+    if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
+        return redirect(url_for('login'))
+
+    report_type = request.args.get('report_type')
+    driver = request.args.get('driver')
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    title = ""
+    columns = []
+    table_data = []
+
+    # ===============================
+    #  DRIVER PURCHASE SUMMARY
+    # ===============================
+    if report_type == 'driver_summary':
+        cur.execute("""
+            SELECT 
+                d.username AS Driver,
+                CONCAT(d.first_name,' ',d.last_name) AS DriverName,
+                COUNT(o.order_id) AS TotalOrders,
+                COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
+            FROM orders o
+            JOIN drivers d ON o.user_id = d.username
+            GROUP BY d.username
+            ORDER BY TotalPointsUsed DESC;
+        """)
+        data = cur.fetchall()
+        title = "Driver Purchase Summary"
+        columns = ["Driver", "Driver Name", "Total Orders", "Total Points Used"]
+        table_data = [[r['Driver'], r['DriverName'], r['TotalOrders'], r['TotalPointsUsed']] for r in data]
+
+    # ===============================
+    #  DRIVER PURCHASE DETAIL
+    # ===============================
+    elif report_type == 'driver_detail':
+        if not driver:
+            flash("Driver username required for detail report.", "warning")
+            cur.close(); db.close()
+            return redirect(url_for('reports_dashboard'))
+
+        cur.execute("""
+            SELECT 
+                o.order_id   AS OrderID,
+                o.order_date AS OrderDate,
+                p.name       AS ProductName,
+                o.sponsor    AS Sponsor,
+                o.quantity   AS Quantity,
+                o.point_cost AS PointsEach,
+                (o.quantity * o.point_cost) AS TotalPoints,
+                o.status     AS Status
+            FROM orders o
+            JOIN products p ON o.product_id = p.product_id
+            WHERE o.user_id = %s
+            ORDER BY o.order_date DESC;
+        """, (driver,))
+        data = cur.fetchall()
+        title = f"Driver Purchase Detail: {driver}"
+        columns = ["Order ID", "Order Date", "Product", "Sponsor", "Quantity", "Points Each", "Total Points", "Status"]
+        table_data = [
+            [r['OrderID'], r['OrderDate'], r['ProductName'], r['Sponsor'],
+             r['Quantity'], r['PointsEach'], r['TotalPoints'], r['Status']]
+            for r in data
+        ]
+
+    # ===============================
+    #  SPONSOR PURCHASE SUMMARY
+    # ===============================
     elif report_type == 'sponsor_summary':
         cur.execute("""
             SELECT 
                 s.username AS Sponsor,
-                COUNT(o.orderID) AS TotalOrders,
-                COALESCE(SUM(o.totalPoints), 0) AS TotalPointsUsed
+                s.organization AS Organization,
+                COUNT(o.order_id) AS TotalOrders,
+                COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
             FROM orders o
-            JOIN sponsor s ON o.sponsor_username = s.username
+            JOIN sponsor s ON o.sponsor = s.username
             GROUP BY s.username
-            ORDER BY TotalPointsUsed DESC
+            ORDER BY TotalPointsUsed DESC;
         """)
         data = cur.fetchall()
-        cur.close(); db.close()
-        columns = ["Sponsor", "TotalOrders", "TotalPointsUsed"]
-        return render_template('report_summary.html', title="Sponsor Purchase Summary", data=data, columns=columns)
+        title = "Sponsor Purchase Summary"
+        columns = ["Sponsor", "Organization", "Total Orders", "Total Points Used"]
+        table_data = [[r['Sponsor'], r['Organization'], r['TotalOrders'], r['TotalPointsUsed']] for r in data]
 
     else:
-        flash("Invalid report type selected.", "danger")
+        flash("Invalid report type for download.", "danger")
         cur.close(); db.close()
         return redirect(url_for('reports_dashboard'))
 
-@app.route('/download_report')
-def download_report():
-    report_type = request.args.get('report_type')
-    driver = request.args.get('driver')
-    
-    # (Reuse logic from generate_report to get data)
-    # Example below assumes a summary-style report
-    db = MySQLdb.connect(**db_config)
-    cur = db.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("""
-        SELECT 
-            d.username AS Driver,
-            COUNT(o.orderID) AS TotalOrders,
-            COALESCE(SUM(o.totalPoints), 0) AS TotalPointsUsed
-        FROM orders o
-        JOIN drivers d ON o.driver_username = d.username
-        GROUP BY d.username
-    """)
-    data = cur.fetchall()
     cur.close(); db.close()
 
-    # Create PDF
+    # ===============================
+    #  PDF GENERATION (shared logic)
+    # ===============================
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
-    elements = []
     styles = getSampleStyleSheet()
+    elements = [Paragraph(title, styles['Title']), Spacer(1, 12)]
 
-    elements.append(Paragraph("Driver Purchase Summary", styles['Title']))
-    elements.append(Spacer(1, 12))
-
-    table_data = [["Driver", "Total Orders", "Total Points Used"]]
-    for row in data:
-        table_data.append([row['Driver'], row['TotalOrders'], row['TotalPointsUsed']])
-
-    table = Table(table_data)
+    table_data.insert(0, columns)  # add header row
+    table = Table(table_data, repeatRows=1)
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
-        ('GRID', (0,0), (-1,-1), 1, colors.grey),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER')
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8)
     ]))
     elements.append(table)
 
     doc.build(elements)
     buffer.seek(0)
-    return send_file(buffer, as_attachment=True, download_name='report.pdf', mimetype='application/pdf')
+
+    filename = f"{report_type}_report.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
 
 @app.route('/admin/simulation', methods=['GET'])
 def simulation():
