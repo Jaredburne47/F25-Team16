@@ -144,8 +144,8 @@
               {% endif %}
               {% if session.get('role') in ['sponsor', 'admin'] %}
                 <li>
-                  <a class="dropdown-item {% if request.path == url_for('reports_page') %}active{% endif %}" 
-                     href="{{ url_for('reports_page') }}">
+                  <a class="dropdown-item {% if request.path == url_for('reports_dashboard') %}active{% endif %}" 
+                     href="{{ url_for('reports_dashboard') }}">
                     Reports
                   </a>
                 </li>
