@@ -2693,7 +2693,7 @@ def sponsor_message_driver_page():
         SELECT d.username, d.email, d.disabled, COALESCE(d.receive_emails, 1) AS receive_emails
         FROM drivers d
         JOIN driver_sponsor_points dsp
-          ON dsp.driver_username = d.username AND dsp.status='accepted'
+          ON dsp.driver_username = d.username
         WHERE d.username=%s AND dsp.sponsor=%s
         LIMIT 1
     """, (username, sponsor))
@@ -2732,7 +2732,7 @@ def sponsor_message_driver_send():
         SELECT d.email, d.disabled, COALESCE(d.receive_emails,1) AS receive_emails
         FROM drivers d
         JOIN driver_sponsor_points dsp
-          ON dsp.driver_username = d.username AND dsp.status='accepted'
+          ON dsp.driver_username = d.username
         WHERE d.username=%s AND dsp.sponsor=%s
         LIMIT 1
     """, (driver_username, sponsor))
