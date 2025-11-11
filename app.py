@@ -3042,6 +3042,13 @@ def set_new_password(token):
 
         if new_password != confirm_password:
             return "<h3>Passwords do not match.</h3>"
+        
+        # --- START OF Password Validation ---
+            is_valid, message = check_password_strength(new_password)
+            if not is_valid:
+                flash(message, 'danger')
+                return redirect(url_for('set_new_password', token=token))
+            # --- END OF Password validation ---
 
         # Determine which table to update
         table = {'driver': 'drivers', 'sponsor': 'sponsor', 'admin': 'admins'}[reset['role']]
