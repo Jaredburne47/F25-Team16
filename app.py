@@ -1947,6 +1947,21 @@ def settings():
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
         if request.method == 'POST':
+            # --- Password Validation (Moved to top) ---
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+            
+            if password: # User is trying to update their password
+                if password != confirm_password:
+                    flash('Passwords do not match. Please try again.', 'danger')
+                    return redirect(url_for('settings')) 
+                
+                is_valid, message = check_password_strength(password)
+                if not is_valid:
+                    flash(message, 'danger') # e.g., "Password must contain a number."
+                    return redirect(url_for('settings'))
+            # --- END of validation ---
+
             update_fields = []
             update_query = f"UPDATE {table} SET "
 
@@ -2027,8 +2042,8 @@ def settings():
             cursor.execute(update_query, tuple(update_fields))
 
             # --- Password ---
-            password = request.form.get('password')
-            confirm_password = request.form.get('confirm_password')
+            # password = request.form.get('password')
+            # confirm_password = request.form.get('confirm_password')
             if password and confirm_password:
                 if password == confirm_password:
                     password = sha256_of_string(password)
