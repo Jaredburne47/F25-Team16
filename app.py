@@ -777,6 +777,17 @@ def driver_profile():
     cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
     user_info = cursor.fetchone()
 
+    # fetches the activity logs for this driver from the auditLogs table.
+    # 10 most recent entries.
+    cursor.execute("""
+        SELECT timestamp, action, description 
+        FROM auditLogs 
+        WHERE user_id = %s 
+        ORDER BY timestamp DESC 
+        LIMIT 10
+    """, (username,))
+    activity_logs = cursor.fetchall()
+
     cursor.close()
     db.close()
 
