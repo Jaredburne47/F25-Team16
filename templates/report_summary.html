@@ -33,7 +33,7 @@
             {% for row in data %}
               <tr>
                 {% for col in columns %}
-                  <td class="{% if col|lower contains 'total' or col|lower contains 'points' %}number{% endif %}">
+                  <td class="{% if col|lower in 'total' or col|lower in 'points' %}number{% endif %}">
                     {{ row[col] }}
                   </td>
                 {% endfor %}
