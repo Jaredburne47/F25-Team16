@@ -5,7 +5,7 @@
 <style>
   .report-card { border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.06); }
   .report-title { letter-spacing: .4px; }
-  .number { font-variant-numeric: tabular-nums; }
+  .number { font-variant-numeric: tabular-nums; text-align: right; }
   tfoot th { background: #f8f9fa; }
 </style>
 
@@ -33,33 +33,34 @@
             {% for row in data %}
               <tr>
                 {% for col in columns %}
-                  <td class="{% if col|lower in 'total' or col|lower in 'points' %}number{% endif %}">
+                  <td class="{% if 'total' in col|lower or 'points' in col|lower %}number{% endif %}">
                     {{ row[col] }}
                   </td>
                 {% endfor %}
               </tr>
             {% endfor %}
           </tbody>
-          {% set has_totals = columns | select('lower') | select('search','total|points') | list | length > 0 %}
-          {% if has_totals %}
-          <tfoot>
-            <tr>
-              <th colspan="{{ columns|length - 1 }}" class="text-end">TOTAL</th>
-              <th class="number">
-                {# Sum first numeric/points-like column we find #}
-                {% set total = 0 %}
-                {% for row in data %}
-                  {% for col in columns %}
-                    {% if 'points' in col|lower or 'total' in col|lower %}
-                      {% set total = total + (row[col] or 0) %}
-                      {% break %}
-                    {% endif %}
-                  {% endfor %}
-                {% endfor %}
-                {{ total }}
-              </th>
-            </tr>
-          </tfoot>
+
+          {# Calculate grand total for first numeric "points" or "total" column #}
+          {% set total = 0 %}
+          {% set total_col = None %}
+          {% for col in columns %}
+            {% if 'points' in col|lower or 'total' in col|lower %}
+              {% set total_col = col %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+
+          {% if total_col %}
+            {% for row in data %}
+              {% set total = total + (row[total_col] or 0) %}
+            {% endfor %}
+            <tfoot>
+              <tr>
+                <th colspan="{{ columns|length - 1 }}" class="text-end">TOTAL</th>
+                <th class="number">{{ total }}</th>
+              </tr>
+            </tfoot>
           {% endif %}
         </table>
       </div>
