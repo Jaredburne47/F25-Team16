@@ -33,6 +33,12 @@ import hmac
 from urllib import request as urlreq
 from urllib import parse as urlparse
 import requests #for recaptcha
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+import io
+from flask import send_file
 
 
 app = Flask(__name__)
@@ -3701,6 +3707,137 @@ def get_email_by_username(username):
         cursor.close()
         db.close()
 
+@app.route('/reports')
+def reports_dashboard():
+    if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
+        return redirect(url_for('login'))
+    return render_template('reports.html')
+
+@app.route('/generate_report')
+def generate_report():
+    if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
+        return redirect(url_for('login'))
+
+    report_type = request.args.get('report_type')
+    driver = request.args.get('driver')
+
+    if not report_type:
+        flash("Please select a report type.", "warning")
+        return redirect(url_for('reports_dashboard'))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # === Driver Purchase Summary ===
+    if report_type == 'driver_summary':
+        cur.execute("""
+            SELECT 
+                d.username AS Driver,
+                COUNT(o.orderID) AS TotalOrders,
+                COALESCE(SUM(o.totalPoints), 0) AS TotalPointsUsed
+            FROM orders o
+            JOIN drivers d ON o.driver_username = d.username
+            GROUP BY d.username
+            ORDER BY TotalPointsUsed DESC
+        """)
+        data = cur.fetchall()
+        cur.close(); db.close()
+        columns = ["Driver", "TotalOrders", "TotalPointsUsed"]
+        return render_template('report_summary.html', title="Driver Purchase Summary", data=data, columns=columns)
+
+    # === Driver Purchase Detail ===
+    elif report_type == 'driver_detail':
+        if not driver:
+            flash("Please enter a driver username for detail reports.", "warning")
+            return redirect(url_for('reports_dashboard'))
+
+        cur.execute("""
+            SELECT 
+                o.orderID AS OrderID,
+                o.datePlaced AS OrderDate,
+                p.product_name AS Product,
+                ci.quantity AS Quantity,
+                p.point_cost AS PointsEach,
+                (ci.quantity * p.point_cost) AS TotalPoints
+            FROM orders o
+            JOIN cart_items ci ON ci.order_id = o.orderID
+            JOIN products p ON ci.product_id = p.product_id
+            WHERE o.driver_username = %s
+            ORDER BY o.datePlaced DESC
+        """, (driver,))
+        rows = cur.fetchall()
+        total_points = sum(r['TotalPoints'] for r in rows) if rows else 0
+        cur.close(); db.close()
+
+        return render_template('report_detail.html', data=rows, driver=driver, total_points=total_points)
+
+    # === Sponsor Purchase Summary ===
+    elif report_type == 'sponsor_summary':
+        cur.execute("""
+            SELECT 
+                s.username AS Sponsor,
+                COUNT(o.orderID) AS TotalOrders,
+                COALESCE(SUM(o.totalPoints), 0) AS TotalPointsUsed
+            FROM orders o
+            JOIN sponsor s ON o.sponsor_username = s.username
+            GROUP BY s.username
+            ORDER BY TotalPointsUsed DESC
+        """)
+        data = cur.fetchall()
+        cur.close(); db.close()
+        columns = ["Sponsor", "TotalOrders", "TotalPointsUsed"]
+        return render_template('report_summary.html', title="Sponsor Purchase Summary", data=data, columns=columns)
+
+    else:
+        flash("Invalid report type selected.", "danger")
+        cur.close(); db.close()
+        return redirect(url_for('reports_dashboard'))
+
+@app.route('/download_report')
+def download_report():
+    report_type = request.args.get('report_type')
+    driver = request.args.get('driver')
+    
+    # (Reuse logic from generate_report to get data)
+    # Example below assumes a summary-style report
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT 
+            d.username AS Driver,
+            COUNT(o.orderID) AS TotalOrders,
+            COALESCE(SUM(o.totalPoints), 0) AS TotalPointsUsed
+        FROM orders o
+        JOIN drivers d ON o.driver_username = d.username
+        GROUP BY d.username
+    """)
+    data = cur.fetchall()
+    cur.close(); db.close()
+
+    # Create PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    elements.append(Paragraph("Driver Purchase Summary", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+    table_data = [["Driver", "Total Orders", "Total Points Used"]]
+    for row in data:
+        table_data.append([row['Driver'], row['TotalOrders'], row['TotalPointsUsed']])
+
+    table = Table(table_data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('GRID', (0,0), (-1,-1), 1, colors.grey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER')
+    ]))
+    elements.append(table)
+
+    doc.build(elements)
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name='report.pdf', mimetype='application/pdf')
 
 @app.route('/admin/simulation', methods=['GET'])
 def simulation():
