@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Report · Summary{% endblock %}
+
+{% block content %}
+<style>
+  .report-card { border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+  .report-title { letter-spacing: .4px; }
+  .number { font-variant-numeric: tabular-nums; }
+  tfoot th { background: #f8f9fa; }
+</style>
+
+<div class="container mt-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="report-title mb-0">{{ title or 'Summary Report' }}</h2>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports_dashboard') }}">← Back</a>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+    </div>
+  </div>
+
+  <div class="card report-card p-3 p-md-4">
+    {% if data and data|length > 0 %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              {% for col in columns %}
+                <th scope="col">{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data %}
+              <tr>
+                {% for col in columns %}
+                  <td class="{% if col|lower contains 'total' or col|lower contains 'points' %}number{% endif %}">
+                    {{ row[col] }}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+          {% set has_totals = columns | select('lower') | select('search','total|points') | list | length > 0 %}
+          {% if has_totals %}
+          <tfoot>
+            <tr>
+              <th colspan="{{ columns|length - 1 }}" class="text-end">TOTAL</th>
+              <th class="number">
+                {# Sum first numeric/points-like column we find #}
+                {% set total = 0 %}
+                {% for row in data %}
+                  {% for col in columns %}
+                    {% if 'points' in col|lower or 'total' in col|lower %}
+                      {% set total = total + (row[col] or 0) %}
+                      {% break %}
+                    {% endif %}
+                  {% endfor %}
+                {% endfor %}
+                {{ total }}
+              </th>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">No data found for this report.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
