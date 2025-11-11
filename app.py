@@ -767,6 +767,13 @@ def driver_profile():
         """, (first_name, last_name, address, phone, username))
         db.commit()
 
+        # Log the profile update
+        cursor.execute(
+            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+            ("profile_update", f"Driver {username} updated their profile information.", username)
+        )
+        db.commit()
+
     cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
     user_info = cursor.fetchone()
 
