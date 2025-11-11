@@ -67,6 +67,26 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# --- Password Validation ---
+def check_password_strength(password):
+    """
+    Checks a password against the defined rules.
+    Returns (True, "") if valid, or (False, "Error Message") if invalid.
+    """
+    if len(password) < 4:
+        return False, "Password must be at least 4 characters long."
+    
+    # re.search(r"\d", ...) checks if there is at least one number
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one number."
+    
+    # Add more rules here in the future
+    # if not re.search(r"[A-Z]", password):
+    #     return False, "Password must contain an uppercase letter."
+    
+    return True, "" # All checks passed
+# --- END OF Password Validation ---
+
 # --- Auto-promotion helper: Processing -> Shipped after 60s ---
 def _promote_processing_to_shipped(db):
     cur = db.cursor()
