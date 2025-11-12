@@ -5,7 +5,7 @@
 <style>
   .report-card { border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.06); }
   .report-title { letter-spacing: .4px; }
-  .number { font-variant-numeric: tabular-nums; text-align: right; }
+  .number { font-variant-numeric: tabular-nums; text-align: right !important; }
   tfoot th { background: #f8f9fa; }
 </style>
 
@@ -20,20 +20,31 @@
 
   <div class="card report-card p-3 p-md-4">
     {% if data and data|length > 0 %}
+
+      {# Numeric fields we want right-aligned #}
+      {% set numeric_cols = [
+        'total orders', 'total points used', 'times purchased',
+        'quantity', 'points each', 'total points'
+      ] %}
+
       <div class="table-responsive">
         <table class="table table-hover align-middle">
           <thead class="table-light">
             <tr>
               {% for col in columns %}
-                <th scope="col">{{ col }}</th>
+                <th scope="col"
+                    class="{% if col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower %}number{% endif %}">
+                  {{ col }}
+                </th>
               {% endfor %}
             </tr>
           </thead>
+
           <tbody>
             {% for row in data %}
               <tr>
                 {% for col in columns %}
-                  <td class="{% if 'total' in col|lower or 'points' in col|lower %}number{% endif %}">
+                  <td class="{% if col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower %}number{% endif %}">
                     {{ row[col] }}
                   </td>
                 {% endfor %}
@@ -41,16 +52,15 @@
             {% endfor %}
           </tbody>
 
-          {# Find the first column whose header contains 'points' or 'total' (no break used) #}
+          {# Find the first numeric/total/points column for footer #}
           {% set total_col = None %}
           {% for col in columns %}
-            {% if total_col is none and ('points' in col|lower or 'total' in col|lower) %}
+            {% if total_col is none and (col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower) %}
               {% set total_col = col %}
             {% endif %}
           {% endfor %}
 
           {% if total_col %}
-            {# Sum that column #}
             {% set total = 0 %}
             {% for row in data %}
               {% set total = total + (row[total_col] or 0) %}
@@ -64,6 +74,7 @@
           {% endif %}
         </table>
       </div>
+
     {% else %}
       <p class="text-muted mb-0">No data found for this report.</p>
     {% endif %}
