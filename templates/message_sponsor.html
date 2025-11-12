@@ -1,0 +1,27 @@
+{# templates/message_sponsor.html #}
+{% extends "base.html" %}
+{% block title %}Message Sponsor{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">Message Sponsor: {{ sponsor.username }}</h2>
+  <p class="text-muted mb-4">Email: {{ sponsor.email }}</p>
+
+  <form action="{{ url_for('admin_message_sponsor_send') }}" method="post">
+    <input type="hidden" name="sponsor_username" value="{{ sponsor.username }}">
+
+    <div class="mb-3">
+      <label for="subject" class="form-label">Subject</label>
+      <input type="text" class="form-control" id="subject" name="subject" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="message" class="form-label">Message</label>
+      <textarea class="form-control" id="message" name="message" rows="6" required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Send</button>
+    <a href="{{ url_for('sponsors') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+  </form>
+</div>
+{% endblock %}

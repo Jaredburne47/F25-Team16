@@ -18,7 +18,9 @@
           <th>Email</th>
           <th>Organization</th>
           <th>Status</th>
-          <th class="text-end" style="width: 260px;">Actions</th>
+          {% if role == 'admin' %}
+            <th class="text-end" style="width: 320px;">Actions</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -34,24 +36,47 @@
               <span class="badge bg-success">Active</span>
             {% endif %}
           </td>
+
+          {% if role == 'admin' %}
           <td class="text-end">
-            <!-- Remove sponsor -->
-            <form action="{{ url_for('remove_sponsor') }}" method="post" class="d-inline m-0"
+            {# --- Admin-only actions: mirror drivers tab (no edit) --- #}
+
+            {# Message sponsor (admin -> sponsor) #}
+            <form action="{{ url_for('admin_message_sponsor_page') }}" method="get"
+                  class="d-inline m-0">
+              <input type="hidden" name="username" value="{{ s.username }}">
+              <button type="submit" class="btn btn-outline-dark btn-sm"
+                      {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
+                Message
+              </button>
+            </form>
+
+            {# Login as sponsor (already exists) #}
+            <form action="{{ url_for('login_as_sponsor') }}" method="post"
+                  class="d-inline m-0">
+              <input type="hidden" name="username" value="{{ s.username }}">
+              <button type="submit" class="btn btn-outline-secondary btn-sm"
+                      {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
+                Login
+              </button>
+            </form>
+
+            {# Remove sponsor (shared route) #}
+            <form action="{{ url_for('remove_sponsor') }}" method="post"
+                  class="d-inline m-0"
                   onsubmit="return confirm('Are you sure you want to remove {{ s.username }}?');">
               <input type="hidden" name="username" value="{{ s.username }}">
-              <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                Remove
+              </button>
             </form>
 
-            <!-- Login as sponsor -->
-            <form action="{{ url_for('login_as_sponsor') }}" method="post" class="d-inline m-0">
-              <input type="hidden" name="username" value="{{ s.username }}">
-              <button type="submit" class="btn btn-outline-secondary btn-sm">Login</button>
-            </form>
-
-            {% if role == 'admin' %}
-            <!-- Disable / Enable Sponsor -->
-            <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}" method="post" class="d-inline m-0"
-                  onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} this sponsor?');">
+            {# Enable / Disable sponsor (already wired) #}
+            <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}"
+                  method="post" class="d-inline m-0"
+                  onsubmit="return confirm(
+                    'Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} this sponsor?'
+                  );">
               {% if s.disabled %}
                 <input type="hidden" name="action" value="enable">
                 <button type="submit" class="btn btn-success btn-sm">Enable</button>
@@ -60,8 +85,8 @@
                 <button type="submit" class="btn btn-outline-dark btn-sm">Disable</button>
               {% endif %}
             </form>
-            {% endif %}
           </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>

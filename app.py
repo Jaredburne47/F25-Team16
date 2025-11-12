@@ -2491,6 +2491,112 @@ def sponsors():
 
     return render_template("sponsors.html", sponsors=sponsors_list, role=session.get('role'))
 
+@app.route('/admin/message_sponsor', methods=['GET'])
+def admin_message_sponsor_page():
+    if 'user' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+
+    username = request.args.get('username', '').strip()
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("""
+        SELECT username, email, disabled
+        FROM sponsor
+        WHERE username = %s
+        LIMIT 1
+    """, (username,))
+    sponsor = cur.fetchone()
+    cur.close()
+    db.close()
+
+    if not sponsor:
+        flash("Sponsor not found.", "danger")
+        return redirect(url_for('sponsors'))
+
+    if sponsor['disabled']:
+        flash("Cannot message a disabled sponsor.", "warning")
+        return redirect(url_for('sponsors'))
+
+    # Reuse a simple template similar to message_driver.html
+    # (you can copy that file and adjust labels)
+    return render_template('message_sponsor.html', sponsor=sponsor)
+
+@app.route('/admin/message_sponsor/send', methods=['POST'])
+def admin_message_sponsor_send():
+    if 'user' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+
+    admin_username = session['user']
+    sponsor_username = request.form.get('sponsor_username', '').strip()
+    subject = request.form.get('subject', '').strip()
+    message = request.form.get('message', '').strip()
+
+    if not sponsor_username or not subject or not message:
+        flash("All fields are required.", "warning")
+        return redirect(url_for('sponsors'))
+
+    db = MySQLdb.connect(**db_config)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Make sure sponsor exists and get email
+    cur.execute("""
+        SELECT email, disabled
+        FROM sponsor
+        WHERE username=%s
+        LIMIT 1
+    """, (sponsor_username,))
+    row = cur.fetchone()
+
+    if not row:
+        cur.close()
+        db.close()
+        flash("Sponsor not found.", "danger")
+        return redirect(url_for('sponsors'))
+
+    if row['disabled']:
+        cur.close()
+        db.close()
+        flash("Cannot message a disabled sponsor.", "warning")
+        return redirect(url_for('sponsors'))
+
+    sponsor_email = row['email']
+
+    try:
+        # TODO: hook in your actual email function here.
+        # For now we just log and pretend it's sent.
+        cur = db.cursor()
+        cur.execute("""
+            INSERT INTO auditLogs (action, description, user_id)
+            VALUES (%s, %s, %s)
+        """, (
+            "admin_message_sponsor",
+            f"Admin '{admin_username}' messaged sponsor '{sponsor_username}' "
+            f"(subject: {subject})",
+            admin_username
+        ))
+        db.commit()
+
+        # If you have an email helper, call it here, e.g.:
+        # send_admin_message_sponsor_email(
+        #     to_email=sponsor_email,
+        #     sponsor_username=sponsor_username,
+        #     admin_username=admin_username,
+        #     subject=subject,
+        #     message=message
+        # )
+
+        flash("Message recorded (hook up email sending here).", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error while processing message: {e}", "danger")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for('sponsors'))
+
+
 @app.route('/admin/driver/toggle', methods=['POST'])
 def admin_toggle_driver():
     if 'user' not in session or session.get('role') != 'admin':
