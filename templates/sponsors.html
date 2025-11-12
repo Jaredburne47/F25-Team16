@@ -18,7 +18,7 @@
           <th>Email</th>
           <th>Organization</th>
           <th>Status</th>
-          {% if role == 'admin' %}
+          {% if role in ['admin', 'sponsor'] %}
             <th class="text-end" style="width: 320px;">Actions</th>
           {% endif %}
         </tr>
@@ -39,10 +39,10 @@
 
           {% if role == 'admin' %}
           <td class="text-end">
-            {# --- Admin-only actions: mirror drivers tab (no edit) --- #}
+            {# --- ADMIN ACTIONS: Message, Login, Remove, Enable/Disable --- #}
 
-            {# Message sponsor (admin -> sponsor) #}
-            <form action="{{ url_for('admin_message_sponsor_page') }}" method="get"
+            <!-- Message sponsor -->
+            <form action="{{ url_for('message_sponsor_page') }}" method="get"
                   class="d-inline m-0">
               <input type="hidden" name="username" value="{{ s.username }}">
               <button type="submit" class="btn btn-outline-dark btn-sm"
@@ -51,7 +51,7 @@
               </button>
             </form>
 
-            {# Login as sponsor (already exists) #}
+            <!-- Login as sponsor -->
             <form action="{{ url_for('login_as_sponsor') }}" method="post"
                   class="d-inline m-0">
               <input type="hidden" name="username" value="{{ s.username }}">
@@ -61,7 +61,7 @@
               </button>
             </form>
 
-            {# Remove sponsor (shared route) #}
+            <!-- Remove sponsor -->
             <form action="{{ url_for('remove_sponsor') }}" method="post"
                   class="d-inline m-0"
                   onsubmit="return confirm('Are you sure you want to remove {{ s.username }}?');">
@@ -71,12 +71,10 @@
               </button>
             </form>
 
-            {# Enable / Disable sponsor (already wired) #}
+            <!-- Enable / Disable sponsor -->
             <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}"
                   method="post" class="d-inline m-0"
-                  onsubmit="return confirm(
-                    'Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} this sponsor?'
-                  );">
+                  onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} this sponsor?');">
               {% if s.disabled %}
                 <input type="hidden" name="action" value="enable">
                 <button type="submit" class="btn btn-success btn-sm">Enable</button>
@@ -86,7 +84,22 @@
               {% endif %}
             </form>
           </td>
+
+          {% elif role == 'sponsor' %}
+          <td class="text-end">
+            {# --- SPONSOR ACTIONS: ONLY Message other sponsors in org --- #}
+
+            <form action="{{ url_for('message_sponsor_page') }}" method="get"
+                  class="d-inline m-0">
+              <input type="hidden" name="username" value="{{ s.username }}">
+              <button type="submit" class="btn btn-outline-dark btn-sm"
+                      {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
+                Message
+              </button>
+            </form>
+          </td>
           {% endif %}
+
         </tr>
         {% endfor %}
       </tbody>

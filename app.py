@@ -2491,43 +2491,72 @@ def sponsors():
 
     return render_template("sponsors.html", sponsors=sponsors_list, role=session.get('role'))
 
-@app.route('/admin/message_sponsor', methods=['GET'])
-def admin_message_sponsor_page():
-    if 'user' not in session or session.get('role') != 'admin':
+@app.route('/message_sponsor', methods=['GET'])
+def message_sponsor_page():
+    if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
         return redirect(url_for('login'))
 
+    role = session.get('role')
+    current_user = session['user']
     username = request.args.get('username', '').strip()
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("""
-        SELECT username, email, disabled
-        FROM sponsor
-        WHERE username = %s
-        LIMIT 1
-    """, (username,))
+
+    if role == 'admin':
+        # Admin can message any sponsor
+        cur.execute("""
+            SELECT username, email, disabled
+            FROM sponsor
+            WHERE username = %s
+            LIMIT 1
+        """, (username,))
+    else:
+        # Sponsor can only message sponsors in their organization
+        # First get current sponsor's organization
+        cur.execute("""
+            SELECT organization
+            FROM sponsor
+            WHERE username = %s
+            LIMIT 1
+        """, (current_user,))
+        row = cur.fetchone()
+        org = row['organization'] if row else None
+
+        # Now ensure target sponsor is in same org (NULL-safe using <=>)
+        cur.execute("""
+            SELECT username, email, disabled
+            FROM sponsor
+            WHERE username = %s
+              AND organization <=> %s
+            LIMIT 1
+        """, (username, org))
+
     sponsor = cur.fetchone()
     cur.close()
     db.close()
 
     if not sponsor:
-        flash("Sponsor not found.", "danger")
+        if role == 'admin':
+            flash("Sponsor not found.", "danger")
+        else:
+            flash("You can only message sponsors within your organization.", "danger")
         return redirect(url_for('sponsors'))
 
     if sponsor['disabled']:
         flash("Cannot message a disabled sponsor.", "warning")
         return redirect(url_for('sponsors'))
 
-    # Reuse a simple template similar to message_driver.html
-    # (you can copy that file and adjust labels)
     return render_template('message_sponsor.html', sponsor=sponsor)
 
-@app.route('/admin/message_sponsor/send', methods=['POST'])
-def admin_message_sponsor_send():
-    if 'user' not in session or session.get('role') != 'admin':
+@app.route('/message_sponsor/send', methods=['POST'])
+def message_sponsor_send():
+    if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
         return redirect(url_for('login'))
 
-    admin_username = session['user']
+    role = session.get('role')
+    actor = session['user']
+
     sponsor_username = request.form.get('sponsor_username', '').strip()
     subject = request.form.get('subject', '').strip()
     message = request.form.get('message', '').strip()
@@ -2539,19 +2568,42 @@ def admin_message_sponsor_send():
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Make sure sponsor exists and get email
-    cur.execute("""
-        SELECT email, disabled
-        FROM sponsor
-        WHERE username=%s
-        LIMIT 1
-    """, (sponsor_username,))
+    # Validate target sponsor + org rules
+    if role == 'admin':
+        cur.execute("""
+            SELECT email, disabled
+            FROM sponsor
+            WHERE username=%s
+            LIMIT 1
+        """, (sponsor_username,))
+    else:
+        # Sponsor -> must be same org
+        cur.execute("""
+            SELECT organization
+            FROM sponsor
+            WHERE username=%s
+            LIMIT 1
+        """, (actor,))
+        row = cur.fetchone()
+        org = row['organization'] if row else None
+
+        cur.execute("""
+            SELECT email, disabled
+            FROM sponsor
+            WHERE username=%s
+              AND organization <=> %s
+            LIMIT 1
+        """, (sponsor_username, org))
+
     row = cur.fetchone()
 
     if not row:
         cur.close()
         db.close()
-        flash("Sponsor not found.", "danger")
+        if role == 'admin':
+            flash("Sponsor not found.", "danger")
+        else:
+            flash("You can only message sponsors within your organization.", "danger")
         return redirect(url_for('sponsors'))
 
     if row['disabled']:
@@ -2563,28 +2615,28 @@ def admin_message_sponsor_send():
     sponsor_email = row['email']
 
     try:
-        # TODO: hook in your actual email function here.
-        # For now we just log and pretend it's sent.
+        # Hook up your real email sending here if you like.
+        # Example placeholder:
+        # send_message_to_sponsor_email(
+        #     to_email=sponsor_email,
+        #     sponsor_username=sponsor_username,
+        #     sender_username=actor,
+        #     subject=subject,
+        #     message=message
+        # )
+
+        # Log to auditLogs
         cur = db.cursor()
+        actor_label = "Admin" if role == 'admin' else "Sponsor"
         cur.execute("""
             INSERT INTO auditLogs (action, description, user_id)
             VALUES (%s, %s, %s)
         """, (
-            "admin_message_sponsor",
-            f"Admin '{admin_username}' messaged sponsor '{sponsor_username}' "
-            f"(subject: {subject})",
-            admin_username
+            "message_sponsor",
+            f"{actor_label} '{actor}' messaged sponsor '{sponsor_username}' (subject: {subject})",
+            actor
         ))
         db.commit()
-
-        # If you have an email helper, call it here, e.g.:
-        # send_admin_message_sponsor_email(
-        #     to_email=sponsor_email,
-        #     sponsor_username=sponsor_username,
-        #     admin_username=admin_username,
-        #     subject=subject,
-        #     message=message
-        # )
 
         flash("Message recorded (hook up email sending here).", "success")
     except Exception as e:
@@ -2595,7 +2647,6 @@ def admin_message_sponsor_send():
         db.close()
 
     return redirect(url_for('sponsors'))
-
 
 @app.route('/admin/driver/toggle', methods=['POST'])
 def admin_toggle_driver():

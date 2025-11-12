@@ -11,7 +11,7 @@
       </div>
       <p class="text-muted mb-4">Sending to <strong>{{ sponsor.email }}</strong></p>
 
-      <form method="POST" action="{{ url_for('admin_message_sponsor_send') }}">
+      <form method="POST" action="{{ url_for('message_sponsor_send') }}">
         <input type="hidden" name="sponsor_username" value="{{ sponsor.username }}">
 
         <div class="mb-3">
