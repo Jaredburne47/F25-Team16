@@ -733,29 +733,56 @@ def bulk_load():
 
 @app.route('/toggle_account/<role>/<username>', methods=['POST'])
 def toggle_account(role, username):
-    action = request.form.get('action')  # 'disable' or 'enable'
-    
-    value = (action == 'disable')
-    admin_flag = (action == 'disable')
+    # Only admins should be toggling other accounts
+    if 'user' not in session or session.get('role') != 'admin':
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('login'))
+
+    action = request.form.get('action')  # 'enable' or 'disable'
+    if action not in ['enable', 'disable']:
+        flash("Invalid action.", "danger")
+        # default back to something safe
+        return redirect(url_for('dashboard'))
+
+    disabled_value = 1 if action == 'disable' else 0
 
     db = MySQLdb.connect(**db_config)
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    if role == 'driver':
-        cursor.execute("UPDATE drivers SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
-                       (value, admin_flag, username))
-    elif role == 'sponsor':
-        cursor.execute("UPDATE sponsor SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
-                       (value, admin_flag, username))
-    else:  # admin
-        cursor.execute("UPDATE admins  SET disabled=%s, disabled_by_admin=%s WHERE username=%s",
-                       (value, admin_flag, username))
+    try:
+        if role == 'sponsor':
+            table = 'sponsor'
+        elif role == 'driver':
+            table = 'drivers'
+        else:
+            flash("Unsupported role for toggle.", "danger")
+            cur.close()
+            db.close()
+            return redirect(url_for('dashboard'))
 
-    db.commit()
-    cursor.close(); db.close()
+        cur.execute(f"UPDATE {table} SET disabled=%s WHERE username=%s", (disabled_value, username))
+        db.commit()
 
-    flash(f"{role.capitalize()} '{username}' has been {'disabled' if value else 're-enabled'}.")
-    return redirect(url_for('admin_profile'))
+        flash_msg = f"{role.capitalize()} '{username}' has been {'disabled' if disabled_value else 'enabled'}."
+        flash(flash_msg, "success")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Error updating {role} status: {e}", "danger")
+    finally:
+        cur.close()
+        db.close()
+
+    # 🔁 Redirect logic so you stay on the same page type
+    if role == 'sponsor':
+        # When toggling sponsors from the Sponsors tab, go back to Sponsors
+        return redirect(url_for('sponsors'))
+    elif role == 'driver':
+        # If you ever use this for drivers, send them back to Drivers
+        return redirect(url_for('drivers'))
+    else:
+        # Fallback
+        return redirect(url_for('dashboard'))
 
 @app.route('/logout', methods=['GET', 'POST'])
 def logout():
