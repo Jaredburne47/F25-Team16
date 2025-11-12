@@ -1,27 +1,35 @@
-{# templates/message_sponsor.html #}
 {% extends "base.html" %}
 {% block title %}Message Sponsor{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2 class="mb-3">Message Sponsor: {{ sponsor.username }}</h2>
-  <p class="text-muted mb-4">Email: {{ sponsor.email }}</p>
+<div class="container mt-4" style="max-width: 720px;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4 class="mb-0">Message {{ sponsor.username }}</h4>
+        <a href="{{ url_for('sponsors') }}" class="btn btn-outline-secondary btn-sm">Back to Sponsors</a>
+      </div>
+      <p class="text-muted mb-4">Sending to <strong>{{ sponsor.email }}</strong></p>
 
-  <form action="{{ url_for('admin_message_sponsor_send') }}" method="post">
-    <input type="hidden" name="sponsor_username" value="{{ sponsor.username }}">
+      <form method="POST" action="{{ url_for('admin_message_sponsor_send') }}">
+        <input type="hidden" name="sponsor_username" value="{{ sponsor.username }}">
 
-    <div class="mb-3">
-      <label for="subject" class="form-label">Subject</label>
-      <input type="text" class="form-control" id="subject" name="subject" required>
+        <div class="mb-3">
+          <label class="form-label">Subject</label>
+          <input type="text" name="subject" class="form-control" placeholder="Subject" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Message</label>
+          <textarea name="message" rows="8" class="form-control" placeholder="Type your message..." required></textarea>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{{ url_for('sponsors') }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Send Message</button>
+        </div>
+      </form>
     </div>
-
-    <div class="mb-3">
-      <label for="message" class="form-label">Message</label>
-      <textarea class="form-control" id="message" name="message" rows="6" required></textarea>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Send</button>
-    <a href="{{ url_for('sponsors') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
-  </form>
+  </div>
 </div>
 {% endblock %}
