@@ -4060,6 +4060,7 @@ def reports_dashboard():
         return redirect(url_for('login'))
     return render_template('reports.html')
 
+
 @app.route('/generate_report')
 def generate_report():
     if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
@@ -4067,6 +4068,8 @@ def generate_report():
 
     report_type = request.args.get('report_type')
     driver = request.args.get('driver')
+    role = session.get('role')
+    user = session['user']
 
     if not report_type:
         flash("Please select a report type.", "warning")
@@ -4074,6 +4077,49 @@ def generate_report():
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # --- Catalog Purchase Report (by Item) ---
+    if report_type == 'catalog_purchase':
+        if role == 'sponsor':
+            # Only this sponsor's items
+            cur.execute("""
+                SELECT 
+                    p.name AS Item,
+                    COUNT(o.order_id) AS `Times Purchased`
+                FROM orders o
+                JOIN products p ON o.product_id = p.product_id
+                WHERE o.sponsor = %s
+                GROUP BY p.product_id, p.name
+                ORDER BY `Times Purchased` DESC, Item ASC;
+            """, (user,))
+            data = cur.fetchall()
+            cur.close(); db.close()
+            return render_template(
+                'report_summary.html',
+                title="Catalog Purchase Summary (Your Items)",
+                columns=["Item", "Times Purchased"],
+                data=data
+            )
+        else:
+            # Admin: all items across sponsors
+            cur.execute("""
+                SELECT 
+                    p.name    AS Item,
+                    o.sponsor AS Sponsor,
+                    COUNT(o.order_id) AS `Times Purchased`
+                FROM orders o
+                JOIN products p ON o.product_id = p.product_id
+                GROUP BY p.product_id, p.name, o.sponsor
+                ORDER BY `Times Purchased` DESC, Item ASC;
+            """)
+            data = cur.fetchall()
+            cur.close(); db.close()
+            return render_template(
+                'report_summary.html',
+                title="Catalog Purchase Summary (All Items)",
+                columns=["Item", "Sponsor", "Times Purchased"],
+                data=data
+            )
 
     # --- Driver Purchase Summary ---
     if report_type == 'driver_summary':
@@ -4157,7 +4203,6 @@ def generate_report():
     flash("Invalid report type.", "danger")
     return redirect(url_for('reports_dashboard'))
 
-
 @app.route('/download_report')
 def download_report():
     if 'user' not in session or session.get('role') not in ['admin', 'sponsor']:
@@ -4165,6 +4210,9 @@ def download_report():
 
     report_type = request.args.get('report_type')
     driver = request.args.get('driver')
+
+    role = session.get('role')
+    user = session['user']
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
@@ -4245,6 +4293,41 @@ def download_report():
         title = "Sponsor Purchase Summary"
         columns = ["Sponsor", "Organization", "Total Orders", "Total Points Used"]
         table_data = [[r['Sponsor'], r['Organization'], r['TotalOrders'], r['TotalPointsUsed']] for r in data]
+
+    # ===============================
+    #  CATALOG PURCHASE SUMMARY (BY ITEM)
+    # ===============================
+    elif report_type == 'catalog_purchase':
+        if role == 'sponsor':
+            cur.execute("""
+                SELECT 
+                    p.name AS Item,
+                    COUNT(o.order_id) AS `Times Purchased`
+                FROM orders o
+                JOIN products p ON o.product_id = p.product_id
+                WHERE o.sponsor = %s
+                GROUP BY p.product_id, p.name
+                ORDER BY `Times Purchased` DESC, Item ASC;
+            """, (user,))
+            data = cur.fetchall()
+            title = "Catalog Purchase Summary (Your Items)"
+            columns = ["Item", "Times Purchased"]
+            table_data = [[r['Item'], r['Times Purchased']] for r in data]
+        else:
+            cur.execute("""
+                SELECT 
+                    p.name    AS Item,
+                    o.sponsor AS Sponsor,
+                    COUNT(o.order_id) AS `Times Purchased`
+                FROM orders o
+                JOIN products p ON o.product_id = p.product_id
+                GROUP BY p.product_id, p.name, o.sponsor
+                ORDER BY `Times Purchased` DESC, Item ASC;
+            """)
+            data = cur.fetchall()
+            title = "Catalog Purchase Summary (All Items)"
+            columns = ["Item", "Sponsor", "Times Purchased"]
+            table_data = [[r['Item'], r['Sponsor'], r['Times Purchased']] for r in data]
 
     else:
         flash("Invalid report type for download.", "danger")
