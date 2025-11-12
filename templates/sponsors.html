@@ -3,7 +3,6 @@
 
 {% block content %}
 <style>
-  /* Only visual tweaks; behavior handled by markup */
   .disabled-row { filter: grayscale(1); opacity: .6; }
   .disabled-row td, .disabled-row a, .disabled-row button { cursor: not-allowed !important; }
 </style>
@@ -17,7 +16,7 @@
 </h1>
 
 {% if role == 'sponsor' %}
-  {# --------- Sponsor view: like sponsor driver table, but for sponsors ---------- #}
+  {# ---------- SPONSOR VIEW ---------- #}
   <table class="table table-striped align-middle">
     <thead class="table-light">
       <tr>
@@ -43,7 +42,8 @@
           {% endif %}
         </td>
         <td class="text-end">
-          <!-- Message sponsor (only action for sponsors) -->
+
+          <!-- MESSAGE (only action sponsors get) -->
           <form action="{{ url_for('message_sponsor_page') }}" method="GET" class="d-inline">
             <input type="hidden" name="username" value="{{ s.username }}">
             <button class="btn btn-outline-dark btn-sm"
@@ -51,6 +51,7 @@
               Message
             </button>
           </form>
+          
         </td>
       </tr>
       {% endfor %}
@@ -58,7 +59,7 @@
   </table>
 
 {% else %}
-  {# --------- Admin view: like admin driver table, but for sponsors ---------- #}
+  {# ---------- ADMIN VIEW ---------- #}
   <table class="table table-striped align-middle">
     <thead class="table-light">
       <tr>
@@ -81,14 +82,11 @@
             <span class="badge bg-success">Active</span>
           {% endif %}
         </td>
-        <td>
-          {{ s.organization or '-' }}
-        </td>
+        <td>{{ s.organization or '-' }}</td>
+
         <td class="text-end">
 
-          {# ---------- Shared-style actions (mirroring drivers admin view) ---------- #}
-
-          <!-- Message sponsor (shared message_sponsor_page route) -->
+          <!-- MESSAGE -->
           <form action="{{ url_for('message_sponsor_page') }}" method="GET" class="d-inline">
             <input type="hidden" name="username" value="{{ s.username }}">
             <button class="btn btn-outline-dark btn-sm"
@@ -97,7 +95,7 @@
             </button>
           </form>
 
-          <!-- Login as sponsor (existing route) -->
+          <!-- LOGIN AS -->
           <form action="{{ url_for('login_as_sponsor') }}" method="POST" class="d-inline">
             <input type="hidden" name="username" value="{{ s.username }}">
             <button class="btn btn-outline-secondary btn-sm"
@@ -106,7 +104,7 @@
             </button>
           </form>
 
-          <!-- Remove sponsor completely (uses shared remove_sponsor) -->
+          <!-- REMOVE -->
           <form action="{{ url_for('remove_sponsor') }}" method="POST" class="d-inline"
                 onsubmit="return confirm('Are you sure you want to permanently remove {{ s.username }}? This cannot be undone.');">
             <input type="hidden" name="username" value="{{ s.username }}">
@@ -115,16 +113,19 @@
             </button>
           </form>
 
-          {# ---------- Admin-specific enable/disable (like admin drivers) ---------- #}
-          <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}" method="POST" class="d-inline"
-                onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} {{ s.username }}\\'s account?');">
+          <!-- ENABLE / DISABLE -->
+          <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}"
+                method="POST" class="d-inline"
+                onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} {{ s.username }}?');">
+
             {% if s.disabled %}
               <input type="hidden" name="action" value="enable">
               <button class="btn btn-success btn-sm">Enable</button>
             {% else %}
               <input type="hidden" name="action" value="disable">
-              <button class="btn btn-outline-dark btn-sm">Disable</button>
+              <button class="btn btn-outline-danger btn-sm">Disable</button>
             {% endif %}
+            
           </form>
 
         </td>
