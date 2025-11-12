@@ -2,111 +2,135 @@
 {% block title %}Sponsors{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <h2 class="mb-0">
-      {% if role == 'admin' %}All Sponsors{% else %}Sponsors (My Organization){% endif %}
-    </h2>
-  </div>
+<style>
+  /* Only visual tweaks; behavior handled by markup */
+  .disabled-row { filter: grayscale(1); opacity: .6; }
+  .disabled-row td, .disabled-row a, .disabled-row button { cursor: not-allowed !important; }
+</style>
 
-  {% if sponsors %}
-  <div class="table-responsive">
-    <table class="table table-striped align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Username</th>
-          <th>Email</th>
-          <th>Organization</th>
-          <th>Status</th>
-          {% if role in ['admin', 'sponsor'] %}
-            <th class="text-end" style="width: 320px;">Actions</th>
-          {% endif %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in sponsors %}
-        <tr>
-          <td class="fw-semibold">{{ s.username }}</td>
-          <td>{{ s.email }}</td>
-          <td>{{ s.organization or '-' }}</td>
-          <td>
-            {% if s.disabled %}
-              <span class="badge bg-danger">Disabled</span>
-            {% else %}
-              <span class="badge bg-success">Active</span>
-            {% endif %}
-          </td>
-
-          {% if role == 'admin' %}
-          <td class="text-end">
-            {# --- ADMIN ACTIONS: Message, Login, Remove, Enable/Disable --- #}
-
-            <!-- Message sponsor -->
-            <form action="{{ url_for('message_sponsor_page') }}" method="get"
-                  class="d-inline m-0">
-              <input type="hidden" name="username" value="{{ s.username }}">
-              <button type="submit" class="btn btn-outline-dark btn-sm"
-                      {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
-                Message
-              </button>
-            </form>
-
-            <!-- Login as sponsor -->
-            <form action="{{ url_for('login_as_sponsor') }}" method="post"
-                  class="d-inline m-0">
-              <input type="hidden" name="username" value="{{ s.username }}">
-              <button type="submit" class="btn btn-outline-secondary btn-sm"
-                      {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
-                Login
-              </button>
-            </form>
-
-            <!-- Remove sponsor -->
-            <form action="{{ url_for('remove_sponsor') }}" method="post"
-                  class="d-inline m-0"
-                  onsubmit="return confirm('Are you sure you want to remove {{ s.username }}?');">
-              <input type="hidden" name="username" value="{{ s.username }}">
-              <button type="submit" class="btn btn-outline-danger btn-sm">
-                Remove
-              </button>
-            </form>
-
-            <!-- Enable / Disable sponsor -->
-            <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}"
-                  method="post" class="d-inline m-0"
-                  onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} this sponsor?');">
-              {% if s.disabled %}
-                <input type="hidden" name="action" value="enable">
-                <button type="submit" class="btn btn-success btn-sm">Enable</button>
-              {% else %}
-                <input type="hidden" name="action" value="disable">
-                <button type="submit" class="btn btn-outline-dark btn-sm">Disable</button>
-              {% endif %}
-            </form>
-          </td>
-
-          {% elif role == 'sponsor' %}
-          <td class="text-end">
-            {# --- SPONSOR ACTIONS: ONLY Message other sponsors in org --- #}
-
-            <form action="{{ url_for('message_sponsor_page') }}" method="get"
-                  class="d-inline m-0">
-              <input type="hidden" name="username" value="{{ s.username }}">
-              <button type="submit" class="btn btn-outline-dark btn-sm"
-                      {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
-                Message
-              </button>
-            </form>
-          </td>
-          {% endif %}
-
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<h1 class="mb-4">
+  {% if role == 'admin' %}
+    All Sponsors
   {% else %}
-  <p class="text-muted mt-3">No sponsors found.</p>
+    Your Sponsors
   {% endif %}
-</div>
+</h1>
+
+{% if role == 'sponsor' %}
+  {# --------- Sponsor view: like sponsor driver table, but for sponsors ---------- #}
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Username</th>
+        <th>Email</th>
+        <th class="text-end">Organization</th>
+        <th>Status</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sponsors %}
+      {% set is_disabled = s.disabled %}
+      <tr class="{% if is_disabled %}table-secondary disabled-row{% endif %}">
+        <td>{{ s.username }}</td>
+        <td>{{ s.email }}</td>
+        <td class="text-end"><strong>{{ s.organization or '-' }}</strong></td>
+        <td>
+          {% if is_disabled %}
+            <span class="badge bg-danger">Disabled</span>
+          {% else %}
+            <span class="badge bg-success">Active</span>
+          {% endif %}
+        </td>
+        <td class="text-end">
+          <!-- Message sponsor (only action for sponsors) -->
+          <form action="{{ url_for('message_sponsor_page') }}" method="GET" class="d-inline">
+            <input type="hidden" name="username" value="{{ s.username }}">
+            <button class="btn btn-outline-dark btn-sm"
+                    {% if is_disabled %}disabled title="Sponsor disabled"{% endif %}>
+              Message
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+{% else %}
+  {# --------- Admin view: like admin driver table, but for sponsors ---------- #}
+  <table class="table table-striped align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Sponsor</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Organization</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sponsors %}
+      <tr class="{% if s.disabled %}table-secondary disabled-row{% endif %}">
+        <td class="fw-semibold">{{ s.username }}</td>
+        <td>{{ s.email }}</td>
+        <td>
+          {% if s.disabled %}
+            <span class="badge bg-danger">Disabled</span>
+          {% else %}
+            <span class="badge bg-success">Active</span>
+          {% endif %}
+        </td>
+        <td>
+          {{ s.organization or '-' }}
+        </td>
+        <td class="text-end">
+
+          {# ---------- Shared-style actions (mirroring drivers admin view) ---------- #}
+
+          <!-- Message sponsor (shared message_sponsor_page route) -->
+          <form action="{{ url_for('message_sponsor_page') }}" method="GET" class="d-inline">
+            <input type="hidden" name="username" value="{{ s.username }}">
+            <button class="btn btn-outline-dark btn-sm"
+                    {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
+              Message
+            </button>
+          </form>
+
+          <!-- Login as sponsor (existing route) -->
+          <form action="{{ url_for('login_as_sponsor') }}" method="POST" class="d-inline">
+            <input type="hidden" name="username" value="{{ s.username }}">
+            <button class="btn btn-outline-secondary btn-sm"
+                    {% if s.disabled %}disabled title="Sponsor disabled"{% endif %}>
+              Login as
+            </button>
+          </form>
+
+          <!-- Remove sponsor completely (uses shared remove_sponsor) -->
+          <form action="{{ url_for('remove_sponsor') }}" method="POST" class="d-inline"
+                onsubmit="return confirm('Are you sure you want to permanently remove {{ s.username }}? This cannot be undone.');">
+            <input type="hidden" name="username" value="{{ s.username }}">
+            <button class="btn btn-outline-danger btn-sm">
+              Remove
+            </button>
+          </form>
+
+          {# ---------- Admin-specific enable/disable (like admin drivers) ---------- #}
+          <form action="{{ url_for('toggle_account', role='sponsor', username=s.username) }}" method="POST" class="d-inline"
+                onsubmit="return confirm('Are you sure you want to {{ s.disabled and 'enable' or 'disable' }} {{ s.username }}\\'s account?');">
+            {% if s.disabled %}
+              <input type="hidden" name="action" value="enable">
+              <button class="btn btn-success btn-sm">Enable</button>
+            {% else %}
+              <input type="hidden" name="action" value="disable">
+              <button class="btn btn-outline-dark btn-sm">Disable</button>
+            {% endif %}
+          </form>
+
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
 {% endblock %}
