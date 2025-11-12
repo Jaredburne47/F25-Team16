@@ -4169,6 +4169,36 @@ def generate_report():
             data=data
         )
 
+    # --- Driver Point Transactions (for a specific driver) ---
+    if report_type == 'driver_points':
+        if not driver:
+            flash("Please enter a driver username for the point transactions report.", "warning")
+            cur.close(); db.close()
+            return redirect(url_for('reports_dashboard'))
+
+        cur.execute("""
+            SELECT 
+                o.order_id   AS `Transaction ID`,
+                o.order_date AS `Date`,
+                o.sponsor    AS `Sponsor`,
+                p.name       AS `Description`,
+                (o.quantity * o.point_cost) AS `Points Change`,
+                o.status     AS `Status`
+            FROM orders o
+            JOIN products p ON o.product_id = p.product_id
+            WHERE o.user_id = %s
+            ORDER BY o.order_date DESC, o.order_id DESC;
+        """, (driver,))
+        data = cur.fetchall()
+        cur.close(); db.close()
+
+        return render_template(
+            'report_summary.html',
+            title=f"Driver Point Transactions: {driver}",
+            columns=["Transaction ID", "Date", "Sponsor", "Description", "Points Change", "Status"],
+            data=data
+        )
+
     # --- Driver Purchase Summary ---
     if report_type == 'driver_summary':
         cur.execute("""
@@ -4422,6 +4452,37 @@ def download_report():
         table_data = [
             [r['Driver'], r['Driver Name'], r['Status'],
              r['Total Orders'], r['Total Points Used'], r['Last Order Date']]
+            for r in data
+        ]
+
+    # ===============================
+    #  DRIVER POINT TRANSACTIONS
+    # ===============================
+    elif report_type == 'driver_points':
+        if not driver:
+            flash("Driver username required for point transactions report.", "warning")
+            cur.close(); db.close()
+            return redirect(url_for('reports_dashboard'))
+
+        cur.execute("""
+            SELECT 
+                o.order_id   AS `Transaction ID`,
+                o.order_date AS `Date`,
+                o.sponsor    AS `Sponsor`,
+                p.name       AS `Description`,
+                (o.quantity * o.point_cost) AS `Points Change`,
+                o.status     AS `Status`
+            FROM orders o
+            JOIN products p ON o.product_id = p.product_id
+            WHERE o.user_id = %s
+            ORDER BY o.order_date DESC, o.order_id DESC;
+        """, (driver,))
+        data = cur.fetchall()
+        title = f"Driver Point Transactions: {driver}"
+        columns = ["Transaction ID", "Date", "Sponsor", "Description", "Points Change", "Status"]
+        table_data = [
+            [r['Transaction ID'], r['Date'], r['Sponsor'], r['Description'],
+             r['Points Change'], r['Status']]
             for r in data
         ]
 
