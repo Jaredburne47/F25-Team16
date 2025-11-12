@@ -4121,6 +4121,54 @@ def generate_report():
                 data=data
             )
 
+    # --- Driver Activity Report ---
+    if report_type == 'driver_activity':
+        if role == 'sponsor':
+            # Activity for drivers accepted under this sponsor
+            cur.execute("""
+                SELECT
+                    d.username AS Driver,
+                    CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
+                    CASE WHEN d.disabled = 1 THEN 'Disabled' ELSE 'Active' END AS Status,
+                    COUNT(o.order_id) AS `Total Orders`,
+                    COALESCE(SUM(o.quantity * o.point_cost), 0) AS `Total Points Used`,
+                    MAX(o.order_date) AS `Last Order Date`
+                FROM driverApplications da
+                JOIN drivers d
+                  ON d.username = da.driverUsername
+                LEFT JOIN orders o
+                  ON o.user_id = d.username
+                 AND o.sponsor = da.sponsor
+                WHERE da.sponsor = %s
+                  AND da.status = 'accepted'
+                GROUP BY d.username, d.first_name, d.last_name, d.disabled
+                ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
+            """, (user,))
+        else:
+            # Admin: activity for all drivers
+            cur.execute("""
+                SELECT
+                    d.username AS Driver,
+                    CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
+                    CASE WHEN d.disabled = 1 THEN 'Disabled' ELSE 'Active' END AS Status,
+                    COUNT(o.order_id) AS `Total Orders`,
+                    COALESCE(SUM(o.quantity * o.point_cost), 0) AS `Total Points Used`,
+                    MAX(o.order_date) AS `Last Order Date`
+                FROM drivers d
+                LEFT JOIN orders o
+                  ON o.user_id = d.username
+                GROUP BY d.username, d.first_name, d.last_name, d.disabled
+                ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
+            """)
+        data = cur.fetchall()
+        cur.close(); db.close()
+        return render_template(
+            'report_summary.html',
+            title="Driver Activity Report",
+            columns=["Driver", "Driver Name", "Status", "Total Orders", "Total Points Used", "Last Order Date"],
+            data=data
+        )
+
     # --- Driver Purchase Summary ---
     if report_type == 'driver_summary':
         cur.execute("""
@@ -4328,6 +4376,54 @@ def download_report():
             title = "Catalog Purchase Summary (All Items)"
             columns = ["Item", "Sponsor", "Times Purchased"]
             table_data = [[r['Item'], r['Sponsor'], r['Times Purchased']] for r in data]
+
+    # ===============================
+    #  DRIVER ACTIVITY REPORT
+    # ===============================
+    elif report_type == 'driver_activity':
+        if role == 'sponsor':
+            cur.execute("""
+                SELECT
+                    d.username AS Driver,
+                    CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
+                    CASE WHEN d.disabled = 1 THEN 'Disabled' ELSE 'Active' END AS Status,
+                    COUNT(o.order_id) AS `Total Orders`,
+                    COALESCE(SUM(o.quantity * o.point_cost), 0) AS `Total Points Used`,
+                    MAX(o.order_date) AS `Last Order Date`
+                FROM driverApplications da
+                JOIN drivers d
+                  ON d.username = da.driverUsername
+                LEFT JOIN orders o
+                  ON o.user_id = d.username
+                 AND o.sponsor = da.sponsor
+                WHERE da.sponsor = %s
+                  AND da.status = 'accepted'
+                GROUP BY d.username, d.first_name, d.last_name, d.disabled
+                ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
+            """, (user,))
+        else:
+            cur.execute("""
+                SELECT
+                    d.username AS Driver,
+                    CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
+                    CASE WHEN d.disabled = 1 THEN 'Disabled' ELSE 'Active' END AS Status,
+                    COUNT(o.order_id) AS `Total Orders`,
+                    COALESCE(SUM(o.quantity * o.point_cost), 0) AS `Total Points Used`,
+                    MAX(o.order_date) AS `Last Order Date`
+                FROM drivers d
+                LEFT JOIN orders o
+                  ON o.user_id = d.username
+                GROUP BY d.username, d.first_name, d.last_name, d.disabled
+                ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
+            """)
+        data = cur.fetchall()
+        title = "Driver Activity Report"
+        columns = ["Driver", "Driver Name", "Status", "Total Orders", "Total Points Used", "Last Order Date"]
+        table_data = [
+            [r['Driver'], r['Driver Name'], r['Status'],
+             r['Total Orders'], r['Total Points Used'], r['Last Order Date']]
+            for r in data
+        ]
 
     else:
         flash("Invalid report type for download.", "danger")
