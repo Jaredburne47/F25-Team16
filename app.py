@@ -3660,6 +3660,8 @@ def reject_application(app_id):
 
     sponsor = session['user']
 
+    db = None
+    cursor = None
     try:
         db = MySQLdb.connect(**db_config)
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
@@ -3672,34 +3674,49 @@ def reject_application(app_id):
         """, (app_id, sponsor))
         db.commit()
 
-        # Fetch driver info for email
+        # Fetch driver info for email + logging
         cursor.execute("""
-            SELECT d.email, d.first_name, a.sponsor
+            SELECT d.email,
+                   d.first_name,
+                   a.sponsor,
+                   a.driverUsername
             FROM driverApplications a
             JOIN drivers d ON a.driverUsername = d.username
             WHERE a.id=%s
         """, (app_id,))
-        db.commit()
-        
         driver = cursor.fetchone()
 
         if driver:
-            send_decision_email(driver['email'], driver['first_name'], driver['sponsor'], "rejected")
+            # Try email, but don't let it crash the request
+            try:
+                send_decision_email(
+                    driver['email'],
+                    driver['first_name'],
+                    driver['sponsor'],
+                    "rejected"
+                )
+            except Exception as email_err:
+                # Optional: log somewhere, but don't break user flow
+                print("Email error (reject):", email_err)
 
-        #Log rejecting
-        description = f"{sponsor} rejected {driver['driverUsername']}'s application"
-        cursor.execute(
-            "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
-            ("application", description, sponsor)
-        )
+            # Log rejecting
+            description = f"{sponsor} rejected {driver['driverUsername']}'s application"
+            cursor.execute(
+                "INSERT INTO auditLogs (action, description, user_id) VALUES (%s, %s, %s)",
+                ("application", description, sponsor)
+            )
+            db.commit()
 
-        db.commit()
-        cursor.close()
-        db.close()
         return redirect(url_for('sponsor_applications'))
 
     except Exception as e:
+        # This is what's currently giving you the error page
         return f"<h2>Error rejecting application:</h2><p>{e}</p>"
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
 
 @app.route('/sponsor/applications/bulk', methods=['POST'])
 
