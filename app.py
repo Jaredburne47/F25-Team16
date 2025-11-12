@@ -4068,12 +4068,30 @@ def generate_report():
 
     report_type = request.args.get('report_type')
     driver = request.args.get('driver')
+    start_date = request.args.get('start_date') or None
+    end_date = request.args.get('end_date') or None
+
     role = session.get('role')
     user = session['user']
 
     if not report_type:
         flash("Please select a report type.", "warning")
         return redirect(url_for('reports_dashboard'))
+
+    # Shared date filter pieces
+    date_clause_where = ""
+    date_clause_on = ""
+    date_params = []
+
+    if start_date:
+        date_clause_where += " AND o.order_date >= %s"
+        date_clause_on += " AND o.order_date >= %s"
+        date_params.append(start_date)
+
+    if end_date:
+        date_clause_where += " AND o.order_date <= %s"
+        date_clause_on += " AND o.order_date <= %s"
+        date_params.append(end_date)
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
@@ -4082,16 +4100,19 @@ def generate_report():
     if report_type == 'catalog_purchase':
         if role == 'sponsor':
             # Only this sponsor's items
-            cur.execute("""
+            query = f"""
                 SELECT 
                     p.name AS Item,
                     COUNT(o.order_id) AS `Times Purchased`
                 FROM orders o
                 JOIN products p ON o.product_id = p.product_id
                 WHERE o.sponsor = %s
+                {date_clause_where}
                 GROUP BY p.product_id, p.name
                 ORDER BY `Times Purchased` DESC, Item ASC;
-            """, (user,))
+            """
+            params = [user] + date_params
+            cur.execute(query, params)
             data = cur.fetchall()
             cur.close(); db.close()
             return render_template(
@@ -4102,16 +4123,19 @@ def generate_report():
             )
         else:
             # Admin: all items across sponsors
-            cur.execute("""
+            query = f"""
                 SELECT 
                     p.name    AS Item,
                     o.sponsor AS Sponsor,
                     COUNT(o.order_id) AS `Times Purchased`
                 FROM orders o
                 JOIN products p ON o.product_id = p.product_id
+                WHERE 1=1
+                {date_clause_where}
                 GROUP BY p.product_id, p.name, o.sponsor
                 ORDER BY `Times Purchased` DESC, Item ASC;
-            """)
+            """
+            cur.execute(query, date_params)
             data = cur.fetchall()
             cur.close(); db.close()
             return render_template(
@@ -4125,7 +4149,7 @@ def generate_report():
     if report_type == 'driver_activity':
         if role == 'sponsor':
             # Activity for drivers accepted under this sponsor
-            cur.execute("""
+            query = f"""
                 SELECT
                     d.username AS Driver,
                     CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
@@ -4139,14 +4163,17 @@ def generate_report():
                 LEFT JOIN orders o
                   ON o.user_id = d.username
                  AND o.sponsor = da.sponsor
+                 {date_clause_on}
                 WHERE da.sponsor = %s
                   AND da.status = 'accepted'
                 GROUP BY d.username, d.first_name, d.last_name, d.disabled
                 ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
-            """, (user,))
+            """
+            params = date_params + [user]
+            cur.execute(query, params)
         else:
             # Admin: activity for all drivers
-            cur.execute("""
+            query = f"""
                 SELECT
                     d.username AS Driver,
                     CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
@@ -4157,9 +4184,12 @@ def generate_report():
                 FROM drivers d
                 LEFT JOIN orders o
                   ON o.user_id = d.username
+                 {date_clause_on}
                 GROUP BY d.username, d.first_name, d.last_name, d.disabled
                 ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
-            """)
+            """
+            cur.execute(query, date_params)
+
         data = cur.fetchall()
         cur.close(); db.close()
         return render_template(
@@ -4176,7 +4206,7 @@ def generate_report():
             cur.close(); db.close()
             return redirect(url_for('reports_dashboard'))
 
-        cur.execute("""
+        query = f"""
             SELECT 
                 o.order_id   AS `Transaction ID`,
                 o.order_date AS `Date`,
@@ -4187,8 +4217,11 @@ def generate_report():
             FROM orders o
             JOIN products p ON o.product_id = p.product_id
             WHERE o.user_id = %s
+            {date_clause_where}
             ORDER BY o.order_date DESC, o.order_id DESC;
-        """, (driver,))
+        """
+        params = [driver] + date_params
+        cur.execute(query, params)
         data = cur.fetchall()
         cur.close(); db.close()
 
@@ -4201,7 +4234,7 @@ def generate_report():
 
     # --- Driver Purchase Summary ---
     if report_type == 'driver_summary':
-        cur.execute("""
+        query = f"""
             SELECT 
                 d.username AS Driver,
                 CONCAT(d.first_name,' ',d.last_name) AS DriverName,
@@ -4209,9 +4242,12 @@ def generate_report():
                 COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
             FROM orders o
             JOIN drivers d ON o.user_id = d.username
+            WHERE 1=1
+            {date_clause_where}
             GROUP BY d.username
             ORDER BY TotalPointsUsed DESC;
-        """)
+        """
+        cur.execute(query, date_params)
         data = cur.fetchall()
         cur.close(); db.close()
         return render_template(
@@ -4228,7 +4264,7 @@ def generate_report():
             cur.close(); db.close()
             return redirect(url_for('reports_dashboard'))
 
-        cur.execute("""
+        query = f"""
             SELECT 
                 o.order_id   AS OrderID,
                 o.order_date AS OrderDate,
@@ -4241,8 +4277,11 @@ def generate_report():
             FROM orders o
             JOIN products p ON o.product_id = p.product_id
             WHERE o.user_id = %s
+            {date_clause_where}
             ORDER BY o.order_date DESC;
-        """, (driver,))
+        """
+        params = [driver] + date_params
+        cur.execute(query, params)
         rows = cur.fetchall()
         cur.close(); db.close()
 
@@ -4256,7 +4295,7 @@ def generate_report():
 
     # --- Sponsor Purchase Summary ---
     if report_type == 'sponsor_summary':
-        cur.execute("""
+        query = f"""
             SELECT 
                 s.username AS Sponsor,
                 s.organization AS Organization,
@@ -4264,9 +4303,12 @@ def generate_report():
                 COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
             FROM orders o
             JOIN sponsor s ON o.sponsor = s.username
+            WHERE 1=1
+            {date_clause_where}
             GROUP BY s.username
             ORDER BY TotalPointsUsed DESC;
-        """)
+        """
+        cur.execute(query, date_params)
         data = cur.fetchall()
         cur.close(); db.close()
         return render_template(
@@ -4288,9 +4330,26 @@ def download_report():
 
     report_type = request.args.get('report_type')
     driver = request.args.get('driver')
+    start_date = request.args.get('start_date') or None
+    end_date = request.args.get('end_date') or None
 
     role = session.get('role')
     user = session['user']
+
+    # Shared date filter pieces
+    date_clause_where = ""
+    date_clause_on = ""
+    date_params = []
+
+    if start_date:
+        date_clause_where += " AND o.order_date >= %s"
+        date_clause_on += " AND o.order_date >= %s"
+        date_params.append(start_date)
+
+    if end_date:
+        date_clause_where += " AND o.order_date <= %s"
+        date_clause_on += " AND o.order_date <= %s"
+        date_params.append(end_date)
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
@@ -4303,7 +4362,7 @@ def download_report():
     #  DRIVER PURCHASE SUMMARY
     # ===============================
     if report_type == 'driver_summary':
-        cur.execute("""
+        query = f"""
             SELECT 
                 d.username AS Driver,
                 CONCAT(d.first_name,' ',d.last_name) AS DriverName,
@@ -4311,9 +4370,12 @@ def download_report():
                 COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
             FROM orders o
             JOIN drivers d ON o.user_id = d.username
+            WHERE 1=1
+            {date_clause_where}
             GROUP BY d.username
             ORDER BY TotalPointsUsed DESC;
-        """)
+        """
+        cur.execute(query, date_params)
         data = cur.fetchall()
         title = "Driver Purchase Summary"
         columns = ["Driver", "Driver Name", "Total Orders", "Total Points Used"]
@@ -4328,7 +4390,7 @@ def download_report():
             cur.close(); db.close()
             return redirect(url_for('reports_dashboard'))
 
-        cur.execute("""
+        query = f"""
             SELECT 
                 o.order_id   AS OrderID,
                 o.order_date AS OrderDate,
@@ -4341,8 +4403,11 @@ def download_report():
             FROM orders o
             JOIN products p ON o.product_id = p.product_id
             WHERE o.user_id = %s
+            {date_clause_where}
             ORDER BY o.order_date DESC;
-        """, (driver,))
+        """
+        params = [driver] + date_params
+        cur.execute(query, params)
         data = cur.fetchall()
         title = f"Driver Purchase Detail: {driver}"
         columns = ["Order ID", "Order Date", "Product", "Sponsor", "Quantity", "Points Each", "Total Points", "Status"]
@@ -4356,7 +4421,7 @@ def download_report():
     #  SPONSOR PURCHASE SUMMARY
     # ===============================
     elif report_type == 'sponsor_summary':
-        cur.execute("""
+        query = f"""
             SELECT 
                 s.username AS Sponsor,
                 s.organization AS Organization,
@@ -4364,9 +4429,12 @@ def download_report():
                 COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
             FROM orders o
             JOIN sponsor s ON o.sponsor = s.username
+            WHERE 1=1
+            {date_clause_where}
             GROUP BY s.username
             ORDER BY TotalPointsUsed DESC;
-        """)
+        """
+        cur.execute(query, date_params)
         data = cur.fetchall()
         title = "Sponsor Purchase Summary"
         columns = ["Sponsor", "Organization", "Total Orders", "Total Points Used"]
@@ -4377,31 +4445,37 @@ def download_report():
     # ===============================
     elif report_type == 'catalog_purchase':
         if role == 'sponsor':
-            cur.execute("""
+            query = f"""
                 SELECT 
                     p.name AS Item,
                     COUNT(o.order_id) AS `Times Purchased`
                 FROM orders o
                 JOIN products p ON o.product_id = p.product_id
                 WHERE o.sponsor = %s
+                {date_clause_where}
                 GROUP BY p.product_id, p.name
                 ORDER BY `Times Purchased` DESC, Item ASC;
-            """, (user,))
+            """
+            params = [user] + date_params
+            cur.execute(query, params)
             data = cur.fetchall()
             title = "Catalog Purchase Summary (Your Items)"
             columns = ["Item", "Times Purchased"]
             table_data = [[r['Item'], r['Times Purchased']] for r in data]
         else:
-            cur.execute("""
+            query = f"""
                 SELECT 
                     p.name    AS Item,
                     o.sponsor AS Sponsor,
                     COUNT(o.order_id) AS `Times Purchased`
                 FROM orders o
                 JOIN products p ON o.product_id = p.product_id
+                WHERE 1=1
+                {date_clause_where}
                 GROUP BY p.product_id, p.name, o.sponsor
                 ORDER BY `Times Purchased` DESC, Item ASC;
-            """)
+            """
+            cur.execute(query, date_params)
             data = cur.fetchall()
             title = "Catalog Purchase Summary (All Items)"
             columns = ["Item", "Sponsor", "Times Purchased"]
@@ -4412,7 +4486,7 @@ def download_report():
     # ===============================
     elif report_type == 'driver_activity':
         if role == 'sponsor':
-            cur.execute("""
+            query = f"""
                 SELECT
                     d.username AS Driver,
                     CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
@@ -4426,13 +4500,16 @@ def download_report():
                 LEFT JOIN orders o
                   ON o.user_id = d.username
                  AND o.sponsor = da.sponsor
+                 {date_clause_on}
                 WHERE da.sponsor = %s
                   AND da.status = 'accepted'
                 GROUP BY d.username, d.first_name, d.last_name, d.disabled
                 ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
-            """, (user,))
+            """
+            params = date_params + [user]
+            cur.execute(query, params)
         else:
-            cur.execute("""
+            query = f"""
                 SELECT
                     d.username AS Driver,
                     CONCAT(d.first_name, ' ', d.last_name) AS `Driver Name`,
@@ -4443,9 +4520,12 @@ def download_report():
                 FROM drivers d
                 LEFT JOIN orders o
                   ON o.user_id = d.username
+                 {date_clause_on}
                 GROUP BY d.username, d.first_name, d.last_name, d.disabled
                 ORDER BY `Last Order Date` IS NULL, `Last Order Date` DESC;
-            """)
+            """
+            cur.execute(query, date_params)
+
         data = cur.fetchall()
         title = "Driver Activity Report"
         columns = ["Driver", "Driver Name", "Status", "Total Orders", "Total Points Used", "Last Order Date"]
@@ -4464,7 +4544,7 @@ def download_report():
             cur.close(); db.close()
             return redirect(url_for('reports_dashboard'))
 
-        cur.execute("""
+        query = f"""
             SELECT 
                 o.order_id   AS `Transaction ID`,
                 o.order_date AS `Date`,
@@ -4475,8 +4555,11 @@ def download_report():
             FROM orders o
             JOIN products p ON o.product_id = p.product_id
             WHERE o.user_id = %s
+            {date_clause_where}
             ORDER BY o.order_date DESC, o.order_id DESC;
-        """, (driver,))
+        """
+        params = [driver] + date_params
+        cur.execute(query, params)
         data = cur.fetchall()
         title = f"Driver Point Transactions: {driver}"
         columns = ["Transaction ID", "Date", "Sponsor", "Description", "Points Change", "Status"]

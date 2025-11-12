@@ -7,21 +7,52 @@
   .report-title { letter-spacing: .4px; }
   .number { font-variant-numeric: tabular-nums; text-align: right !important; }
   tfoot th { background: #f8f9fa; }
+  .daterange-box {
+      font-size: .9rem;
+      color:#475569;
+      background:#f1f5f9;
+      border-radius: 6px;
+      padding:6px 10px;
+      display:inline-block;
+  }
 </style>
 
 <div class="container mt-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
+
+  <div class="d-flex align-items-center justify-content-between mb-2">
     <h2 class="report-title mb-0">{{ title or 'Summary Report' }}</h2>
+
     <div class="d-flex gap-2">
       <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports_dashboard') }}">← Back</a>
       <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
     </div>
   </div>
 
+  {# --- DATE RANGE INDICATOR (only displayed if provided) --- #}
+  {% if request.args.get('start_date') or request.args.get('end_date') %}
+    <div class="mb-3">
+        <span class="daterange-box">
+          Date Range:
+          {% if request.args.get('start_date') %}
+            <strong>{{ request.args.get('start_date') }}</strong>
+          {% else %}
+            <em>Beginning</em>
+          {% endif %}
+
+          → 
+
+          {% if request.args.get('end_date') %}
+            <strong>{{ request.args.get('end_date') }}</strong>
+          {% else %}
+            <em>Today</em>
+          {% endif %}
+        </span>
+    </div>
+  {% endif %}
+
   <div class="card report-card p-3 p-md-4">
     {% if data and data|length > 0 %}
 
-      {# Numeric fields we want right-aligned #}
       {% set numeric_cols = [
         'total orders', 'total points used', 'times purchased',
         'quantity', 'points each', 'total points'
@@ -52,7 +83,6 @@
             {% endfor %}
           </tbody>
 
-          {# Find the first numeric/total/points column for footer #}
           {% set total_col = None %}
           {% for col in columns %}
             {% if total_col is none and (col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower) %}
