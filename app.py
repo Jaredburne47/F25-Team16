@@ -2342,24 +2342,40 @@ def drivers():
 
 @app.route('/driver/<username>', methods=['GET', 'POST'])
 def sponsor_edit_driver(username):
-    if 'user' not in session or session.get('role') != 'sponsor':
+    # Now BOTH sponsors and admins can use this route
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
-    sponsor = session['user']
+    role = session.get('role')
+    current_user = session['user']
 
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # Ensure this driver belongs to this sponsor
-    cursor.execute("""
-        SELECT COUNT(*) AS valid
-        FROM driverApplications
-        WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
-    """, (username, sponsor))
-    valid = cursor.fetchone()
-    if not valid or valid['valid'] == 0:
-        flash("You are not authorized to edit this driver.", "danger")
-        return redirect(url_for('drivers'))
+    # Authorization:
+    # - Sponsor: must actually sponsor this driver (same check as before)
+    # - Admin: can edit any driver
+    if role == 'sponsor':
+        cursor.execute("""
+            SELECT COUNT(*) AS valid
+            FROM driverApplications
+            WHERE driverUsername=%s AND sponsor=%s AND status='accepted'
+        """, (username, current_user))
+        valid = cursor.fetchone()
+        if not valid or valid['valid'] == 0:
+            flash("You are not authorized to edit this driver.", "danger")
+            cursor.close()
+            db.close()
+            return redirect(url_for('drivers'))
+    else:
+        # Admin: just make sure the driver exists
+        cursor.execute("SELECT COUNT(*) AS cnt FROM drivers WHERE username=%s", (username,))
+        row = cursor.fetchone()
+        if not row or row['cnt'] == 0:
+            flash("Driver not found.", "danger")
+            cursor.close()
+            db.close()
+            return redirect(url_for('drivers'))
 
     if request.method == 'POST':
         phone = request.form.get('phone')
@@ -2374,7 +2390,8 @@ def sponsor_edit_driver(username):
 
     cursor.execute("SELECT * FROM drivers WHERE username=%s", (username,))
     driver = cursor.fetchone()
-    cursor.close(); db.close()
+    cursor.close()
+    db.close()
 
     return render_template("sponsor_edit_driver.html", driver=driver)
 
@@ -2603,7 +2620,8 @@ def login_as_driver():
         flash("Unauthorized access.", "danger")
         return redirect(url_for('login'))
 
-    sponsor = session['user']
+    original_user = session['user']
+    original_role = session.get('role')
     target_driver = request.form['username']
 
     # Check that driver exists and isn't disabled
@@ -2612,42 +2630,50 @@ def login_as_driver():
     cur.execute("SELECT disabled FROM drivers WHERE username=%s", (target_driver,))
     driver = cur.fetchone()
     if not driver:
-        cur.close(); db.close()
+        cur.close()
+        db.close()
         flash("Driver not found.", "warning")
         return redirect(url_for('drivers'))
 
     if driver['disabled']:
-        cur.close(); db.close()
+        cur.close()
+        db.close()
         flash("Cannot impersonate a disabled driver.", "warning")
         return redirect(url_for('drivers'))
 
     # Log impersonation in auditLogs
+    actor_label = "Sponsor" if original_role == 'sponsor' else "Admin"
     cur.execute("""
         INSERT INTO auditLogs (action, description, user_id)
         VALUES (%s, %s, %s)
     """, (
         "impersonation",
-        f"Sponsor '{sponsor}' impersonated driver '{target_driver}'.",
-        sponsor
+        f"{actor_label} '{original_user}' impersonated driver '{target_driver}'.",
+        original_user
     ))
     db.commit()
-    cur.close(); db.close()
+    cur.close()
+    db.close()
 
     # Impersonate by setting session
     session['impersonated_user'] = target_driver
-    session['original_user'] = sponsor
+    session['original_user'] = original_user
+    session['original_role'] = original_role
+    session['user'] = target_driver
     session['role'] = 'driver'
 
     flash(f"You are now logged in as {target_driver}.", "info")
     return redirect(url_for('driver_profile'))
 
+
 @app.route('/stop_impersonation')
 def stop_impersonation():
-    if 'original_user' not in session:
+    if 'original_user' not in session or 'original_role' not in session:
         flash("No active impersonation session.", "warning")
         return redirect(url_for('dashboard'))
 
     original_user = session['original_user']
+    original_role = session['original_role']
 
     # Log that impersonation ended
     db = MySQLdb.connect(**db_config)
@@ -2661,15 +2687,24 @@ def stop_impersonation():
         original_user
     ))
     db.commit()
-    cur.close(); db.close()
+    cur.close()
+    db.close()
 
     # Restore session
     session['user'] = original_user
+    session['role'] = original_role
     session.pop('impersonated_user', None)
     session.pop('original_user', None)
-    session['role'] = 'sponsor'
-    flash("You have returned to your sponsor account.", "success")
-    return redirect(url_for('drivers'))
+    session.pop('original_role', None)
+
+    flash("You have returned to your original account.", "success")
+
+    # Send them somewhere sensible based on role
+    if original_role in ['sponsor', 'admin']:
+        return redirect(url_for('drivers'))
+    else:
+        return redirect(url_for('dashboard'))
+
 
 @app.route('/login_as_sponsor', methods=['POST'])
 def login_as_sponsor():
@@ -2746,30 +2781,49 @@ def points_page():
 
 @app.route('/sponsor/message_driver', methods=['GET'])
 def sponsor_message_driver_page():
-    if 'user' not in session or session.get('role') != 'sponsor':
+    # Allow BOTH sponsors and admins
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
-    sponsor = session['user']
+    role = session.get('role')
+    actor = session['user']
     username = request.args.get('username', '').strip()
 
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # verify relationship + get email/flags
-    cur.execute("""
-        SELECT d.username, d.email, d.disabled, COALESCE(d.receive_emails, 1) AS receive_emails
-        FROM drivers d
-        JOIN driver_sponsor_points dsp
-          ON dsp.driver_username = d.username
-        WHERE d.username=%s AND dsp.sponsor=%s
-        LIMIT 1
-    """, (username, sponsor))
+    if role == 'sponsor':
+        # Original behavior: can only message drivers you currently sponsor
+        cur.execute("""
+            SELECT d.username, d.email, d.disabled,
+                   COALESCE(d.receive_emails, 1) AS receive_emails
+            FROM drivers d
+            JOIN driver_sponsor_points dsp
+              ON dsp.driver_username = d.username
+            WHERE d.username=%s AND dsp.sponsor=%s
+            LIMIT 1
+        """, (username, actor))
+    else:
+        # Admin: can message ANY driver
+        cur.execute("""
+            SELECT d.username, d.email, d.disabled,
+                   COALESCE(d.receive_emails, 1) AS receive_emails
+            FROM drivers d
+            WHERE d.username=%s
+            LIMIT 1
+        """, (username,))
+
     driver = cur.fetchone()
-    cur.close(); db.close()
+    cur.close()
+    db.close()
 
     if not driver:
-        flash("You can only message drivers you currently sponsor.", "danger")
+        if role == 'sponsor':
+            flash("You can only message drivers you currently sponsor.", "danger")
+        else:
+            flash("Driver not found.", "danger")
         return redirect(url_for('drivers'))
+
     if driver['disabled']:
         flash("Cannot message a disabled driver.", "warning")
         return redirect(url_for('drivers'))
@@ -2779,10 +2833,13 @@ def sponsor_message_driver_page():
 
 @app.route('/sponsor/message_driver/send', methods=['POST'])
 def sponsor_message_driver_send():
-    if 'user' not in session or session.get('role') != 'sponsor':
+    # Allow BOTH sponsors and admins
+    if 'user' not in session or session.get('role') not in ['sponsor', 'admin']:
         return redirect(url_for('login'))
 
-    sponsor = session['user']
+    role = session.get('role')
+    actor = session['user']
+
     driver_username = request.form.get('driver_username', '').strip()
     subject = request.form.get('subject', '').strip()
     message = request.form.get('message', '').strip()
@@ -2794,47 +2851,67 @@ def sponsor_message_driver_send():
     db = MySQLdb.connect(**db_config)
     cur = db.cursor(MySQLdb.cursors.DictCursor)
 
-    # re-verify + pull email
-    cur.execute("""
-        SELECT d.email, d.disabled, COALESCE(d.receive_emails,1) AS receive_emails
-        FROM drivers d
-        JOIN driver_sponsor_points dsp
-          ON dsp.driver_username = d.username
-        WHERE d.username=%s AND dsp.sponsor=%s
-        LIMIT 1
-    """, (driver_username, sponsor))
+    # Verify permissions + fetch driver email
+    if role == 'sponsor':
+        cur.execute("""
+            SELECT d.email, d.disabled, COALESCE(d.receive_emails,1) AS receive_emails
+            FROM drivers d
+            JOIN driver_sponsor_points dsp
+              ON dsp.driver_username = d.username
+            WHERE d.username=%s AND dsp.sponsor=%s
+            LIMIT 1
+        """, (driver_username, actor))
+    else:
+        # Admin: just load driver directly
+        cur.execute("""
+            SELECT d.email, d.disabled, COALESCE(d.receive_emails,1) AS receive_emails
+            FROM drivers d
+            WHERE d.username=%s
+            LIMIT 1
+        """, (driver_username,))
+
     row = cur.fetchone()
 
     if not row:
-        cur.close(); db.close()
-        flash("You can only message drivers you currently sponsor.", "danger")
+        cur.close()
+        db.close()
+        if role == 'sponsor':
+            flash("You can only message drivers you currently sponsor.", "danger")
+        else:
+            flash("Driver not found.", "danger")
         return redirect(url_for('drivers'))
+
     if row['disabled']:
-        cur.close(); db.close()
+        cur.close()
+        db.close()
         flash("Cannot message a disabled driver.", "warning")
         return redirect(url_for('drivers'))
+
     if not row['receive_emails']:
-        cur.close(); db.close()
+        cur.close()
+        db.close()
         flash("This driver has opted out of emails.", "warning")
         return redirect(url_for('drivers'))
 
     try:
+        # Reuse same email helper
         send_sponsor_message_email(
             to_email=row['email'],
             driver_username=driver_username,
-            sponsor_username=sponsor,
+            sponsor_username=actor,  # for admin, this is the admin username
             subject=subject,
             message=message
         )
         # audit
         cur = db.cursor()
+        actor_label = "Sponsor" if role == 'sponsor' else 'Admin'
         cur.execute("""
             INSERT INTO auditLogs (action, description, user_id)
             VALUES (%s, %s, %s)
         """, (
             "sponsor_message",
-            f"Sponsor '{sponsor}' emailed driver '{driver_username}' (subject: {subject})",
-            sponsor
+            f"{actor_label} '{actor}' emailed driver '{driver_username}' (subject: {subject})",
+            actor
         ))
         db.commit()
         flash("Message sent successfully!", "success")
@@ -2842,7 +2919,8 @@ def sponsor_message_driver_send():
         db.rollback()
         flash(f"Email failed: {e}", "danger")
     finally:
-        cur.close(); db.close()
+        cur.close()
+        db.close()
 
     return redirect(url_for('drivers'))
 
