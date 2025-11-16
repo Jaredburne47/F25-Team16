@@ -4236,10 +4236,10 @@ def generate_report():
     if report_type == 'driver_summary':
         query = f"""
             SELECT 
-                d.username AS Driver,
-                CONCAT(d.first_name,' ',d.last_name) AS DriverName,
-                COUNT(o.order_id) AS TotalOrders,
-                COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
+                d.username AS `Driver`,
+                CONCAT(d.first_name,' ',d.last_name) AS `Driver Name`,
+                COUNT(o.order_id) AS `Total Orders`,
+                COALESCE(SUM(o.quantity * o.point_cost), 0) AS `Total Points Used`
             FROM orders o
             JOIN drivers d ON o.user_id = d.username
             WHERE 1=1
@@ -4321,10 +4321,10 @@ def generate_report():
     if report_type == 'sponsor_summary':
         query = f"""
             SELECT 
-                s.username AS Sponsor,
-                s.organization AS Organization,
-                COUNT(o.order_id) AS TotalOrders,
-                COALESCE(SUM(o.quantity * o.point_cost), 0) AS TotalPointsUsed
+                    s.username AS `Sponsor`,
+                    s.organization AS `Organization`,
+                    COUNT(o.order_id) AS `Total Orders`,
+                    COALESCE(SUM(o.quantity * o.point_cost), 0) AS `Total Points Used`
             FROM orders o
             JOIN sponsor s ON o.sponsor = s.username
             WHERE 1=1
