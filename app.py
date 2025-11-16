@@ -4342,6 +4342,44 @@ def generate_report():
             data=data
         )
 
+    # --- Sponsor Detailed Sales Report ---
+    if report_type == 'sponsor_detail':
+        sponsor_filter = request.args.get('sponsor')
+    
+        if not sponsor_filter:
+            flash("Please enter a sponsor username for detailed sponsor sales report.", "warning")
+            cur.close(); db.close()
+            return redirect(url_for('reports_dashboard'))
+    
+        query = f"""
+            SELECT 
+                o.order_id AS OrderID,
+                o.order_date AS OrderDate,
+                o.user_id AS Driver,
+                p.name AS Product,
+                o.quantity AS Quantity,
+                o.point_cost AS PointsEach,
+                (o.quantity * o.point_cost) AS TotalPoints,
+                o.status AS Status
+            FROM orders o
+            JOIN products p ON o.product_id = p.product_id
+            WHERE o.sponsor = %s
+            {date_clause_where}
+            ORDER BY o.order_date DESC, o.order_id DESC;
+        """
+    
+        params = [sponsor_filter] + date_params
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        cur.close(); db.close()
+    
+        return render_template(
+            'report_sponsor_detail.html',
+            title=f"Sponsor Detailed Sales Report: {sponsor_filter}",
+            sponsor=sponsor_filter,
+            data=rows
+        )
+    
     # fallthrough
     cur.close(); db.close()
     flash("Invalid report type.", "danger")
