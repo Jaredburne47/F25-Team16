@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Purchase Detail{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+
+<div class="report-container">
+
+  <div class="report-header">
+    <div class="report-title">{{ title or "Purchase Detail" }}</div>
+
+    {% if driver %}
+      <div class="report-subtitle">Driver: {{ driver }}</div>
+    {% endif %}
+
+    {% if request.args.get('start_date') or request.args.get('end_date') %}
+      <div class="report-daterange">
+        Date Range:
+        {% if request.args.get('start_date') %}
+          {{ request.args.get('start_date') }}
+        {% else %}
+          Beginning
+        {% endif %}
+        &nbsp;–&nbsp;
+        {% if request.args.get('end_date') %}
+          {{ request.args.get('end_date') }}
+        {% else %}
+          Today
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Buttons -->
+  <div class="report-actions no-print">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports_dashboard') }}">← Back</a>
+    <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+  </div>
+
+  {% if orders and orders|length > 0 %}
+
+    {% for order in orders %}
+
+      <div class="report-order-section">
+
+        <div class="report-order-header">
+          <div class="report-order-main">
+            <strong>Order #{{ order.order_id }}</strong>
+            <span class="report-muted">
+              • {{ order.order_date }} • Sponsor: {{ order.sponsor }}
+            </span>
+          </div>
+
+          <div class="report-order-status">
+            Status: {{ order.status }}
+          </div>
+        </div>
+
+        <div class="report-line report-line-header">
+          <span class="col-product">Product</span>
+          <span class="col-qty report-number">Qty</span>
+          <span class="col-pte report-number">Points Each</span>
+          <span class="col-total report-number">Total</span>
+        </div>
+
+        {% for item in order.items %}
+        <div class="report-line">
+          <span class="col-product">{{ item.product_name }}</span>
+          <span class="col-qty report-number">{{ item.quantity }}</span>
+          <span class="col-pte report-number">{{ item.points_each }}</span>
+          <span class="col-total report-number">{{ item.total_points }}</span>
+        </div>
+        {% endfor %}
+
+        <div class="report-order-total">
+          <div class="label">Order Total:</div>
+          <div class="value report-number">{{ order.subtotal }}</div>
+        </div>
+
+      </div>
+
+    {% endfor %}
+
+    <div class="report-grand-total">
+      <div class="label">Total Points Used:</div>
+      <div class="value report-number">{{ grand_total }}</div>
+    </div>
+
+  {% else %}
+    <p>No purchases found for this driver.</p>
+  {% endif %}
+
+</div>
+{% endblock %}
