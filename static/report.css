@@ -1,0 +1,133 @@
+.report-container {
+    width: 8.25in;               
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 24px 24px 32px;
+    font-family: "Times New Roman", Georgia, serif;
+    color: #000;
+    background: #fff;
+}
+
+/* Header block: title + optional subtitle (date range / driver, etc.) */
+.report-header {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.report-title {
+    font-size: 26px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.report-subtitle {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+/* Optional meta line (e.g., filters, sponsor, generated on, etc.) */
+.report-meta {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+/* Section headings inside the report (for groupings, summary blocks, etc.) */
+.report-section-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 26px;
+    margin-bottom: 8px;
+}
+
+/* ============================
+   Table styles
+   ============================ */
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 22px;
+    font-size: 14px;
+}
+
+.report-table th,
+.report-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e2e2e2;
+}
+
+/* Header row */
+.report-table th {
+    background: #f0f0f0;
+    font-weight: bold;
+    border-bottom: 2px solid #c9c9c9;
+}
+
+/* Zebra striping for readability */
+.report-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+/* Total / summary rows at bottom */
+.report-total-row td,
+.report-total-row th {
+    font-weight: bold;
+    border-top: 2px solid #000;
+    padding-top: 8px;
+}
+
+/* Right-align numeric columns when needed */
+.report-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Slightly muted text (e.g., dates, statuses) */
+.report-muted {
+    color: #666;
+}
+
+/* Small note text at bottom (e.g., “All points shown are sponsor-specific”) */
+.report-note {
+    font-size: 11px;
+    color: #555;
+    margin-top: 8px;
+}
+
+/* Container for Back / Print buttons (so we can hide them on print) */
+.report-actions {
+    text-align: right;
+    margin-bottom: 10px;
+}
+
+/* ============================
+   Print-specific tweaks
+   ============================ */
+
+@media print {
+    body {
+        background: #ffffff !important;
+    }
+
+    /* Hide navbars, alerts, and buttons from printout */
+    .navbar,
+    nav,
+    .alert,
+    .btn,
+    .report-actions .btn,
+    .no-print {
+        display: none !important;
+    }
+
+    .report-container {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0;
+        width: 100%;
+        padding: 0.5in 0.6in 0.7in;
+    }
+}
