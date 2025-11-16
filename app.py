@@ -4510,8 +4510,14 @@ def generate_report():
         # Always order last
         query += " ORDER BY Date DESC"
     
+        print("\n====== FINAL AUDIT LOG QUERY ======")
+        print(query)
+        print("PARAMS:", params)
+        print("====================================\n")
+                
         # Execute safely
         cur.execute(query, params)
+        
         data = cur.fetchall()
         cur.close()
         db.close()
