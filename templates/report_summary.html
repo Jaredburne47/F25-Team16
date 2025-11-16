@@ -2,112 +2,66 @@
 {% block title %}Report · Summary{% endblock %}
 
 {% block content %}
-<style>
-  .report-card { border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.06); }
-  .report-title { letter-spacing: .4px; }
-  .number { font-variant-numeric: tabular-nums; text-align: right !important; }
-  tfoot th { background: #f8f9fa; }
-  .daterange-box {
-      font-size: .9rem;
-      color:#475569;
-      background:#f1f5f9;
-      border-radius: 6px;
-      padding:6px 10px;
-      display:inline-block;
-  }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
 
-<div class="container mt-4">
+<div class="report-container">
 
-  <div class="d-flex align-items-center justify-content-between mb-2">
-    <h2 class="report-title mb-0">{{ title or 'Summary Report' }}</h2>
+  <div class="report-header">
+    <div class="report-title">{{ title or 'Summary Report' }}</div>
 
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports_dashboard') }}">← Back</a>
-      <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
-    </div>
-  </div>
-
-  {# --- DATE RANGE INDICATOR (only displayed if provided) --- #}
-  {% if request.args.get('start_date') or request.args.get('end_date') %}
-    <div class="mb-3">
-        <span class="daterange-box">
-          Date Range:
-          {% if request.args.get('start_date') %}
-            <strong>{{ request.args.get('start_date') }}</strong>
-          {% else %}
-            <em>Beginning</em>
-          {% endif %}
-
-          → 
-
-          {% if request.args.get('end_date') %}
-            <strong>{{ request.args.get('end_date') }}</strong>
-          {% else %}
-            <em>Today</em>
-          {% endif %}
-        </span>
-    </div>
-  {% endif %}
-
-  <div class="card report-card p-3 p-md-4">
-    {% if data and data|length > 0 %}
-
-      {% set numeric_cols = [
-        'total orders', 'total points used', 'times purchased',
-        'quantity', 'points each', 'total points'
-      ] %}
-
-      <div class="table-responsive">
-        <table class="table table-hover align-middle">
-          <thead class="table-light">
-            <tr>
-              {% for col in columns %}
-                <th scope="col"
-                    class="{% if col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower %}number{% endif %}">
-                  {{ col }}
-                </th>
-              {% endfor %}
-            </tr>
-          </thead>
-
-          <tbody>
-            {% for row in data %}
-              <tr>
-                {% for col in columns %}
-                  <td class="{% if col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower %}number{% endif %}">
-                    {{ row[col] }}
-                  </td>
-                {% endfor %}
-              </tr>
-            {% endfor %}
-          </tbody>
-
-          {% set total_col = None %}
-          {% for col in columns %}
-            {% if total_col is none and (col|lower in numeric_cols or 'total' in col|lower or 'points' in col|lower) %}
-              {% set total_col = col %}
-            {% endif %}
-          {% endfor %}
-
-          {% if total_col %}
-            {% set total = 0 %}
-            {% for row in data %}
-              {% set total = total + (row[total_col] or 0) %}
-            {% endfor %}
-            <tfoot>
-              <tr>
-                <th colspan="{{ columns|length - 1 }}" class="text-end">TOTAL</th>
-                <th class="number">{{ total }}</th>
-              </tr>
-            </tfoot>
-          {% endif %}
-        </table>
+    {% if request.args.get('start_date') or request.args.get('end_date') %}
+      <div class="report-daterange">
+        Date Range:
+        {% if request.args.get('start_date') %}
+          {{ request.args.get('start_date') }}
+        {% else %}
+          Beginning
+        {% endif %}
+        &nbsp;–&nbsp;
+        {% if request.args.get('end_date') %}
+          {{ request.args.get('end_date') }}
+        {% else %}
+          Today
+        {% endif %}
       </div>
-
-    {% else %}
-      <p class="text-muted mb-0">No data found for this report.</p>
     {% endif %}
   </div>
+
+  <!-- Buttons -->
+  <div class="report-actions no-print">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports_dashboard') }}">← Back</a>
+    <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+  </div>
+
+  {% if data and data|length > 0 %}
+
+    <table class="summary-table">
+      <thead>
+        <tr>
+          {% for col in columns %}
+            <th class="{% if 'total' in col|lower or 'points' in col|lower %}summary-number{% endif %}">
+              {{ col }}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for row in data %}
+        <tr>
+          {% for col in columns %}
+            <td class="{% if 'total' in col|lower or 'points' in col|lower %}summary-number{% endif %}">
+              {{ row[col] }}
+            </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  {% else %}
+    <p>No data available.</p>
+  {% endif %}
 </div>
+
 {% endblock %}
