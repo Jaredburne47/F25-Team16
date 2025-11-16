@@ -4380,6 +4380,133 @@ def generate_report():
             data=rows
         )
     
+    # --- AUDIT LOG REPORT ---
+    if report_type == "audit_log":
+    
+        filter_driver = request.args.get("driver") or None
+        filter_sponsor = request.args.get("sponsor") or None
+        category = request.args.get("category") or None
+    
+        # Sponsor role: only show logs for their accepted drivers
+        sponsor_filter_sql = ""
+        sponsor_params = []
+    
+        if role == "sponsor":
+            sponsor_filter_sql = """
+                AND user_id IN (
+                    SELECT driverUsername
+                    FROM driverApplications
+                    WHERE sponsor = %s AND status = 'accepted'
+                )
+            """
+            sponsor_params.append(user)
+    
+        # --------------------------
+        # CATEGORY MAPPING 
+        # --------------------------
+        audit_conditions = "1=1"
+        login_conditions = "1=1"
+        app_conditions = "1=1"
+    
+        category_mapping = {
+            "points_added": ("auditLogs", "action = 'points_added'"),
+            "points_removed": ("auditLogs", "action = 'points_removed'"),
+            "login_success": ("loginAttempts", "successful = 1"),
+            "login_failure": ("loginAttempts", "successful = 0"),
+            "driver_application": ("driverApplications", "1=1")
+        }
+    
+        if category in category_mapping:
+            table, condition = category_mapping[category]
+    
+            # Disable all other tables except the matching one
+            if table == "auditLogs":
+                audit_conditions = condition
+                login_conditions = "0"
+                app_conditions = "0"
+    
+            elif table == "loginAttempts":
+                login_conditions = condition
+                audit_conditions = "0"
+                app_conditions = "0"
+    
+            elif table == "driverApplications":
+                app_conditions = condition
+                audit_conditions = "0"
+                login_conditions = "0"
+    
+        # -------------------
+        # MAIN UNIFIED QUERY 
+        # -------------------
+        query = f"""
+            SELECT timestamp AS Date,
+                   user_id AS User,
+                   action AS Action,
+                   description AS Description
+            FROM auditLogs
+            WHERE {audit_conditions}
+            {sponsor_filter_sql}
+    
+            UNION ALL
+    
+            SELECT timestamp AS Date,
+                   username AS User,
+                   CASE WHEN successful = 1 THEN 'Login Success'
+                        ELSE 'Login Failure' END AS Action,
+                   CONCAT('IP: ', COALESCE(ip_address, 'Unknown')) AS Description
+            FROM loginAttempts
+            WHERE {login_conditions}
+    
+            UNION ALL
+    
+            SELECT created_at AS Date,
+                   driverUsername AS User,
+                   CONCAT('Driver App: ', status) AS Action,
+                   CONCAT('Sponsor: ', sponsor) AS Description
+            FROM driverApplications
+            WHERE {app_conditions}
+        """
+    
+        params = sponsor_params.copy()
+    
+        # Apply driver filter
+        if filter_driver:
+            query = f"SELECT * FROM ({query}) AS t WHERE User = %s"
+            params.append(filter_driver)
+    
+        # Apply sponsor filter
+        if filter_sponsor:
+            query = f"""
+                SELECT * FROM ({query}) AS t
+                WHERE Description LIKE %s OR User = %s
+            """
+            params.extend([f"%{filter_sponsor}%", filter_sponsor])
+    
+        # Apply date range filters
+        if start_date:
+            query = f"SELECT * FROM ({query}) AS t WHERE Date >= %s"
+            params.append(start_date)
+    
+        if end_date:
+            query = f"SELECT * FROM ({query}) AS t WHERE Date <= %s"
+            params.append(end_date)
+    
+        # Final wrap and order
+        query = f"SELECT * FROM ({query}) AS final ORDER BY Date DESC"
+    
+        cur.execute(query, params)
+        data = cur.fetchall()
+    
+        cur.close()
+        db.close()
+    
+        return render_template(
+            "report_audit_log.html",
+            title="Audit Log Report",
+            data=data
+        )
+        
+    
     # fallthrough
     cur.close(); db.close()
     flash("Invalid report type.", "danger")
