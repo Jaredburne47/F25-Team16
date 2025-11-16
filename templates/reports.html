@@ -17,6 +17,7 @@
             <option value="driver_points">Driver Point Transactions</option>
             <option value="sponsor_summary">Total Sponsor Sales Summary</option>
             <option value="sponsor_detail">Sales by Sponsor (Detail)</option>
+            <option value="audit_log">Audit Log Report</option>
           </select>
         </div>
 
@@ -29,6 +30,20 @@
           <label>Filter by Sponsor (optional)</label>
           <input type="text" class="form-control" name="sponsor" placeholder="Enter sponsor username">
         </div>
+
+        <!-- Category filter (ONLY for audit_log) -->
+        <div class="col-md-4" id="category-filter" style="display:none;">
+          <label class="form-label">Category (optional)</label>
+          <select name="category" class="form-select">
+            <option value="">-- All Categories --</option>
+            <option value="points_added">Points Added</option>
+            <option value="points_removed">Points Removed</option>
+            <option value="purchase">Purchase</option>
+            <option value="login">Login</option>
+            <option value="driver_application">Driver Application</option>
+          </select>
+        </div>
+      </div>
         
         <div class="col-md-2">
           <label class="form-label">Start Date (optional)</label>
@@ -49,4 +64,28 @@
     </form>
   </div>
 </div>
+<!-- Simple JS to toggle the category dropdown -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const reportSelect = document.getElementById('report_type');
+  const categoryGroup = document.getElementById('category-filter');
+
+  function updateCategoryVisibility() {
+    if (!reportSelect || !categoryGroup) return;
+    if (reportSelect.value === 'audit_log') {
+      categoryGroup.style.display = '';
+    } else {
+      categoryGroup.style.display = 'none';
+      const select = categoryGroup.querySelector('select');
+      if (select) select.value = '';
+    }
+  }
+
+  if (reportSelect) {
+    reportSelect.addEventListener('change', updateCategoryVisibility);
+    // Run once on page load in case there is a pre-selected value
+    updateCategoryVisibility();
+  }
+});
+</script>
 {% endblock %}
