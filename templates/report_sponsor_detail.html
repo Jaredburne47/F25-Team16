@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Sponsor Detailed Sales Report{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between mb-3">
+        <h2>Sponsor Detailed Sales Report</h2>
+        <div>
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports_dashboard') }}">← Back</a>
+            <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+        </div>
+    </div>
+
+    <div class="mb-2 text-muted">
+        Sponsor: <strong>{{ sponsor }}</strong>
+    </div>
+
+    <div class="card p-3">
+        {% if data and data|length > 0 %}
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order #</th>
+                        <th>Date</th>
+                        <th>Driver</th>
+                        <th>Product</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Points Each</th>
+                        <th class="text-end">Total Points</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        <td>{{ row.OrderID }}</td>
+                        <td>{{ row.OrderDate }}</td>
+                        <td>{{ row.Driver }}</td>
+                        <td>{{ row.Product }}</td>
+                        <td class="text-end">{{ row.Quantity }}</td>
+                        <td class="text-end">{{ row.PointsEach }}</td>
+                        <td class="text-end fw-bold">{{ row.TotalPoints }}</td>
+                        <td>{{ row.Status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No sales found for this sponsor.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
