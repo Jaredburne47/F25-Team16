@@ -4245,7 +4245,7 @@ def generate_report():
             WHERE 1=1
             {date_clause_where}
             GROUP BY d.username
-            ORDER BY TotalPointsUsed DESC;
+            ORDER BY `Total Points Used` DESC;
         """
         cur.execute(query, date_params)
         data = cur.fetchall()
@@ -4330,7 +4330,7 @@ def generate_report():
             WHERE 1=1
             {date_clause_where}
             GROUP BY s.username
-            ORDER BY TotalPointsUsed DESC;
+            ORDER BY `Total Points Used` DESC;
         """
         cur.execute(query, date_params)
         data = cur.fetchall()
