@@ -63,7 +63,7 @@
           <span class="col-total report-number">Total</span>
         </div>
 
-        {% for item in order.items %}
+        {% for item in order["items"] %}
         <div class="report-line">
           <span class="col-product">{{ item.product_name }}</span>
           <span class="col-qty report-number">{{ item.quantity }}</span>
