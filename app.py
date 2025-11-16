@@ -4382,149 +4382,138 @@ def generate_report():
     
     # --- AUDIT LOG REPORT ---
     if report_type == "audit_log":
-    
+        # Filters from form
         filter_driver = request.args.get("driver") or None
         filter_sponsor = request.args.get("sponsor") or None
         category = request.args.get("category") or None
-    
-        # Parameter list for SQL execution
+
         params = []
-    
-        # ------------------------------------------
-        # CATEGORY MAPPING (use DB’s REAL action text)
-        # ------------------------------------------
-        category_mapping = {
-            "points_added": ("auditLogs", "action = 'add points'"),
-            "points_removed": ("auditLogs", "action = 'remove points'"),
-            "login_success": ("loginAttempts", "successful = 1"),
-            "login_failure": ("loginAttempts", "successful = 0"),
-            "driver_application": ("driverApplications", "1=1"),
-        }
-    
+
+        # -----------------------------
+        # Category mapping (matches DB)
+        # -----------------------------
+        # NOTE:
+        #  - auditLogs.action uses text like 'add points' / 'remove points'
+        #  - loginAttempts uses successful = 1/0
+        #  - driverApplications status enum is already descriptive
         audit_condition = "1=1"
         login_condition = "1=1"
         app_condition = "1=1"
-    
-        # Apply category restriction
-        if category in category_mapping:
-            table, cond = category_mapping[category]
-    
-            if table == "auditLogs":
-                audit_condition = cond
-                login_condition = "0"
-                app_condition = "0"
-    
-            elif table == "loginAttempts":
-                login_condition = cond
-                audit_condition = "0"
-                app_condition = "0"
-    
-            elif table == "driverApplications":
-                app_condition = cond
-                audit_condition = "0"
-                login_condition = "0"
-    
-        # Sponsor restriction (sponsors see only their drivers)
-        sponsor_sql = ""
+
+        if category == "points_added":
+            audit_condition = "action = 'add points'"
+            login_condition = "0"
+            app_condition = "0"
+        elif category == "points_removed":
+            audit_condition = "action = 'remove points'"
+            login_condition = "0"
+            app_condition = "0"
+        elif category == "login":
+            audit_condition = "0"
+            login_condition = "1=1"  # include both success & failure
+            app_condition = "0"
+        elif category == "driver_application":
+            audit_condition = "0"
+            login_condition = "0"
+            app_condition = "1=1"
+
+        # -----------------------------
+        # Base UNION query (no params)
+        # -----------------------------
+        base_query = f"""
+            -- Points added / removed from auditLogs
+            SELECT 
+                timestamp AS Date,
+                user_id  AS User,
+                action   AS Action,
+                description AS Description
+            FROM auditLogs
+            WHERE {audit_condition}
+
+            UNION ALL
+
+            -- Login attempts
+            SELECT
+                timestamp AS Date,
+                username AS User,
+                CASE 
+                    WHEN successful = 1 THEN 'login_success'
+                    ELSE 'login_failure'
+                END AS Action,
+                CONCAT('IP: ', COALESCE(ip_address, 'Unknown')) AS Description
+            FROM loginAttempts
+            WHERE {login_condition}
+
+            UNION ALL
+
+            -- Driver application lifecycle
+            SELECT
+                created_at AS Date,
+                driverUsername AS User,
+                CONCAT('driver_application_', status) AS Action,
+                CONCAT('Sponsor: ', sponsor) AS Description
+            FROM driverApplications
+            WHERE {app_condition}
+        """
+
+        # Wrap union so we can safely apply filters
+        query = f"SELECT * FROM ({base_query}) AS full_log WHERE 1=1"
+
+        # -----------------------------
+        # Final-level filters (safe)
+        # -----------------------------
+        # 1) Sponsor role restriction
         if role == "sponsor":
-            sponsor_sql = """
-                AND user_id IN (
-                    SELECT driverUsername
-                    FROM driverApplications
-                    WHERE sponsor = %s AND status = 'accepted'
+            # Sponsor sees:
+            #  - Their own username
+            #  - Their accepted drivers (via driverApplications)
+            query += """
+                AND (
+                    User = %s
+                    OR User IN (
+                        SELECT driverUsername
+                        FROM driverApplications
+                        WHERE sponsor = %s AND status = 'accepted'
+                    )
                 )
             """
-            params.append(user)
-    
-        # ---------------------------------------------------------
-        # MAIN COMBINED QUERY (NO NESTED SELECT!!!)
-        # ---------------------------------------------------------
-        query = f"""
-            (
-                SELECT 
-                    timestamp AS Date,
-                    user_id AS User,
-                    action AS Action,
-                    description AS Description
-                FROM auditLogs
-                WHERE {audit_condition}
-                AND action NOT LIKE '%login%'   -- prevent double login rows
-                {sponsor_sql}
-            )
-    
-            UNION ALL
-    
-            (
-                SELECT 
-                    timestamp AS Date,
-                    username AS User,
-                    CASE
-                        WHEN successful = 1 THEN 'login_success'
-                        ELSE 'login_failure'
-                    END AS Action,
-                    CONCAT('IP: ', COALESCE(ip_address, 'Unknown')) AS Description
-                FROM loginAttempts
-                WHERE {login_condition}
-            )
-    
-            UNION ALL
-    
-            (
-                SELECT 
-                    created_at AS Date,
-                    driverUsername AS User,
-                    CONCAT('driver_application_', status) AS Action,
-                    CONCAT('Sponsor: ', sponsor) AS Description
-                FROM driverApplications
-                WHERE {app_condition}
-            )
-        """
-    
-        # ---------------------------------------------------------
-        # OPTIONAL FILTERS (SAFE — appended only once)
-        # ---------------------------------------------------------
-        where_clauses = []
-    
+            params.extend([user, user])
+
+        # 2) Filter by driver username (if provided)
         if filter_driver:
-            where_clauses.append("User = %s")
+            query += " AND User = %s"
             params.append(filter_driver)
-    
+
+        # 3) Filter by sponsor (search in description)
         if filter_sponsor:
-            where_clauses.append("Description LIKE %s")
+            query += " AND Description LIKE %s"
             params.append(f"%{filter_sponsor}%")
-    
+
+        # 4) Date range filters
         if start_date:
-            where_clauses.append("Date >= %s")
+            query += " AND Date >= %s"
             params.append(start_date)
-    
         if end_date:
-            where_clauses.append("Date <= %s")
+            query += " AND Date <= %s"
             params.append(end_date)
-    
-        # Build final WHERE if needed
-        if where_clauses:
-            query = f"SELECT * FROM ({query}) AS t WHERE " + " AND ".join(where_clauses)
-        else:
-            query = f"SELECT * FROM ({query}) AS t"
-    
-        # Always order last
+
+        # Final ordering
         query += " ORDER BY Date DESC"
-    
-        print("\n====== FINAL AUDIT LOG QUERY ======")
-        print(query)
-        print("PARAMS:", params)
-        print("====================================\n")
-                
-        # Execute safely
+
+        # Debug (optional while testing)
+        # print("AUDIT LOG QUERY:", query)
+        # print("PARAMS:", params)
+
         cur.execute(query, params)
-        
         data = cur.fetchall()
         cur.close()
         db.close()
-    
-        return render_template("report_audit_log.html",
-                               title="Audit Log Report",
-                               data=data)
+
+        return render_template(
+            "report_audit_log.html",
+            title="Audit Log Report",
+            data=data
+        )
             
     
     # fallthrough
