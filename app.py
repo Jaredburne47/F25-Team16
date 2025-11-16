@@ -4380,17 +4380,17 @@ def generate_report():
             data=rows
         )
     
-    # --- AUDIT LOG REPORT ---
+    # --- AUDIT LOG REPORT (FIXED VERSION) ---
     if report_type == "audit_log":
     
         filter_driver = request.args.get("driver") or None
         filter_sponsor = request.args.get("sponsor") or None
         category = request.args.get("category") or None
     
-        # Sponsor role: only show logs for their accepted drivers
         sponsor_filter_sql = ""
         sponsor_params = []
     
+        # Sponsor role: restrict to accepted drivers
         if role == "sponsor":
             sponsor_filter_sql = """
                 AND user_id IN (
@@ -4401,25 +4401,25 @@ def generate_report():
             """
             sponsor_params.append(user)
     
-        # --------------------------
-        # CATEGORY MAPPING 
-        # --------------------------
-        audit_conditions = "1=1"
-        login_conditions = "1=1"
-        app_conditions = "1=1"
-    
+        # ----------------------------------
+        # Category MAPPING (match DB exactly)
+        # ----------------------------------
         category_mapping = {
-            "points_added": ("auditLogs", "action = 'points_added'"),
-            "points_removed": ("auditLogs", "action = 'points_removed'"),
+            "points_added": ("auditLogs", "action = 'add points'"),
+            "points_removed": ("auditLogs", "action = 'remove points'"),
             "login_success": ("loginAttempts", "successful = 1"),
             "login_failure": ("loginAttempts", "successful = 0"),
             "driver_application": ("driverApplications", "1=1")
         }
     
+        audit_conditions = "1=1"
+        login_conditions = "1=1"
+        app_conditions = "1=1"
+    
         if category in category_mapping:
             table, condition = category_mapping[category]
     
-            # Disable all other tables except the matching one
+            # Only return rows from the selected table
             if table == "auditLogs":
                 audit_conditions = condition
                 login_conditions = "0"
@@ -4435,33 +4435,35 @@ def generate_report():
                 audit_conditions = "0"
                 login_conditions = "0"
     
-        # -------------------
-        # MAIN UNIFIED QUERY 
-        # -------------------
+        # Main unified query
         query = f"""
+            -- POINTS ADDED / REMOVED (auditLogs)
             SELECT timestamp AS Date,
                    user_id AS User,
                    action AS Action,
                    description AS Description
             FROM auditLogs
             WHERE {audit_conditions}
+            AND action NOT LIKE '%login%'   -- prevent duplicates
             {sponsor_filter_sql}
     
             UNION ALL
     
+            -- LOGIN ATTEMPTS
             SELECT timestamp AS Date,
                    username AS User,
-                   CASE WHEN successful = 1 THEN 'Login Success'
-                        ELSE 'Login Failure' END AS Action,
+                   CASE WHEN successful = 1 THEN 'login_success'
+                        ELSE 'login_failure' END AS Action,
                    CONCAT('IP: ', COALESCE(ip_address, 'Unknown')) AS Description
             FROM loginAttempts
             WHERE {login_conditions}
     
             UNION ALL
     
+            -- DRIVER APPLICATION EVENTS
             SELECT created_at AS Date,
                    driverUsername AS User,
-                   CONCAT('Driver App: ', status) AS Action,
+                   CONCAT('driver_application_', status) AS Action,
                    CONCAT('Sponsor: ', sponsor) AS Description
             FROM driverApplications
             WHERE {app_conditions}
@@ -4469,29 +4471,24 @@ def generate_report():
     
         params = sponsor_params.copy()
     
-        # Apply driver filter
+        # Optional filters
         if filter_driver:
-            query = f"SELECT * FROM ({query}) AS t WHERE User = %s"
+            query = f"SELECT * FROM ({query}) as t WHERE User = %s"
             params.append(filter_driver)
     
-        # Apply sponsor filter
         if filter_sponsor:
-            query = f"""
-                SELECT * FROM ({query}) AS t
-                WHERE Description LIKE %s OR User = %s
-            """
-            params.extend([f"%{filter_sponsor}%", filter_sponsor])
+            query = f"SELECT * FROM ({query}) as t WHERE Description LIKE %s"
+            params.append(f"%{filter_sponsor}%")
     
-        # Apply date range filters
         if start_date:
-            query = f"SELECT * FROM ({query}) AS t WHERE Date >= %s"
+            query = f"SELECT * FROM ({query}) as t WHERE Date >= %s"
             params.append(start_date)
     
         if end_date:
-            query = f"SELECT * FROM ({query}) AS t WHERE Date <= %s"
+            query = f"SELECT * FROM ({query}) as t WHERE Date <= %s"
             params.append(end_date)
     
-        # Final wrap and order
+        # Final ordering
         query = f"SELECT * FROM ({query}) AS final ORDER BY Date DESC"
     
         cur.execute(query, params)
@@ -4500,12 +4497,10 @@ def generate_report():
         cur.close()
         db.close()
     
-        return render_template(
-            "report_audit_log.html",
-            title="Audit Log Report",
-            data=data
-        )
-        
+        return render_template("report_audit_log.html",
+                               title="Audit Log Report",
+                               data=data)
+            
     
     # fallthrough
     cur.close(); db.close()
