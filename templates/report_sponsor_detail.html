@@ -1,12 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Sponsor Detailed Sales Report{% endblock %}
 
-{% block extra_css %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">
-{% endblock %}
-
 {% block content %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='report.css') }}">
 <div class="container mt-4">
 
     <div class="d-flex justify-content-between mb-3">
