@@ -4257,7 +4257,7 @@ def generate_report():
             data=data
         )
 
-    # --- Driver Purchase Detail (requires driver username) ---
+   # --- Driver Purchase Detail (requires driver username) ---
     if report_type == 'driver_detail':
         if not driver:
             flash("Please enter a driver username for the detail report.", "warning")
@@ -4278,19 +4278,43 @@ def generate_report():
             JOIN products p ON o.product_id = p.product_id
             WHERE o.user_id = %s
             {date_clause_where}
-            ORDER BY o.order_date DESC;
+            ORDER BY o.order_date DESC, o.order_id DESC;
         """
         params = [driver] + date_params
         cur.execute(query, params)
         rows = cur.fetchall()
         cur.close(); db.close()
 
-        total_points = sum(r['TotalPoints'] for r in rows) if rows else 0
+        # Group rows by order ID
+        orders_map = {}
+        for r in rows:
+            oid = r['OrderID']
+            if oid not in orders_map:
+                orders_map[oid] = {
+                    'order_id': oid,
+                    'order_date': r['OrderDate'],
+                    'sponsor': r['Sponsor'],
+                    'status': r['Status'],
+                    'items': [],
+                    'subtotal': 0
+                }
+            orders_map[oid]['items'].append({
+                'product_name': r['ProductName'],
+                'quantity': r['Quantity'],
+                'points_each': r['PointsEach'],
+                'total_points': r['TotalPoints']
+            })
+            orders_map[oid]['subtotal'] += r['TotalPoints']
+
+        orders = list(orders_map.values())
+        grand_total = sum(o['subtotal'] for o in orders)
+
         return render_template(
-            'report_detail.html',
+            'report_detail_grouped.html',
+            title="Purchase Detail",
             driver=driver,
-            data=rows,
-            total_points=total_points
+            orders=orders,
+            grand_total=grand_total
         )
 
     # --- Sponsor Purchase Summary ---
