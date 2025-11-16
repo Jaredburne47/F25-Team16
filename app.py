@@ -4380,120 +4380,139 @@ def generate_report():
             data=rows
         )
     
-    # --- AUDIT LOG REPORT (FIXED VERSION) ---
+    # --- AUDIT LOG REPORT ---
     if report_type == "audit_log":
     
         filter_driver = request.args.get("driver") or None
         filter_sponsor = request.args.get("sponsor") or None
         category = request.args.get("category") or None
     
-        sponsor_filter_sql = ""
-        sponsor_params = []
+        # Parameter list for SQL execution
+        params = []
     
-        # Sponsor role: restrict to accepted drivers
+        # ------------------------------------------
+        # CATEGORY MAPPING (use DB’s REAL action text)
+        # ------------------------------------------
+        category_mapping = {
+            "points_added": ("auditLogs", "action = 'add points'"),
+            "points_removed": ("auditLogs", "action = 'remove points'"),
+            "login_success": ("loginAttempts", "successful = 1"),
+            "login_failure": ("loginAttempts", "successful = 0"),
+            "driver_application": ("driverApplications", "1=1"),
+        }
+    
+        audit_condition = "1=1"
+        login_condition = "1=1"
+        app_condition = "1=1"
+    
+        # Apply category restriction
+        if category in category_mapping:
+            table, cond = category_mapping[category]
+    
+            if table == "auditLogs":
+                audit_condition = cond
+                login_condition = "0"
+                app_condition = "0"
+    
+            elif table == "loginAttempts":
+                login_condition = cond
+                audit_condition = "0"
+                app_condition = "0"
+    
+            elif table == "driverApplications":
+                app_condition = cond
+                audit_condition = "0"
+                login_condition = "0"
+    
+        # Sponsor restriction (sponsors see only their drivers)
+        sponsor_sql = ""
         if role == "sponsor":
-            sponsor_filter_sql = """
+            sponsor_sql = """
                 AND user_id IN (
                     SELECT driverUsername
                     FROM driverApplications
                     WHERE sponsor = %s AND status = 'accepted'
                 )
             """
-            sponsor_params.append(user)
+            params.append(user)
     
-        # ----------------------------------
-        # Category MAPPING (match DB exactly)
-        # ----------------------------------
-        category_mapping = {
-            "points_added": ("auditLogs", "action = 'add points'"),
-            "points_removed": ("auditLogs", "action = 'remove points'"),
-            "login_success": ("loginAttempts", "successful = 1"),
-            "login_failure": ("loginAttempts", "successful = 0"),
-            "driver_application": ("driverApplications", "1=1")
-        }
-    
-        audit_conditions = "1=1"
-        login_conditions = "1=1"
-        app_conditions = "1=1"
-    
-        if category in category_mapping:
-            table, condition = category_mapping[category]
-    
-            # Only return rows from the selected table
-            if table == "auditLogs":
-                audit_conditions = condition
-                login_conditions = "0"
-                app_conditions = "0"
-    
-            elif table == "loginAttempts":
-                login_conditions = condition
-                audit_conditions = "0"
-                app_conditions = "0"
-    
-            elif table == "driverApplications":
-                app_conditions = condition
-                audit_conditions = "0"
-                login_conditions = "0"
-    
-        # Main unified query
+        # ---------------------------------------------------------
+        # MAIN COMBINED QUERY (NO NESTED SELECT!!!)
+        # ---------------------------------------------------------
         query = f"""
-            -- POINTS ADDED / REMOVED (auditLogs)
-            SELECT timestamp AS Date,
-                   user_id AS User,
-                   action AS Action,
-                   description AS Description
-            FROM auditLogs
-            WHERE {audit_conditions}
-            AND action NOT LIKE '%login%'   -- prevent duplicates
-            {sponsor_filter_sql}
+            (
+                SELECT 
+                    timestamp AS Date,
+                    user_id AS User,
+                    action AS Action,
+                    description AS Description
+                FROM auditLogs
+                WHERE {audit_condition}
+                AND action NOT LIKE '%login%'   -- prevent double login rows
+                {sponsor_sql}
+            )
     
             UNION ALL
     
-            -- LOGIN ATTEMPTS
-            SELECT timestamp AS Date,
-                   username AS User,
-                   CASE WHEN successful = 1 THEN 'login_success'
-                        ELSE 'login_failure' END AS Action,
-                   CONCAT('IP: ', COALESCE(ip_address, 'Unknown')) AS Description
-            FROM loginAttempts
-            WHERE {login_conditions}
+            (
+                SELECT 
+                    timestamp AS Date,
+                    username AS User,
+                    CASE
+                        WHEN successful = 1 THEN 'login_success'
+                        ELSE 'login_failure'
+                    END AS Action,
+                    CONCAT('IP: ', COALESCE(ip_address, 'Unknown')) AS Description
+                FROM loginAttempts
+                WHERE {login_condition}
+            )
     
             UNION ALL
     
-            -- DRIVER APPLICATION EVENTS
-            SELECT created_at AS Date,
-                   driverUsername AS User,
-                   CONCAT('driver_application_', status) AS Action,
-                   CONCAT('Sponsor: ', sponsor) AS Description
-            FROM driverApplications
-            WHERE {app_conditions}
+            (
+                SELECT 
+                    created_at AS Date,
+                    driverUsername AS User,
+                    CONCAT('driver_application_', status) AS Action,
+                    CONCAT('Sponsor: ', sponsor) AS Description
+                FROM driverApplications
+                WHERE {app_condition}
+            )
         """
     
-        params = sponsor_params.copy()
+        # ---------------------------------------------------------
+        # OPTIONAL FILTERS (SAFE — appended only once)
+        # ---------------------------------------------------------
+        where_clauses = []
     
-        # Optional filters
         if filter_driver:
-            query = f"SELECT * FROM ({query}) as t WHERE User = %s"
+            where_clauses.append("User = %s")
             params.append(filter_driver)
     
         if filter_sponsor:
-            query = f"SELECT * FROM ({query}) as t WHERE Description LIKE %s"
+            where_clauses.append("Description LIKE %s")
             params.append(f"%{filter_sponsor}%")
     
         if start_date:
-            query = f"SELECT * FROM ({query}) as t WHERE Date >= %s"
+            where_clauses.append("Date >= %s")
             params.append(start_date)
     
         if end_date:
-            query = f"SELECT * FROM ({query}) as t WHERE Date <= %s"
+            where_clauses.append("Date <= %s")
             params.append(end_date)
     
-        # Final ordering
-        query = f"SELECT * FROM ({query}) AS final ORDER BY Date DESC"
+        # Build final WHERE if needed
+        if where_clauses:
+            query = f"SELECT * FROM ({query}) AS t WHERE " + " AND ".join(where_clauses)
+        else:
+            query = f"SELECT * FROM ({query}) AS t"
     
+        # Always order last
+        query += " ORDER BY Date DESC"
+    
+        # Execute safely
         cur.execute(query, params)
         data = cur.fetchall()
-    
         cur.close()
         db.close()
     
