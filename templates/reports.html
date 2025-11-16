@@ -15,15 +15,21 @@
             <option value="driver_summary">Driver Purchase Summary</option>
             <option value="driver_detail">Driver Purchase Detail</option>
             <option value="driver_points">Driver Point Transactions</option>
-            <option value="sponsor_summary">Sponsor Summary</option>
+            <option value="sponsor_summary">Total Sponsor Sales Summary</option>
+            <option value="sponsor_detail">Sales by Sponsor (Detail)</option>
           </select>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Filter by Driver (optional)</label>
           <input type="text" class="form-control" name="driver" placeholder="Enter driver username">
         </div>
 
+        <div class="col-md-3">
+          <label>Filter by Sponsor (optional)</label>
+          <input type="text" class="form-control" name="sponsor" placeholder="Enter sponsor username">
+        </div>
+        
         <div class="col-md-2">
           <label class="form-label">Start Date (optional)</label>
           <input type="date" class="form-control" name="start_date">
