@@ -29,7 +29,6 @@
               <option value="sponsor_detail">Sponsor Detail</option>
               <option value="audit_log">Audit Log</option>
               <option value="invoice">Invoice Report</option>
-              <!-- Add more types if needed -->
             </select>
           </div>
 
@@ -58,12 +57,6 @@
             </select>
           </div>
 
-          <!-- Time (optional) -->
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Time (optional)</label>
-            <input type="time" class="form-control" name="time">
-          </div>
-
         </div>
 
         <div class="d-flex gap-2 mt-3">
@@ -82,25 +75,21 @@
 
     <div class="card-body p-0">
       <div class="table-responsive">
-
         <table class="table table-striped mb-0 align-middle">
           <thead class="table-light">
             <tr>
               <th>Report Type</th>
               <th>Day</th>
-              <th>Time</th>
               <th>Sponsor</th>
               <th>Status</th>
               <th class="text-end" style="width: 200px;">Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {% for rr in recurring_reports %}
             <tr>
               <td class="fw-semibold">{{ rr.report_type.replace('_', ' ').title() }}</td>
               <td>{{ rr.day_of_week }}</td>
-              <td>{{ rr.time or '-' }}</td>
               <td>{{ rr.sponsor_id }}</td>
               <td>
                 {% if rr.enabled %}
@@ -109,7 +98,6 @@
                   <span class="badge bg-secondary">Disabled</span>
                 {% endif %}
               </td>
-
               <td class="text-end">
                 <a href="{{ url_for('toggle_recurring_report', rr_id=rr.id) }}" 
                    class="btn btn-warning btn-sm">
@@ -123,16 +111,13 @@
                 </a>
               </td>
             </tr>
-
             {% else %}
             <tr>
-              <td colspan="6" class="text-muted">No recurring reports configured.</td>
+              <td colspan="5" class="text-muted">No recurring reports configured.</td>
             </tr>
             {% endfor %}
           </tbody>
-
         </table>
-
       </div>
     </div>
   </div>
