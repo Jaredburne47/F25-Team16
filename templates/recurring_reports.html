@@ -17,6 +17,7 @@
 
     <div class="card-body">
       <form method="POST" action="{{ url_for('add_recurring_report') }}">
+
         <div class="row g-3">
 
           <!-- Report Type -->
@@ -24,8 +25,8 @@
             <label class="form-label fw-semibold">Report Type</label>
             <select class="form-select" name="report_type" required>
               <option value="">Select report type</option>
-              {% for rtype in report_types %}
-                <option value="{{ rtype }}">{{ rtype }}</option>
+              {% for rt in report_types %}
+                <option value="{{ rt }}">{{ rt }}</option>
               {% endfor %}
             </select>
           </div>
@@ -60,6 +61,7 @@
         <div class="d-flex gap-2 mt-3">
           <button type="submit" class="btn btn-success btn-sm px-3">Add Recurring Report</button>
         </div>
+
       </form>
     </div>
   </div>
@@ -83,7 +85,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for rr in recurring_reports %}
+            {% for rr in reports %}
             <tr>
               <td class="fw-semibold">{{ rr.report_type.replace('_', ' ').title() }}</td>
               <td>{{ rr.day_of_week }}</td>
