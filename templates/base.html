@@ -149,6 +149,13 @@
                     Reports
                   </a>
                 </li>
+                <!--Recurring Reports -->
+                <li>
+                  <a class="dropdown-item {% if request.path == url_for('recurring_reports') %}active{% endif %}"
+                      href="{{ url_for('recurring_reports') }}">
+                    Recurring Reports
+                  </a>
+                </li>           
               {% endif %}
               {% if session.get('role') == 'admin' %}
                 <li><a class="dropdown-item {% if request.path == url_for('audit_logs') %}active{% endif %}" href="{{ url_for('audit_logs') }}">Audit Logs</a></li>
