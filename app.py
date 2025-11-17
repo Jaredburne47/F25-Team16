@@ -2132,6 +2132,86 @@ def settings():
 
     return render_template("settings.html", user=user)
 
+@app.route('/recurring_reports')
+def recurring_reports():
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT * FROM recurring_reports")
+    reports = cursor.fetchall()
+
+    # fetch sponsors for dropdown
+    cursor.execute("SELECT id, name FROM sponsors")
+    sponsors = cursor.fetchall()
+
+    # example report types
+    report_types = [
+        'Sponsor Sales Summary',
+        'Invoice Report',
+        'Driver Activity',
+        'Point Summary'
+    ]
+    db.close()
+
+    return render_template(
+        'recurring_reports.html',
+        reports=reports,
+        sponsors=sponsors,
+        report_types=report_types
+    )
+
+# ---------------------------
+# Add Recurring Report
+# ---------------------------
+@app.route('/recurring_reports/add', methods=['POST'])
+def add_recurring_report():
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    report_type = request.form.get('report_type')
+    sponsor_id = request.form.get('sponsor_id')
+    day_of_week = request.form.get('day_of_week')
+
+    if not report_type or not sponsor_id or not day_of_week:
+        flash("All fields are required.", "danger")
+        return redirect(url_for('recurring_reports'))
+
+    cursor.execute(
+        "INSERT INTO recurring_reports (report_type, sponsor_id, day_of_week) VALUES (%s, %s, %s)",
+        (report_type, sponsor_id, day_of_week)
+    )
+    db.commit()
+    db.close()
+    flash("Recurring report added successfully!", "success")
+    return redirect(url_for('recurring_reports'))
+
+# ---------------------------
+# Toggle Enabled/Disabled
+# ---------------------------
+@app.route('/recurring_reports/toggle/<int:report_id>')
+def toggle_recurring_report(report_id):
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("SELECT enabled FROM recurring_reports WHERE id = %s", (report_id,))
+    report = cursor.fetchone()
+    db.close()
+    if report:
+        new_status = not report['enabled']
+        cursor.execute("UPDATE recurring_reports SET enabled = %s WHERE id = %s", (new_status, report_id))
+        db.commit()
+        flash("Recurring report status updated.", "success")
+    return redirect(url_for('recurring_reports'))
+
+# ---------------------------
+# Delete Recurring Report
+# ---------------------------
+@app.route('/recurring_reports/delete/<int:report_id>')
+def delete_recurring_report(report_id):
+    cursor.execute("DELETE FROM recurring_reports WHERE id = %s", (report_id,))
+    db.commit()
+    db.close()
+    flash("Recurring report deleted.", "success")
+    return redirect(url_for('recurring_reports'))
+
+
 @app.route('/update_notifications', methods=['POST'])
 def update_notifications():
     if 'user' not in session or 'role' not in session:
