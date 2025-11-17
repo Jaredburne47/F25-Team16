@@ -101,7 +101,7 @@
               <td class="fw-semibold">{{ rr.report_type.replace('_', ' ').title() }}</td>
               <td>{{ rr.day_of_week }}</td>
               <td>{{ rr.time or '-' }}</td>
-              <td>{{ rr.sponsor }}</td>
+              <td>{{ rr.sponsor_id }}</td>
               <td>
                 {% if rr.enabled %}
                   <span class="badge bg-success">Enabled</span>
