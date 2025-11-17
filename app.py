@@ -2192,12 +2192,12 @@ def toggle_recurring_report(report_id):
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("SELECT enabled FROM recurring_reports WHERE id = %s", (report_id,))
     report = cursor.fetchone()
-    db.close()
     if report:
         new_status = not report['enabled']
         cursor.execute("UPDATE recurring_reports SET enabled = %s WHERE id = %s", (new_status, report_id))
         db.commit()
         flash("Recurring report status updated.", "success")
+    db.close()
     return redirect(url_for('recurring_reports'))
 
 # ---------------------------
@@ -2205,6 +2205,8 @@ def toggle_recurring_report(report_id):
 # ---------------------------
 @app.route('/recurring_reports/delete/<int:report_id>')
 def delete_recurring_report(report_id):
+    db = MySQLdb.connect(**db_config)
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
     cursor.execute("DELETE FROM recurring_reports WHERE id = %s", (report_id,))
     db.commit()
     db.close()
