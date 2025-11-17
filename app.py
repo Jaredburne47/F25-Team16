@@ -2167,7 +2167,7 @@ def add_recurring_report():
     db = MySQLdb.connect(**db_config)
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
     report_type = request.form.get('report_type')
-    sponsor_id = request.form.get('sponsor_id')
+    sponsor_id = request.form.get('sponsor')
     day_of_week = request.form.get('day_of_week')
 
     if not report_type or not sponsor_id or not day_of_week:
