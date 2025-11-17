@@ -2140,7 +2140,7 @@ def recurring_reports():
     reports = cursor.fetchall()
 
     # fetch sponsors for dropdown
-    cursor.execute("SELECT id, name FROM sponsors")
+    cursor.execute("SELECT username FROM sponsor")
     sponsors = cursor.fetchall()
 
     # example report types
