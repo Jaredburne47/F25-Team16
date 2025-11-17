@@ -17,7 +17,6 @@
 
     <div class="card-body">
       <form method="POST" action="{{ url_for('add_recurring_report') }}">
-
         <div class="row g-3">
 
           <!-- Report Type -->
@@ -25,10 +24,9 @@
             <label class="form-label fw-semibold">Report Type</label>
             <select class="form-select" name="report_type" required>
               <option value="">Select report type</option>
-              <option value="summary">Summary Report</option>
-              <option value="sponsor_detail">Sponsor Detail</option>
-              <option value="audit_log">Audit Log</option>
-              <option value="invoice">Invoice Report</option>
+              {% for rtype in report_types %}
+                <option value="{{ rtype }}">{{ rtype }}</option>
+              {% endfor %}
             </select>
           </div>
 
@@ -62,7 +60,6 @@
         <div class="d-flex gap-2 mt-3">
           <button type="submit" class="btn btn-success btn-sm px-3">Add Recurring Report</button>
         </div>
-
       </form>
     </div>
   </div>
@@ -99,12 +96,12 @@
                 {% endif %}
               </td>
               <td class="text-end">
-                <a href="{{ url_for('toggle_recurring_report', rr_id=rr.id) }}" 
+                <a href="{{ url_for('toggle_recurring_report', report_id=rr.id) }}" 
                    class="btn btn-warning btn-sm">
                   {{ 'Disable' if rr.enabled else 'Enable' }}
                 </a>
 
-                <a href="{{ url_for('remove_recurring_report', rr_id=rr.id) }}"
+                <a href="{{ url_for('remove_recurring_report', report_id=rr.id) }}"
                    class="btn btn-outline-danger btn-sm"
                    onclick="return confirm('Delete this recurring report?');">
                   Delete
