@@ -2153,11 +2153,11 @@ def recurring_reports():
     db.close()
 
     return render_template(
-        'recurring_reports.html',
-        reports=reports,
-        sponsors=sponsors,
-        report_types=report_types
-    )
+    'recurring_reports.html',
+    recurring_reports=reports,
+    sponsors=sponsors,
+    report_types=report_types
+)
 
 # ---------------------------
 # Add Recurring Report
