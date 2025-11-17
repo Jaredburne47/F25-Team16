@@ -4342,6 +4342,30 @@ def generate_report():
             data=data
         )
 
+    # --- INVOICE REPORT ---
+    if report_type == 'invoice_report':
+        query = f"""
+            SELECT 
+                s.username AS `Sponsor`,
+                s.organization AS `Organization`,
+                ROUND(COALESCE(SUM(o.quantity * o.point_cost), 0) / 100, 2) AS `Fee`
+            FROM orders o
+            JOIN sponsor s ON o.sponsor = s.username
+            WHERE 1=1
+            {date_clause_where}
+            GROUP BY s.username
+            ORDER BY `Fee` DESC;
+        """
+        cur.execute(query, date_params)
+        data = cur.fetchall()
+        cur.close(); db.close()
+
+        return render_template(
+            'report_summary.html',
+            title="Invoice Report",
+            columns=["Sponsor", "Organization", "Fee"],
+            data=data
+        )
     # --- Sponsor Detailed Sales Report ---
     if report_type == 'sponsor_detail':
         sponsor_filter = request.args.get('sponsor')
