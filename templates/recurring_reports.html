@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}Recurring Reports{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h2 class="mb-0">Recurring Reports</h2>
+  </div>
+
+  <!-- Add Recurring Report Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+      Add New Recurring Report
+    </div>
+
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('add_recurring_report') }}">
+
+        <div class="row g-3">
+
+          <!-- Report Type -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Report Type</label>
+            <select class="form-select" name="report_type" required>
+              <option value="">Select report type</option>
+              <option value="summary">Summary Report</option>
+              <option value="sponsor_detail">Sponsor Detail</option>
+              <option value="audit_log">Audit Log</option>
+              <option value="invoice">Invoice Report</option>
+              <!-- Add more types if needed -->
+            </select>
+          </div>
+
+          <!-- Day of Week -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Day of Week</label>
+            <select class="form-select" name="day_of_week" required>
+              <option value="">Select day</option>
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+          </div>
+
+          <!-- Sponsor -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Sponsor</label>
+            <select class="form-select" name="sponsor" required>
+              {% for sponsor in sponsors %}
+                <option value="{{ sponsor.username }}">{{ sponsor.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Time (optional) -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Time (optional)</label>
+            <input type="time" class="form-control" name="time">
+          </div>
+
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn btn-success btn-sm px-3">Add Recurring Report</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Existing Recurring Reports -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-secondary text-white">
+      Existing Recurring Reports
+    </div>
+
+    <div class="card-body p-0">
+      <div class="table-responsive">
+
+        <table class="table table-striped mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Report Type</th>
+              <th>Day</th>
+              <th>Time</th>
+              <th>Sponsor</th>
+              <th>Status</th>
+              <th class="text-end" style="width: 200px;">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for rr in recurring_reports %}
+            <tr>
+              <td class="fw-semibold">{{ rr.report_type.replace('_', ' ').title() }}</td>
+              <td>{{ rr.day_of_week }}</td>
+              <td>{{ rr.time or '-' }}</td>
+              <td>{{ rr.sponsor }}</td>
+              <td>
+                {% if rr.enabled %}
+                  <span class="badge bg-success">Enabled</span>
+                {% else %}
+                  <span class="badge bg-secondary">Disabled</span>
+                {% endif %}
+              </td>
+
+              <td class="text-end">
+                <a href="{{ url_for('toggle_recurring_report', rr_id=rr.id) }}" 
+                   class="btn btn-warning btn-sm">
+                  {{ 'Disable' if rr.enabled else 'Enable' }}
+                </a>
+
+                <a href="{{ url_for('remove_recurring_report', rr_id=rr.id) }}"
+                   class="btn btn-outline-danger btn-sm"
+                   onclick="return confirm('Delete this recurring report?');">
+                  Delete
+                </a>
+              </td>
+            </tr>
+
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-muted">No recurring reports configured.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
