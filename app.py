@@ -2154,7 +2154,7 @@ def recurring_reports():
 
     return render_template(
     'recurring_reports.html',
-    recurring_reports=reports,
+    reports=reports,
     sponsors=sponsors,
     report_types=report_types
 )
