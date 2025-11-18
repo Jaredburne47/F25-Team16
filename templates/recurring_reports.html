@@ -103,7 +103,7 @@
                   {{ 'Disable' if rr.enabled else 'Enable' }}
                 </a>
 
-                <a href="{{ url_for('remove_recurring_report', report_id=rr.id) }}"
+                <a href="{{ url_for('delet_recurring_report', report_id=rr.id) }}"
                    class="btn btn-outline-danger btn-sm"
                    onclick="return confirm('Delete this recurring report?');">
                   Delete
