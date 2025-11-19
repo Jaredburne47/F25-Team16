@@ -2387,6 +2387,50 @@ def add_user():
     # GET request – show the form
     return render_template("add_user.html", can_create_admin=(requester_role == 'admin'))
 
+
+@app.route('/register_driver', methods=['GET', 'POST'])
+def register_driver():
+    # Drivers register themselves — no login required
+    if request.method == 'POST':
+        # Collect form input
+        new_username = request.form['username']
+        new_email = request.form['email']
+        new_password = request.form['password']
+
+        # The only allowed role
+        new_role = 'drivers'
+
+        # --- Validate Password ---
+        is_valid, message = check_password_strength(new_password)
+        if not is_valid:
+            flash(message, 'danger')
+            return redirect(url_for('register_driver'))
+        # --------------------------
+
+        # Hash password
+        password_hash = sha256_of_string(new_password)
+
+        # Attempt to create account
+        success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
+
+        if success:
+            # Send welcome email (can remove password if needed)
+            welcomeEmail.send_welcome_email(new_email, new_username, new_password)
+
+            # Reuse your existing success page
+            return render_template(
+                "user_added.html",
+                username=new_username,
+                email=new_email,
+                role=new_role
+            )
+        else:
+            return f"<h2>Error:</h2><p>{message}</p>"
+
+    # GET request — show registration page
+    return render_template("register_driver.html")
+
+
 @app.route('/drivers')
 def drivers():
     # Only sponsors/admins can access
