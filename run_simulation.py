@@ -102,28 +102,63 @@ def execute_rule(rule):
             else:
                 print(f"[WARN] Missing username for remove_driver rule {rule['id']}")
 
-        elif action_type == 'add_points':
-            username = rule.get('driver_username')
-            if username and value is not None:
-                cursor.execute("UPDATE drivers SET points = points + %s WHERE username=%s", (value, username))
-                db.commit()
-                print(f"[SIM] Added {value} points to '{username}'")
-            else:
-                print(f"[WARN] Missing username or value for add_points rule {rule['id']}")
+            elif action_type == 'add_points':
+                username = rule.get('driver_username')
+                if username and value is not None:
+                    # Find first sponsor entry for that driver
+                    cursor.execute("""
+                        SELECT sponsor 
+                        FROM driver_sponsor_points 
+                        WHERE driver_username = %s
+                        ORDER BY sponsor ASC 
+                        LIMIT 1
+                    """, (username,))
+        
+                    result = cursor.fetchone()
+        
+                    if result:
+                        sponsor = result[0]
+                        cursor.execute("""
+                            UPDATE driver_sponsor_points
+                            SET points = points + %s
+                            WHERE driver_username = %s AND sponsor = %s
+                        """, (value, username, sponsor))
+                        db.commit()
+                        print(f"[SIM] Added {value} points to {username} under sponsor '{sponsor}'")
+                    else:
+                        print(f"[WARN] No sponsor found for add_points rule {rule['id']}")
+                else:
+                    print(f"[WARN] Missing username or value for add_points rule {rule['id']}")
+
 
         elif action_type == 'remove_points':
             username = rule.get('driver_username')
             if username and value is not None:
-                cursor.execute("UPDATE drivers SET points = GREATEST(points - %s, 0) WHERE username=%s", (value, username))
-                db.commit()
-                print(f"[SIM] Removed {value} points from '{username}'")
+
+                cursor.execute("""
+                    SELECT sponsor 
+                    FROM driver_sponsor_points 
+                    WHERE driver_username = %s
+                    ORDER BY sponsor ASC 
+                    LIMIT 1
+                """, (username,))
+        
+                result = cursor.fetchone()
+
+                if result:
+                    sponsor = result[0]
+                    cursor.execute("""
+                        UPDATE driver_sponsor_points
+                        SET points = GREATEST(points - %s, 0)
+                        WHERE driver_username = %s AND sponsor = %s
+                    """, (value, username, sponsor))
+                    db.commit()
+                    print(f"[SIM] Removed {value} points from {username} under sponsor '{sponsor}'")
+                else:
+                    print(f"[WARN] No sponsor found for remove_points rule {rule['id']}")
             else:
                 print(f"[WARN] Missing username or value for remove_points rule {rule['id']}")
 
-        cursor.close()
-        db.close()
-    except Exception as e:
-        print(f"[ERROR] Failed to execute rule {rule['id']}: {e}")
 
 # ----------------------
 # Scheduler
