@@ -2390,44 +2390,36 @@ def add_user():
 
 @app.route('/register_driver', methods=['GET', 'POST'])
 def register_driver():
-    # Drivers register themselves — no login required
+    # Anyone can register as a driver (no login required)
     if request.method == 'POST':
-        # Collect form input
-        new_username = request.form['username']
-        new_email = request.form['email']
-        new_password = request.form['password']
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
 
-        # The only allowed role
-        new_role = 'drivers'
-
-        # --- Validate Password ---
-        is_valid, message = check_password_strength(new_password)
+        # --- Password Validation ---
+        is_valid, message = check_password_strength(password)
         if not is_valid:
             flash(message, 'danger')
             return redirect(url_for('register_driver'))
-        # --------------------------
+        # --- END validation ---
 
-        # Hash password
-        password_hash = sha256_of_string(new_password)
+        password_hash = sha256_of_string(password)
 
-        # Attempt to create account
-        success, message = _create_user_in_table(new_role, new_username, new_email, password_hash)
+        # Always create in drivers table
+        success, message = _create_user_in_table('drivers', username, email, password_hash)
 
         if success:
-            # Send welcome email (can remove password if needed)
-            welcomeEmail.send_welcome_email(new_email, new_username, new_password)
-
-            # Reuse your existing success page
+            welcomeEmail.send_welcome_email(email, username, password)
             return render_template(
                 "user_added.html",
-                username=new_username,
-                email=new_email,
-                role=new_role
+                username=username,
+                email=email,
+                role="drivers"
             )
         else:
             return f"<h2>Error:</h2><p>{message}</p>"
 
-    # GET request — show registration page
+    # GET request
     return render_template("register_driver.html")
 
 
