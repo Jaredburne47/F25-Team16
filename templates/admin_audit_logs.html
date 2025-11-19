@@ -11,8 +11,12 @@
   <!-- Filters Card -->
   <div class="card shadow-sm mb-4">
     <div class="card-body">
+
+      <!-- Single Form for Filters + Both Buttons -->
       <form method="POST" action="{{ url_for('audit_logs') }}" class="m-0">
+
         <div class="row g-3 align-items-end">
+
           <div class="col-md-3">
             <label for="action" class="form-label fw-semibold">Log Type</label>
             <select name="action" id="action" class="form-select">
@@ -27,32 +31,45 @@
 
           <div class="col-md-3">
             <label for="user_id" class="form-label fw-semibold">User ID</label>
-            <input type="text" name="user_id" id="user_id" class="form-control" placeholder="Enter user id" value="{{ request.form.get('user_id','') }}">
+            <input type="text" name="user_id" id="user_id" class="form-control"
+                   placeholder="Enter user id"
+                   value="{{ request.form.get('user_id','') }}">
           </div>
 
           <div class="col-md-3">
             <label for="start_date" class="form-label fw-semibold">Start Date</label>
-            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ request.form.get('start_date','') }}">
+            <input type="date" name="start_date" id="start_date" class="form-control"
+                   value="{{ request.form.get('start_date','') }}">
           </div>
 
           <div class="col-md-3">
             <label for="end_date" class="form-label fw-semibold">End Date</label>
-            <input type="date" name="end_date" id="end_date" class="form-control" value="{{ request.form.get('end_date','') }}">
+            <input type="date" name="end_date" id="end_date" class="form-control"
+                   value="{{ request.form.get('end_date','') }}">
           </div>
+
         </div>
 
+        <!-- Buttons -->
         <div class="d-flex gap-2 mt-3">
-          <button type="submit" class="btn btn-primary btn-sm px-3">View Logs in Browser</button>
-          <!-- CSV download preserves current filter values via a second form submit -->
-          <form method="POST" action="{{ url_for('download_audit_logs') }}" class="m-0">
-            <input type="hidden" name="action" value="{{ request.form.get('action','all') }}">
-            <input type="hidden" name="user_id" value="{{ request.form.get('user_id','') }}">
-            <input type="hidden" name="start_date" value="{{ request.form.get('start_date','') }}">
-            <input type="hidden" name="end_date" value="{{ request.form.get('end_date','') }}">
-            <button type="submit" class="btn btn-success btn-sm px-3">Download as CSV</button>
-          </form>
+
+          <!-- Viewer button: submits to audit_logs -->
+          <button type="submit"
+                  class="btn btn-primary btn-sm px-3">
+            View Logs in Browser
+          </button>
+
+          <!-- Download button: overrides form action -->
+          <button type="submit"
+                  formaction="{{ url_for('download_audit_logs') }}"
+                  class="btn btn-success btn-sm px-3">
+            Download as CSV
+          </button>
+
         </div>
+
       </form>
+
     </div>
   </div>
 
@@ -68,6 +85,7 @@
             <th style="width: 14%;" class="text-end">User ID</th>
           </tr>
         </thead>
+
         <tbody>
           {% for log in logs %}
           <tr>
@@ -78,6 +96,7 @@
           </tr>
           {% endfor %}
         </tbody>
+
       </table>
     </div>
   {% else %}
