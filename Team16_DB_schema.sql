@@ -235,4 +235,127 @@ CREATE TABLE notificationAlerts (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
---Left off on orders
+-- Table: orders
+CREATE TABLE orders (
+    order_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    product_id INT NOT NULL,
+    sponsor VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    delivery_address VARCHAR(255),
+    reward_description VARCHAR(255) NOT NULL,
+    order_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    point_cost INT NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Processing'
+);
+
+
+-- Table: passwordResets
+CREATE TABLE passwordResets (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    role ENUM('driver','sponsor','admin') NOT NULL,
+    token VARCHAR(100) NOT NULL,
+    expiration DATETIME NOT NULL,
+    used TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table: products
+CREATE TABLE products (
+    product_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description MEDIUMTEXT,
+    sponsor VARCHAR(50),
+    points_cost INT NOT NULL,
+    quantity INT DEFAULT 0,
+    source_type VARCHAR(16) NOT NULL DEFAULT 'local',
+    ebay_item_id VARCHAR(64),
+    image_url VARCHAR(512),
+    price_value DECIMAL(10,2),
+    price_currency VARCHAR(8)
+);
+
+
+-- Table: recurring_reports
+CREATE TABLE recurring_reports (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    report_type VARCHAR(100) NOT NULL,
+    sponsor_id VARCHAR(50) NOT NULL,
+    day_of_week ENUM('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') NOT NULL,
+    enabled TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Table: reports
+CREATE TABLE reports (
+    report_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    report_name VARCHAR(255) NOT NULL,
+    report_data TEXT,
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Table: reviews
+CREATE TABLE reviews (
+    review_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    driver_username VARCHAR(50) NOT NULL,
+    rating TINYINT NOT NULL,
+    title VARCHAR(120),
+    body TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    KEY (product_id),
+    KEY (driver_username)
+);
+
+
+-- Table: simulation_rules
+CREATE TABLE simulation_rules (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    type ENUM('add_driver','remove_driver','add_points','remove_points') NOT NULL,
+    driver_username VARCHAR(255),
+    points INT,
+    schedule VARCHAR(255) NOT NULL,
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Table: sponsor
+CREATE TABLE sponsor (
+    username VARCHAR(50) NOT NULL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    address VARCHAR(255),
+    phone VARCHAR(20),
+    organization VARCHAR(100),
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    profile_picture VARCHAR(255),
+    twitter VARCHAR(255),
+    facebook VARCHAR(255),
+    instagram VARCHAR(255),
+    company_link VARCHAR(255),
+    failed_attempts INT DEFAULT 0,
+    locked_until DATETIME,
+    company_logo VARCHAR(255),
+    min_points INT DEFAULT 0,
+    max_points INT DEFAULT 10000,
+    disabled TINYINT(1) DEFAULT 0,
+    disabled_by_admin TINYINT(1) DEFAULT 0,
+    receive_emails TINYINT(1) DEFAULT 1,
+    login_email TINYINT(1) DEFAULT 1,
+    driver_app_email TINYINT(1) DEFAULT 1
+);
+
+
+-- Table: sponsor_field_requirements
+CREATE TABLE sponsor_field_requirements (
+    sponsor_username VARCHAR(100) NOT NULL,
+    field_name VARCHAR(50) NOT NULL,
+    is_required TINYINT(1) DEFAULT 0,
+    PRIMARY KEY (sponsor_username, field_name)
+);
