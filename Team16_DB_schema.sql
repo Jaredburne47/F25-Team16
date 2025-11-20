@@ -27,7 +27,7 @@ CREATE TABLE admins (
 );
 
 
---auditLogs table
+-- auditLogs table
 CREATE TABLE auditLogs (
     timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     action VARCHAR(255) NOT NULL,
