@@ -1,40 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Register Driver</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Register - Driver Incentive Program{% endblock %}
 
-<h1>Driver Registration</h1>
+{% block content %}
+<!-- Google reCAPTCHA script -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
-<form method="POST">
-    <label for="username">Username:</label>
-    <input type="text" name="username" required>
+<div class="login-container">
+  <h2>Register</h2>
 
-    <br>
+  <!-- Shows error messages -->
+  {% if error %}
+    <div class="alert alert-danger" style="background:#f8d7da; color:#721c24; padding:10px; border-radius:5px; margin-bottom:1rem;">
+      {{ error|safe }}
+    </div>
+  {% endif %}
 
-    <label for="email">Email:</label>
-    <input type="email" name="email" required>
+  <form method="POST" action="/register_driver" novalidate>
+    <input type="text" name="username" placeholder="Username" required value="{{ last_username or '' }}">
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
 
-    <br>
-
-    <label for="password">Password:</label>
-    <input type="password" name="password" required>
-
-    <br>
-
-    <!-- Captcha (leave exactly as-is, matching your other template) -->
+    <!-- Leave captcha commented out to match your original -->
     <!--
-    <label for="captcha">Captcha:</label>
-    <input type="text" name="captcha" required>
+    <div class="recaptcha-wrapper">
+      <div class="g-recaptcha" data-sitekey="{{ site_key }}"></div>
+    </div>
     -->
 
-    <br>
-
     <button type="submit">Register</button>
-</form>
+  </form>
 
-</body>
-</html>
+  <p class="mt-1">
+    <a href="{{ url_for('login') }}">Already have an account? Login</a>
+  </p>
+</div>
+
+<style>
+.login-container {
+  background: #fff;
+  padding: 2rem 3rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  width: 300px;
+  text-align: center;
+  margin: 5rem auto; /* centers under navbar */
+}
+
+/* Center and scale the captcha so it fits the box cleanly */
+.recaptcha-wrapper {
+  display: flex;
+  justify-content: center;
+  transform: scale(0.88);
+  transform-origin: center;
+  margin-bottom: 1rem;
+}
+
+/* Inputs & button */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #007BFF;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+/* Make the box and captcha scale nicely on small screens */
+@media (max-width: 400px) {
+  .login-container {
+    width: 90%;
+    padding: 1.5rem;
+  }
+  .recaptcha-wrapper {
+    transform: scale(0.8);
+  }
+}
+</style>
+{% endblock %}
